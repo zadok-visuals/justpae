@@ -1,0 +1,52 @@
+
+CREATE OR REPLACE FUNCTION public.verify_admin_credentials(p_user_id uuid, p_admin_password text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  stored_admin_password text;
+  user_exists boolean;
+  setting_exists boolean;
+BEGIN
+  -- This function runs with elevated privileges, bypassing user-specific RLS policies.
+
+  -- First, ensure the admin password setting exists.
+  SELECT EXISTS (
+    SELECT 1 FROM system_settings WHERE setting_key = 'admin_password'
+  ) INTO setting_exists;
+
+  IF NOT setting_exists THEN
+    INSERT INTO system_settings (setting_key, setting_value, description)
+    VALUES ('admin_password', 'Admin123', 'Admin access password');
+  END IF;
+
+  -- Get the stored admin password from system_settings.
+  SELECT setting_value INTO stored_admin_password
+  FROM system_settings
+  WHERE setting_key = 'admin_password'
+  LIMIT 1;
+
+  IF stored_admin_password IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Failed to verify admin access: configuration error');
+  END IF;
+
+  -- Compare the provided password with the stored password.
+  IF p_admin_password <> stored_admin_password THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Invalid admin credentials');
+  END IF;
+
+  -- Verify that the user exists in the profiles table.
+  SELECT EXISTS (
+    SELECT 1 FROM profiles WHERE id = p_user_id
+  ) INTO user_exists;
+
+  IF NOT user_exists THEN
+    RETURN jsonb_build_object('success', false, 'error', 'User not found');
+  END IF;
+
+  -- If all checks pass, return success.
+  RETURN jsonb_build_object('success', true);
+END;
+$$;

@@ -1,0 +1,296 @@
+
+import { supabase } from '@/integrations/supabase/client';
+import { cleanupAuthState } from '@/utils/authUtils';
+
+export const authService = {
+  login: async (email: string, password: string) => {
+    try {
+      console.log('Attempting login for:', email);
+
+      // Clean up any existing auth state first
+      cleanupAuthState();
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error('Login error:', error);
+        return { error: error.message };
+      }
+
+      if (data.user && !data.user.email_confirmed_at) {
+        return { error: 'Please verify your email before logging in.' };
+      }
+
+      console.log('Login successful:', data.user?.id);
+      return { user: data.user };
+    } catch (error) {
+      console.error('Login catch error:', error);
+      return { error: 'An unexpected error occurred during login.' };
+    }
+  },
+
+  signup: async (email: string, password: string, name: string, phone?: string, country?: string) => {
+    try {
+      console.log('Attempting signup for:', email);
+
+      // Clean up any existing auth state first
+      cleanupAuthState();
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+            phone: phone || '',
+            country: country || ''
+          },
+          emailRedirectTo: undefined // Force email confirmation workflow
+        }
+      });
+
+      if (error) {
+        console.error('Signup error:', error);
+        return { error: error.message };
+      }
+
+      if (data.user && !data.session) {
+        console.log('User created, email confirmation required');
+        return {
+          user: data.user,
+          needsVerification: true,
+          message: 'Please check your email and enter the verification code sent to you.'
+        };
+      }
+
+      return { user: data.user };
+    } catch (error) {
+      console.error('Signup catch error:', error);
+      return { error: 'An unexpected error occurred during signup.' };
+    }
+  },
+
+  verifyOtp: async (email: string, token: string) => {
+    try {
+      console.log('Verifying OTP for:', email);
+
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: 'signup'
+      });
+
+      if (error) {
+        console.error('OTP verification error:', error);
+        return { error: error.message };
+      }
+
+      console.log('OTP verification successful');
+      return { success: true, user: data.user };
+    } catch (error) {
+      console.error('OTP verification catch error:', error);
+      return { error: 'An unexpected error occurred during verification.' };
+    }
+  },
+
+  resendOtp: async (email: string) => {
+    try {
+      console.log('Resending OTP for:', email);
+
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email
+      });
+
+      if (error) {
+        console.error('Resend OTP error:', error);
+        return { error: error.message };
+      }
+
+      console.log('OTP resent successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('Resend OTP catch error:', error);
+      return { error: 'An unexpected error occurred while resending code.' };
+    }
+  },
+
+  logout: async () => {
+    try {
+      console.log('Logging out user');
+
+      cleanupAuthState();
+
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
+
+      if (error) {
+        console.error('Logout error:', error);
+      }
+
+      // Force page reload to ensure clean state
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Logout catch error:', error);
+      // Still redirect even if logout fails
+      window.location.href = '/';
+    }
+  },
+
+  updateProfile: async (userId: string, updates: any) => {
+    try {
+      console.log('Updating profile for:', userId);
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId);
+
+      if (error) {
+        console.error('Profile update error:', error);
+        return { error: error.message };
+      }
+
+      console.log('Profile updated successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('Profile update catch error:', error);
+      return { error: 'An unexpected error occurred during profile update.' };
+    }
+  },
+
+  updatePassword: async (newPassword: string) => {
+    try {
+      console.log('Updating password');
+
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) {
+        console.error('Password update error:', error);
+        return { error: error.message };
+      }
+
+      console.log('Password updated successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('Password update catch error:', error);
+      return { error: 'An unexpected error occurred during password update.' };
+    }
+  },
+
+  initializeMFA: async () => {
+    try {
+      const { data, error } = await supabase.auth.mfa.enroll({
+        factorType: 'totp'
+      });
+      if (error) {
+        console.error('MFA enroll error:', error);
+        return { error: error.message };
+      }
+      return {
+        id: data.id,
+        secret: data.totp.secret,
+        qr: data.totp.qr_code
+      };
+    } catch (error) {
+      console.error('MFA enroll catch error:', error);
+      return { error: 'An unexpected error occurred during MFA initialization.' };
+    }
+  },
+
+  verifyMFA: async (factorId: string, code: string) => {
+    try {
+      const challenge = await supabase.auth.mfa.challenge({ factorId });
+      if (challenge.error) {
+        console.error('MFA challenge error:', challenge.error);
+        return { error: challenge.error.message };
+      }
+
+      const verify = await supabase.auth.mfa.verify({
+        factorId,
+        challengeId: challenge.data.id,
+        code,
+      });
+      if (verify.error) {
+        console.error('MFA verify error:', verify.error);
+        return { error: verify.error.message };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('MFA verify catch error:', error);
+      return { error: 'An unexpected error occurred during MFA verification.' };
+    }
+  },
+
+  checkMFAStatus: async () => {
+    try {
+      const { data, error } = await supabase.auth.mfa.listFactors();
+      if (error) return false;
+
+      const totpFactor = data.totp.find(f => f.status === 'verified');
+      return !!totpFactor;
+    } catch (error) {
+      console.error('Check MFA status error:', error);
+      return false;
+    }
+  },
+
+  listFactors: async () => {
+    const { data, error } = await supabase.auth.mfa.listFactors();
+    if (error) return { error: error.message };
+    return { data };
+  },
+
+  exportUserData: async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) throw error;
+
+      // Convert to JSON and blob for download
+      const dataStr = JSON.stringify(profile, null, 2);
+      const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+
+      const exportFileDefaultName = 'user_data.json';
+
+      const linkElement = document.createElement('a');
+      linkElement.setAttribute('href', dataUri);
+      linkElement.setAttribute('download', exportFileDefaultName);
+      linkElement.click();
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Export data error:', error);
+      return { error: error.message };
+    }
+  },
+
+  deleteAccount: async (userId: string) => {
+    try {
+      // Note: Actual deletion often requires calling an Edge Function or having specific RLS policies.
+      // We attempt to delete the profile first.
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      await supabase.auth.signOut();
+      window.location.href = '/';
+      return { success: true };
+    } catch (error: any) {
+      console.error('Delete account error:', error);
+      return { error: error.message };
+    }
+  }
+};
