@@ -17,8 +17,8 @@ const AdminHeader = () => {
     navigate('/admin-login');
   };
 
-  const getInitials = (name?: string | null) => {
-    if (!name) return 'A';
+  const getInitials = (name?: any) => {
+    if (!name || typeof name !== 'string') return 'A';
     return name
       .split(' ')
       .map(word => word.charAt(0))

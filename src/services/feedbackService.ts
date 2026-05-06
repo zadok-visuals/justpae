@@ -34,7 +34,7 @@ export const feedbackService = {
 
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, name, email')
+      .select('id, full_name, email')
       .in('id', userIds);
 
     if (profilesError) {

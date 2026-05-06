@@ -91,8 +91,8 @@ const Profile = () => {
     navigate('/admin');
   };
 
-  const getInitials = (name?: string | null) => {
-    if (!name) return 'U';
+  const getInitials = (name?: any) => {
+    if (!name || typeof name !== 'string') return 'U';
     return name
       .split(' ')
       .map(word => word.charAt(0))

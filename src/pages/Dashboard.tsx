@@ -25,7 +25,7 @@ const Dashboard = () => {
   } = useDashboardData();
 
   // Safe name extraction
-  const displayName = profile?.full_name ? profile.full_name.split(' ')[0] : 'User';
+  const displayName = (profile?.full_name || '').split(' ')[0] || 'User';
 
   return (
     <Layout>

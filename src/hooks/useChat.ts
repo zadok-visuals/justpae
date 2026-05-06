@@ -286,7 +286,7 @@ export const useChat = () => {
           // Add sender name
           const messageWithName = {
             ...newMessage,
-            sender_name: newMessage.sender_type === 'admin' ? 'Admin' : 'User'
+            sender_name: newMessage.sender_type === 'admin' ? 'Support' : 'Client'
           };
           
           // If it's for current conversation, add to messages
