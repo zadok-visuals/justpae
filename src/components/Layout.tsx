@@ -14,11 +14,13 @@ const Layout: React.FC<LayoutProps> = ({ children, showNavbar = true }) => {
 
   return (
     <MaintenanceGuard>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
-      <div className="max-w-md mx-auto bg-white dark:bg-gray-900 min-h-screen shadow-xl relative">
-        {children}
-        {showNavbar && isAuthenticated && <Navbar />}
-      </div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+        <div className="w-full relative overflow-x-hidden md:pt-16 pb-16 md:pb-0">
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {children}
+          </main>
+          {showNavbar && isAuthenticated && <Navbar />}
+        </div>
       </div>
     </MaintenanceGuard>
   );

@@ -17,7 +17,8 @@ const AdminHeader = () => {
     navigate('/admin-login');
   };
 
-  const getInitials = (name: string) => {
+  const getInitials = (name?: string | null) => {
+    if (!name) return 'A';
     return name
       .split(' ')
       .map(word => word.charAt(0))
@@ -48,14 +49,14 @@ const AdminHeader = () => {
           {/* Profile Avatar */}
           <div className="flex items-center space-x-3">
             <Avatar className="w-8 h-8">
-              <AvatarImage src={profile?.avatar_url} alt={profile?.name || 'Admin'} />
+              <AvatarImage src={profile?.avatar_url} alt={profile?.full_name || 'Admin'} />
               <AvatarFallback className="bg-fintech-orange text-white text-sm">
-                {profile?.name ? getInitials(profile.name) : <User className="w-4 h-4" />}
+                {profile?.full_name ? getInitials(profile.full_name) : <User className="w-4 h-4" />}
               </AvatarFallback>
             </Avatar>
             <div className="text-sm">
               <p className="font-medium text-gray-900 dark:text-white">
-                {profile?.name || 'Admin User'}
+                {profile?.full_name || 'Admin User'}
               </p>
               <p className="text-gray-500 dark:text-gray-400 text-xs">
                 {user?.email}

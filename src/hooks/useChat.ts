@@ -63,15 +63,20 @@ export const useChat = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('chat_messages')
-        .select('*')
+        .select(`
+          *,
+          sender_profile:profiles!sender_id(full_name)
+        `)
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
       
-      const messagesWithSenderNames = data?.map(msg => ({
+      const messagesWithSenderNames = data?.map((msg: any) => ({
         ...msg,
-        sender_name: msg.sender_type === 'admin' ? 'Admin' : 'User'
+        sender_name: msg.sender_type === 'admin' 
+          ? 'Support' 
+          : (msg.sender_profile?.full_name || 'User')
       })) || [];
 
       setMessages(messagesWithSenderNames);
@@ -110,7 +115,7 @@ export const useChat = () => {
         .from('chat_conversations')
         .insert({
           user_id: user.id,
-          title: `Support Chat - ${profile?.name || 'User'}`,
+          title: `Support Chat - ${profile?.full_name || 'User'}`,
           status: 'open'
         })
         .select()
@@ -130,7 +135,7 @@ export const useChat = () => {
       });
       return null;
     }
-  }, [user, profile?.name, fetchConversations, toast]);
+  }, [user, profile?.full_name, fetchConversations, toast]);
 
   // Send text message
   const sendMessage = useCallback(async (content: string, conversationId?: string) => {

@@ -4,7 +4,7 @@ import { User, Session } from '@supabase/supabase-js';
 export interface UserProfile {
   id: string;
   email: string;
-  name: string;
+  full_name: string;
   phone?: string;
   country?: string;
   avatar_url?: string;
@@ -17,6 +17,7 @@ export interface AuthContextType {
   session: Session | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ error?: string }>;
+  signInWithGoogle: () => Promise<{ data?: any; error?: string }>;
   signup: (email: string, password: string, name: string, phone?: string, country?: string) => Promise<{ error?: string; needsVerification?: boolean }>;
   verifyOtp: (email: string, token: string) => Promise<{ error?: string; success?: boolean }>;
   resendOtp: (email: string) => Promise<{ error?: string }>;

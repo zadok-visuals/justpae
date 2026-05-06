@@ -21,7 +21,7 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [editData, setEditData] = useState({
-    name: profile?.name || '',
+    full_name: profile?.full_name || '',
     phone: profile?.phone || '',
     country: profile?.country || ''
   });
@@ -91,7 +91,8 @@ const Profile = () => {
     navigate('/admin');
   };
 
-  const getInitials = (name: string) => {
+  const getInitials = (name?: string | null) => {
+    if (!name) return 'U';
     return name
       .split(' ')
       .map(word => word.charAt(0))
@@ -132,9 +133,9 @@ const Profile = () => {
               <CardHeader className="text-center pb-4">
                 <div className="relative inline-block">
                   <Avatar className="w-24 h-24 mx-auto">
-                    <AvatarImage src={profile.avatar_url} alt={profile.name} />
+                    <AvatarImage src={profile.avatar_url} alt={profile.full_name} />
                     <AvatarFallback className="text-lg font-semibold bg-fintech-orange text-white">
-                      {getInitials(profile.name)}
+                      {getInitials(profile.full_name)}
                     </AvatarFallback>
                   </Avatar>
                   <Button
@@ -145,7 +146,7 @@ const Profile = () => {
                     <Camera className="w-4 h-4" />
                   </Button>
                 </div>
-                <CardTitle className="mt-4 text-gray-900 dark:text-white">{profile.name}</CardTitle>
+                <CardTitle className="mt-4 text-gray-900 dark:text-white">{profile.full_name}</CardTitle>
                 <p className="text-gray-600 dark:text-gray-400">{profile.email}</p>
                 <div className="flex justify-center mt-2 space-x-2">
                   <Badge variant={profile.is_kyc_verified ? "default" : "secondary"}>
@@ -177,13 +178,13 @@ const Profile = () => {
                   <Label htmlFor="name" className="text-gray-900 dark:text-white">Full Name</Label>
                   {isEditing ? (
                     <Input
-                      id="name"
-                      value={editData.name}
-                      onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                      id="full_name"
+                      value={editData.full_name}
+                      onChange={(e) => setEditData({ ...editData, full_name: e.target.value })}
                       className="mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
                     />
                   ) : (
-                    <p className="mt-1 text-gray-900 dark:text-white">{profile.name}</p>
+                    <p className="mt-1 text-gray-900 dark:text-white">{profile.full_name}</p>
                   )}
                 </div>
 

@@ -60,7 +60,7 @@ const AdminAnalytics = () => {
     const last30Days = Array.from({ length: 30 }, (_, i) => {
       const date = new Date();
       date.setDate(date.getDate() - i);
-      return date.toISOString().split('T')[0];
+      return date.toISOString().split('T')[0] || '';
     }).reverse();
 
     const dailyTransactions = last30Days.map(date => {

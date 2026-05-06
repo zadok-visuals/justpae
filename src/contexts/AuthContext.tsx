@@ -96,6 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateKYCStatus,
       updatePassword,
       loading,
+      signInWithGoogle: authService.signInWithGoogle,
       initializeMFA: authService.initializeMFA,
       verifyMFA: authService.verifyMFA,
       checkMFAStatus: authService.checkMFAStatus,

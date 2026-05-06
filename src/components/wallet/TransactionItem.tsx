@@ -95,7 +95,7 @@ const TransactionItem: React.FC<TransactionItemProps> = ({
     if (!description || transaction.type !== 'giftcard') return null;
     
     // Extract card type from description
-    const cardType = description.split(' Gift Card')[0];
+    const cardType = (description || '').split(' Gift Card')[0];
     const card = giftCardTypes.find(c => 
       c.name.toLowerCase() === cardType.toLowerCase() || 
       c.id.toLowerCase() === cardType.toLowerCase()

@@ -32,6 +32,28 @@ export const authService = {
     }
   },
 
+  signInWithGoogle: async () => {
+    try {
+      console.log('Attempting Google Sign-In');
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        }
+      });
+
+      if (error) {
+        console.error('Google Sign-In error:', error);
+        return { error: error.message };
+      }
+
+      return { data };
+    } catch (error) {
+      console.error('Google Sign-In catch error:', error);
+      return { error: 'An unexpected error occurred during Google Sign-In.' };
+    }
+  },
+
   signup: async (email: string, password: string, name: string, phone?: string, country?: string) => {
     try {
       console.log('Attempting signup for:', email);

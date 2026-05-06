@@ -47,7 +47,7 @@ export const useGiftCardUpload = (onSubmitSuccess?: () => void) => {
 
       // Create a unique filename with timestamp
       const timestamp = Date.now();
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file?.name?.split('.')?.pop() || 'png';
       const fileName = `${user.id}/${timestamp}.${fileExt}`;
 
       console.log('Uploading file to gift-card-images bucket:', fileName);

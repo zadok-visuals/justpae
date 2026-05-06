@@ -24,40 +24,54 @@ const Dashboard = () => {
     hideBalance
   } = useDashboardData();
 
+  // Safe name extraction
+  const displayName = profile?.full_name ? profile.full_name.split(' ')[0] : 'User';
+
   return (
     <Layout>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="p-4 pb-24 space-y-6">
-          <DashboardHeader
-            userName={profile?.name?.split(' ')[0] || 'User'}
-            unreadNotifications={unreadNotifications}
-          />
+      <div className="py-6 space-y-6">
+        <DashboardHeader
+          userName={displayName}
+          unreadNotifications={unreadNotifications}
+        />
 
-          <PortfolioCard
-            totalValue={calculateTotalPortfolioValue()}
-            hideBalance={hideBalance}
-            onToggleBalanceVisibility={toggleBalanceVisibility}
-            formatBalance={formatBalance}
-            formatEquivalentUSD={formatEquivalentUSD}
-          />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content Column */}
+          <div className="lg:col-span-2 space-y-6">
+            <PortfolioCard
+              totalValue={calculateTotalPortfolioValue()}
+              hideBalance={hideBalance}
+              onToggleBalanceVisibility={toggleBalanceVisibility}
+              formatBalance={formatBalance}
+              formatEquivalentUSD={formatEquivalentUSD}
+            />
+            
+            <QuickActions />
+            
+            <MarketTrends
+              marketData={marketData}
+              isLoadingPrices={isLoadingPrices}
+              onRefresh={fetchCryptoPrices}
+            />
+          </div>
 
-          <QuickActions />
-
-          <PromotionalBanner />
-
-          <MarketTrends
-            marketData={marketData}
-            isLoadingPrices={isLoadingPrices}
-            onRefresh={fetchCryptoPrices}
-          />
-
-          <KYCVerificationBanner
-            isKycVerified={profile?.is_kyc_verified || false}
-          />
+          {/* Sidebar Content Column */}
+          <div className="space-y-6">
+            <PromotionalBanner />
+            <KYCVerificationBanner
+              isKycVerified={profile?.is_kyc_verified || false}
+            />
+            
+            {/* Added a desktop-only section for better space utilization */}
+            <div className="hidden lg:block bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+              <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Security Tip</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Enable Two-Factor Authentication (2FA) to add an extra layer of security to your account.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
-
-      
     </Layout>
   );
 };

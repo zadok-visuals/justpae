@@ -51,7 +51,7 @@ export const feedbackService = {
       return {
         ...feedback,
         user_email: profile?.email || 'Anonymous',
-        user_name: profile?.name || 'Anonymous User'
+        user_name: profile?.full_name || 'Anonymous User'
       };
     });
   },
