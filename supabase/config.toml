@@ -10,20 +10,20 @@ max_rows = 1000
 
 [auth]
 enabled = true
-port = 54324
+# port = 54324
 site_url = "https://amazingpayment.vercel.app"
 additional_redirect_urls = ["https://amazingpayment.vercel.app"]
 jwt_expiry = 3600
 enable_signup = true
-enable_confirmations = true
-enable_email_confirmations = true
+# enable_confirmations = true
+# enable_email_confirmations = true
 
 [auth.email]
 enable_signup = true
 double_confirm_changes = false
 enable_confirmations = true
 # Disable auto-confirmation to require OTP verification
-enable_email_autoconfirm = false
+# enable_email_autoconfirm = false
 
 [functions.monitor-crypto-deposits]
 verify_jwt = false
