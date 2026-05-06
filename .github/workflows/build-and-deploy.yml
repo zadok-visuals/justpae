@@ -97,7 +97,7 @@ jobs:
 
   build-ios-legacy:
     name: Build iOS App (Legacy Compatible)
-    runs-on: macos-12
+    runs-on: macos-13
     needs: build
 
     steps:
