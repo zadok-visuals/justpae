@@ -66,7 +66,7 @@ LANGUAGE sql
 SECURITY DEFINER
 SET search_path = 'public'
 AS $$
-  SELECT encode(encrypt(data_to_encrypt::bytea, encryption_key::bytea, 'aes'::bytea), 'base64');
+  SELECT encode(extensions.pgp_sym_encrypt(data_to_encrypt, encryption_key), 'base64');
 $$;
 
 -- Function to decrypt sensitive bank account data
@@ -76,7 +76,7 @@ LANGUAGE sql
 SECURITY DEFINER
 SET search_path = 'public'
 AS $$
-  SELECT convert_from(decrypt(decode(encrypted_data, 'base64'), encryption_key::bytea, 'aes'::bytea), 'UTF8');
+  SELECT extensions.pgp_sym_decrypt(decode(encrypted_data, 'base64'), encryption_key);
 $$;
 
 -- Security Fix 4: Add audit logging for sensitive operations

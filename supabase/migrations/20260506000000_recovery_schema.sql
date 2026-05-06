@@ -137,51 +137,87 @@ ALTER TABLE public.transactions
 
 
 -- Triggers for updated_at
+DROP TRIGGER IF EXISTS update_bank_accounts_updated_at ON public.bank_accounts;
 CREATE TRIGGER update_bank_accounts_updated_at BEFORE UPDATE ON public.bank_accounts FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_crypto_wallet_addresses_updated_at ON public.crypto_wallet_addresses;
 CREATE TRIGGER update_crypto_wallet_addresses_updated_at BEFORE UPDATE ON public.crypto_wallet_addresses FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_crypto_deposits_updated_at ON public.crypto_deposits;
 CREATE TRIGGER update_crypto_deposits_updated_at BEFORE UPDATE ON public.crypto_deposits FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_crypto_holdings_updated_at ON public.crypto_holdings;
 CREATE TRIGGER update_crypto_holdings_updated_at BEFORE UPDATE ON public.crypto_holdings FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_exchange_rates_updated_at ON public.exchange_rates;
 CREATE TRIGGER update_exchange_rates_updated_at BEFORE UPDATE ON public.exchange_rates FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_gift_card_transactions_updated_at ON public.gift_card_transactions;
 CREATE TRIGGER update_gift_card_transactions_updated_at BEFORE UPDATE ON public.gift_card_transactions FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_notifications_updated_at ON public.notifications;
 CREATE TRIGGER update_notifications_updated_at BEFORE UPDATE ON public.notifications FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_payment_methods_updated_at ON public.payment_methods;
 CREATE TRIGGER update_payment_methods_updated_at BEFORE UPDATE ON public.payment_methods FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_wallets_updated_at ON public.wallets;
 CREATE TRIGGER update_wallets_updated_at BEFORE UPDATE ON public.wallets FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 -- Enable basic RLS policies
 ALTER TABLE public.bank_accounts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own bank accounts" ON public.bank_accounts;
 CREATE POLICY "Users can view their own bank accounts" ON public.bank_accounts FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can create their own bank accounts" ON public.bank_accounts;
 CREATE POLICY "Users can create their own bank accounts" ON public.bank_accounts FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update their own bank accounts" ON public.bank_accounts;
 CREATE POLICY "Users can update their own bank accounts" ON public.bank_accounts FOR UPDATE USING (auth.uid() = user_id);
 
 ALTER TABLE public.crypto_wallet_addresses ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own crypto wallet addresses" ON public.crypto_wallet_addresses;
 CREATE POLICY "Users can view their own crypto wallet addresses" ON public.crypto_wallet_addresses FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can create their own crypto wallet addresses" ON public.crypto_wallet_addresses;
 CREATE POLICY "Users can create their own crypto wallet addresses" ON public.crypto_wallet_addresses FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update their own crypto wallet addresses" ON public.crypto_wallet_addresses;
 CREATE POLICY "Users can update their own crypto wallet addresses" ON public.crypto_wallet_addresses FOR UPDATE USING (auth.uid() = user_id);
 
 ALTER TABLE public.crypto_deposits ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own crypto deposits" ON public.crypto_deposits;
 CREATE POLICY "Users can view their own crypto deposits" ON public.crypto_deposits FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can create their own crypto deposits" ON public.crypto_deposits;
 CREATE POLICY "Users can create their own crypto deposits" ON public.crypto_deposits FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 ALTER TABLE public.crypto_holdings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own crypto holdings" ON public.crypto_holdings;
 CREATE POLICY "Users can view their own crypto holdings" ON public.crypto_holdings FOR SELECT USING (auth.uid() = user_id);
 
 ALTER TABLE public.gift_card_transactions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own gift card transactions" ON public.gift_card_transactions;
 CREATE POLICY "Users can view their own gift card transactions" ON public.gift_card_transactions FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can create their own gift card transactions" ON public.gift_card_transactions;
 CREATE POLICY "Users can create their own gift card transactions" ON public.gift_card_transactions FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own notifications" ON public.notifications;
 CREATE POLICY "Users can view their own notifications" ON public.notifications FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update their own notifications" ON public.notifications;
 CREATE POLICY "Users can update their own notifications" ON public.notifications FOR UPDATE USING (auth.uid() = user_id);
 
 ALTER TABLE public.payment_methods ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own payment methods" ON public.payment_methods;
 CREATE POLICY "Users can view their own payment methods" ON public.payment_methods FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can create their own payment methods" ON public.payment_methods;
 CREATE POLICY "Users can create their own payment methods" ON public.payment_methods FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update their own payment methods" ON public.payment_methods;
 CREATE POLICY "Users can update their own payment methods" ON public.payment_methods FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete their own payment methods" ON public.payment_methods;
 CREATE POLICY "Users can delete their own payment methods" ON public.payment_methods FOR DELETE USING (auth.uid() = user_id);
 
 ALTER TABLE public.wallets ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own wallets" ON public.wallets;
 CREATE POLICY "Users can view their own wallets" ON public.wallets FOR SELECT USING (auth.uid() = user_id);
 
 ALTER TABLE public.exchange_rates ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Exchange rates are public" ON public.exchange_rates;
 CREATE POLICY "Exchange rates are public" ON public.exchange_rates FOR SELECT USING (true);
