@@ -5,8 +5,9 @@ import SignupForm from '@/components/SignupForm';
 
 const Signup = () => {
   return (
-    <Layout showNavbar={false}>
-      <div className="min-h-screen bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <Layout showNavbar={false} fullWidth={true}>
+      {/* Updated: Added w-full to ensure it takes full width of the viewport */}
+      <div className="min-h-screen w-full bg-gray-900 flex flex-col text-white relative overflow-hidden">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <div className="flex justify-center">
             <img 

@@ -63,8 +63,8 @@ const Login = () => {
   };
 
   return (
-    <Layout showNavbar={false}>
-      <div className="min-h-screen flex flex-col justify-center py-6 px-4 sm:px-6 lg:px-8">
+    <Layout showNavbar={false} fullWidth={true}>
+      <div className="min-h-screen w-full bg-gray-900 flex flex-col text-white relative overflow-hidden">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <div className="flex justify-center">
             <img 

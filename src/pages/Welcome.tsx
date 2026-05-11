@@ -3,18 +3,23 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, Bitcoin, DollarSign, ArrowRight } from 'lucide-react';
 import Layout from '@/components/Layout';
+
+
 const Welcome = () => {
   return (
-    <Layout showNavbar={false}>
-      <div className="min-h-screen bg-gray-900 flex flex-col text-white relative overflow-hidden">
+    <Layout showNavbar={false} fullWidth={true}>
+      <div className="min-h-screen w-full bg-gray-900 flex flex-col text-white relative overflow-hidden">
+        
         {/* Background Elements */}
-        <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-20 right-10 w-8 h-8 bg-white/5 rounded-full animate-pulse" />
           <div className="absolute bottom-40 left-10 w-6 h-6 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
           <div className="absolute top-1/3 left-1/2 w-4 h-4 bg-white/5 rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
+
         <div className="flex-1 flex flex-col justify-center px-6 relative z-10">
           <div className="space-y-12 animate-fade-in">
+            
             {/* Logo & Brand */}
             <div className="text-center space-y-4">
               <div className="flex justify-center mb-6">
@@ -36,6 +41,7 @@ const Welcome = () => {
                 </p>
               </div>
             </div>
+
             {/* Crypto/Fiat Illustration */}
             <div className="flex justify-center my-12">
               <div className="relative">
@@ -60,6 +66,7 @@ const Welcome = () => {
                 </div>
               </div>
             </div>
+
             {/* CTA Buttons */}
             <div className="space-y-4 max-w-sm mx-auto">
               <Link to="/signup" className="block">
@@ -75,8 +82,9 @@ const Welcome = () => {
             </div>
           </div>
         </div>
+
         {/* Bottom Text */}
-        <div className="text-center pb-8 px-6">
+        <div className="text-center pb-8 px-6 relative z-10">
           <p className="text-sm opacity-60 max-w-xs mx-auto leading-relaxed">
             By continuing, you agree to our Terms of Service and Privacy Policy
           </p>
@@ -85,6 +93,5 @@ const Welcome = () => {
     </Layout>
   );
 };
+
 export default Welcome;
-
-
