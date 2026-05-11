@@ -136,58 +136,85 @@ const Chat: React.FC = () => {
           )}
         </ScrollArea>
 
-        {/* Bottom Input Section */}
-        <div className="p-4 bg-white dark:bg-gray-900 border-t">
-          <div className="flex gap-2">
-            <div className="flex-1 relative">
-              <Input
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Type your message..."
-                disabled={isSending}
-                className="pr-12 h-12 rounded-lg bg-gray-50 dark:bg-gray-800 border-gray-200"
-              />
-              <Button
-                size="icon"
-                onClick={handleSendMessage}
-                disabled={!messageText.trim() || isSending}
-                className="absolute right-1 top-1 w-10 h-10 bg-fintech-orange hover:bg-fintech-orange/90 rounded-lg shadow-sm"
-              >
-                <Send className="w-5 h-5 text-white" />
-              </Button>
-            </div>
-          </div>
+        {/* Bottom Input Section - Redesigned */}
+        <div className="p-4 bg-white dark:bg-gray-900 border-t backdrop-blur-lg">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-end gap-2">
+              
+              {/* Utilities Group (Left) */}
+              <div className="flex items-center mb-1">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={handleImageUpload}
+                  className="w-10 h-10 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <Image className="w-5 h-5" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setShowVoiceRecorder(!showVoiceRecorder)}
+                  className={`w-10 h-10 rounded-full transition-colors ${
+                    showVoiceRecorder 
+                      ? "bg-red-50 text-red-500" 
+                      : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  }`}
+                >
+                  <Mic className="w-5 h-5" />
+                </Button>
+              </div>
 
-          <div className="flex gap-4 mt-3 px-1">
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={handleImageUpload}
-              className="w-10 h-10 rounded-lg border-gray-200"
-            >
-              <Image className="w-5 h-5 text-gray-600" />
-            </Button>
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={() => setShowVoiceRecorder(!showVoiceRecorder)}
-              className="w-10 h-10 rounded-lg border-gray-200"
-            >
-              <Mic className="w-5 h-5 text-gray-600" />
-            </Button>
-          </div>
-
-          {showVoiceRecorder && (
-            <div className="mt-2">
-              <VoiceRecorder 
-                onRecordingComplete={(blob) => sendFileMessage(new File([blob], 'voice.webm'), 'voice')} 
-                disabled={isSending} 
-              />
+              {/* Modern Expanding Input Area */}
+              <div className="flex-1 relative group">
+                <Input
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Type your message..."
+                  disabled={isSending}
+                  className="w-full min-h-[44px] max-h-32 py-3 px-4 rounded-[22px] bg-gray-100 dark:bg-gray-800 border-none focus-visible:ring-2 focus-visible:ring-fintech-orange/20 transition-all text-sm md:text-base pr-12"
+                />
+                
+                {/* Floating Send Button Inside Input */}
+                <Button
+                  size="icon"
+                  onClick={handleSendMessage}
+                  disabled={!messageText.trim() || isSending}
+                  className={`absolute right-1 bottom-1 w-9 h-9 rounded-full shadow-md transition-all duration-300 transform ${
+                    messageText.trim() 
+                      ? "bg-fintech-orange scale-100 opacity-100" 
+                      : "bg-gray-300 scale-90 opacity-0 pointer-events-none"
+                  }`}
+                >
+                  <Send className="w-4 h-4 text-white" />
+                </Button>
+              </div>
             </div>
-          )}
+
+            {/* Voice Recorder Overlay */}
+            {showVoiceRecorder && (
+              <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 animate-in fade-in slide-in-from-bottom-2">
+                <div className="flex justify-between items-center px-2">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Voice Note</span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setShowVoiceRecorder(false)}
+                    className="h-6 text-gray-400 hover:text-gray-600"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+                <VoiceRecorder 
+                  onRecordingComplete={(blob) => sendFileMessage(new File([blob], 'voice.webm'), 'voice')} 
+                  disabled={isSending} 
+                />
+              </div>
+            )}
+          </div>
         </div>
-        
+
         <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
       </div>
     </Layout>
