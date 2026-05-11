@@ -112,7 +112,7 @@ const Chat: React.FC = () => {
 
   return (
     <Layout showNavbar={false} fullWidth={true}>
-      <div className="min-h-screen w-full bg-gray-900 flex flex-col text-white relative overflow-hidden">
+      <div className="min-h-screen w-full bg-white dark:bg-gray-900 flex flex-col text-white relative overflow-hidden">
         {/* Flat Header */}
         <div className="border-b px-6 py-4">
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Support Chat</h1>

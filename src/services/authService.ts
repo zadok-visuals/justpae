@@ -76,6 +76,21 @@ export const authService = {
 
       if (error) {
         console.error('Signup error:', error);
+        
+        // If user already exists, they might be unconfirmed. 
+        // We should try to resend the verification code instead of just failing.
+        if (error.message.includes('User already registered') || error.status === 422) {
+          console.log('User already registered, attempting to resend OTP');
+          const resendResult = await authService.resendOtp(email);
+          
+          if (!resendResult.error) {
+            return {
+              needsVerification: true,
+              message: 'Account already exists. A new verification code has been sent to your email.'
+            };
+          }
+        }
+        
         return { error: error.message };
       }
 

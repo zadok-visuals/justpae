@@ -12,12 +12,14 @@ interface EmailVerificationFormProps {
   email: string;
   onVerificationSuccess: () => void;
   onResendCode: () => void;
+  onBack?: () => void;
 }
 
 const EmailVerificationForm: React.FC<EmailVerificationFormProps> = ({
   email,
   onVerificationSuccess,
-  onResendCode
+  onResendCode,
+  onBack
 }) => {
   const [code, setCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
@@ -162,6 +164,18 @@ const EmailVerificationForm: React.FC<EmailVerificationFormProps> = ({
             )}
           </Button>
         </div>
+
+        {onBack && (
+          <div className="mt-2 text-center">
+            <Button
+              variant="ghost"
+              onClick={onBack}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              Change email address
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

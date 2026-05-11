@@ -136,6 +136,7 @@ const SignupForm: React.FC = () => {
         email={signupEmail}
         onVerificationSuccess={handleVerificationSuccess}
         onResendCode={handleResendCode}
+        onBack={() => setShowVerification(false)}
       />
     );
   }
