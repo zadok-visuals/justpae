@@ -71,7 +71,9 @@ jobs:
         run: gem install fastlane
 
       - name: Deploy to TestFlight/App Store
-        run: fastlane ios deploy
+        run: |
+          cd ios/App
+          fastlane deplo
         env:
           # These must be set in your GitHub Repo Secrets
           APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
