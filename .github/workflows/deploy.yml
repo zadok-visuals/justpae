@@ -73,7 +73,7 @@ jobs:
       - name: Deploy to TestFlight/App Store
         run: |
           cd ios/App
-          fastlane deplo
+          fastlane deploy
         env:
           # These must be set in your GitHub Repo Secrets
           APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
