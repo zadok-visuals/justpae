@@ -13,7 +13,7 @@ platform :ios do
 
     build_app(
       scheme: "App",
-      workspace: "App.xcworkspace",
+      workspace: "../App.xcworkspace",
       include_bitcode: false
     )
 
