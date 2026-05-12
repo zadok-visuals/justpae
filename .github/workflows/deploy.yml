@@ -1,17 +1,79 @@
-# Simplified example
-name: Deploy to App Store
+name: Build and Deploy
+
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  workflow_dispatch:
+
 jobs:
-  deploy:
+  # 1. SHARED WEB BUILD (Everything depends on this)
+  build:
+    name: Build Web Assets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Use 20 or higher to avoid deprecation warnings
+          cache: 'npm'
+      - run: npm install
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: dist/
+
+  # 2. ANDROID BUILD
+  build-android:
+    name: Build Android
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: dist
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - run: npm install
+      - run: npx cap sync android
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+  # 3. iOS APP STORE DEPLOY (The new logic)
+  deploy-ios:
+    name: Deploy to App Store
+    needs: build
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Fastlane
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: dist
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+      - run: npx cap sync ios
+      
+      - name: Setup Fastlane
         run: gem install fastlane
-      - name: Distribute app
+
+      - name: Deploy to TestFlight/App Store
         run: fastlane ios deploy
         env:
-          APPSTORE_API_KEY: ${{ secrets.APPSTORE_P8 }}
+          # These must be set in your GitHub Repo Secrets
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_P8: ${{ secrets.APPSTORE_P8 }}
