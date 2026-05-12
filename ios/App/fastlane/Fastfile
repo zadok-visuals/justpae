@@ -3,6 +3,7 @@ default_platform(:ios)
 platform :ios do
   desc "Push a new build to TestFlight"
   lane :deploy do
+    # Authenticate with App Store Connect
     api_key = app_store_connect_api_key(
       key_id: ENV["APPSTORE_KEY_ID"],
       issuer_id: ENV["APPSTORE_ISSUER_ID"],
@@ -10,13 +11,21 @@ platform :ios do
       duration: 1200,
       in_house: false
     )
-
+    
+    # 1. Fetch valid certificates from Apple Portal
+    get_certificates(api_key: api_key)
+    
+    # 2. Fetch valid provisioning profiles from Apple Portal
+    get_provisioning_profile(api_key: api_key)
+    
+    # 3. Compile the application
     build_app(
       scheme: "App",
       workspace: "App.xcworkspace",
       include_bitcode: false
     )
-
+    
+    # 4. Upload build to TestFlight
     upload_to_testflight(api_key: api_key)
   end
 end
