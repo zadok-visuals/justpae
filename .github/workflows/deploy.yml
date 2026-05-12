@@ -1,0 +1,17 @@
+# Simplified example
+name: Deploy to App Store
+on:
+  push:
+    branches:
+      - main
+jobs:
+  deploy:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Fastlane
+        run: gem install fastlane
+      - name: Distribute app
+        run: fastlane ios deploy
+        env:
+          APPSTORE_API_KEY: ${{ secrets.APPSTORE_P8 }}
