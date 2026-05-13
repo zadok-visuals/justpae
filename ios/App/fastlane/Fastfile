@@ -18,8 +18,12 @@ platform :ios do
     # 0.5 Revoke old distribution certificates to avoid hitting the 3-cert limit on fresh CI runners
     begin
       require 'spaceship'
-      # Pass the API key object explicitly to Spaceship
-      Spaceship::ConnectAPI.token = api_key
+      # Create a proper Spaceship API Token object (api_key is just a Hash)
+      Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(
+        key_id: ENV["APPSTORE_KEY_ID"],
+        issuer_id: ENV["APPSTORE_ISSUER_ID"],
+        key: ENV["APPSTORE_P8"]
+      )
       
       certs = Spaceship::ConnectAPI::Certificate.all(filter: { certificateType: "IOS_DISTRIBUTION" })
       certs.each do |c|
