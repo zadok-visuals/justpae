@@ -16,6 +16,7 @@ platform :ios do
     # Please create the App ID and App manually in the Apple Developer Portal and App Store Connect.
     
     # 0.5 Revoke old distribution certificates to avoid hitting the 3-cert limit on fresh CI runners
+    team_id = ""
     begin
       require 'spaceship'
       # Create a proper Spaceship API Token object (api_key is just a Hash)
@@ -24,6 +25,9 @@ platform :ios do
         issuer_id: ENV["APPSTORE_ISSUER_ID"],
         key: ENV["APPSTORE_P8"]
       )
+      
+      # Fetch the Team ID dynamically
+      team_id = Spaceship::ConnectAPI.client.teams.first.id
       
       certs = Spaceship::ConnectAPI::Certificate.all
       certs.each do |c|
@@ -47,7 +51,7 @@ platform :ios do
       scheme: "App",
       workspace: "App.xcworkspace",
       include_bitcode: false,
-      xcargs: "DEVELOPMENT_TEAM='#{lane_context[SharedValues::SIGH_TEAM_ID]}' PROVISIONING_PROFILE_SPECIFIER='#{lane_context[SharedValues::SIGH_NAME]}'"
+      xcargs: "DEVELOPMENT_TEAM='#{team_id}' PROVISIONING_PROFILE_SPECIFIER='#{lane_context[SharedValues::SIGH_NAME]}'"
     )
     
     # 4. Upload build to TestFlight
