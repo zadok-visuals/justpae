@@ -18,14 +18,16 @@ platform :ios do
     # 0.5 Revoke old distribution certificates to avoid hitting the 3-cert limit on fresh CI runners
     begin
       require 'spaceship'
-      # Token is already set by app_store_connect_api_key
+      # Pass the API key object explicitly to Spaceship
+      Spaceship::ConnectAPI.token = api_key
+      
       certs = Spaceship::ConnectAPI::Certificate.all(filter: { certificateType: "IOS_DISTRIBUTION" })
       certs.each do |c|
-        puts "Revoking old distribution certificate to free up space: #{c.id}"
-        c.delete!
+        UI.important("Revoking old distribution certificate to free up space: #{c.id}")
+        Spaceship::ConnectAPI.client.delete_certificate(certificate_id: c.id)
       end
     rescue => e
-      puts "Notice: Could not revoke old certificates: #{e.message}"
+      UI.error("Notice: Could not revoke old certificates: #{e.message}")
     end
     
     # 1. Fetch valid certificates from Apple Portal
