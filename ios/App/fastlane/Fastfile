@@ -12,6 +12,14 @@ platform :ios do
       in_house: false
     )
     
+    # 0. Ensure App ID and App exist on App Store Connect
+    produce(
+      app_identifier: "app.amazingpay.amazingpay",
+      app_name: "AmazingPay", # Must be unique globally on App Store
+      language: "en-US",
+      sku: "app.amazingpay.amazingpay"
+    )
+    
     # 1. Fetch valid certificates from Apple Portal
     get_certificates(api_key: api_key)
     
