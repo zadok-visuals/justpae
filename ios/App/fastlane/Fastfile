@@ -3,6 +3,26 @@ default_platform(:ios)
 platform :ios do
   desc "Push a new build to TestFlight"
   lane :deploy do
+    # 0. Prepare for CI
+    setup_ci
+    
+    keychain_name = "fastlane_keychain"
+    keychain_password = "fastlane_password" # Hardcoded is fine for temporary CI keychains
+    
+    if is_ci
+      # Delete existing keychain if it exists (to be safe)
+      delete_keychain(name: keychain_name) rescue nil
+      
+      create_keychain(
+        name: keychain_name,
+        password: keychain_password,
+        default_keychain: true,
+        unlock: true,
+        timeout: 3600,
+        add_to_search_list: true
+      )
+    end
+
     # Authenticate with App Store Connect
     api_key = app_store_connect_api_key(
       key_id: ENV["APPSTORE_KEY_ID"],
@@ -44,7 +64,11 @@ platform :ios do
     end
     
     # 1. Fetch valid certificates from Apple Portal
-    get_certificates(api_key: api_key)
+    get_certificates(
+      api_key: api_key,
+      keychain_path: is_ci ? File.expand_path("~/Library/Keychains/#{keychain_name}-db") : nil,
+      keychain_password: is_ci ? keychain_password : nil
+    )
     
     # 2. Fetch valid provisioning profiles from Apple Portal
     get_provisioning_profile(api_key: api_key)
@@ -59,5 +83,10 @@ platform :ios do
     
     # 4. Upload build to TestFlight
     upload_to_testflight(api_key: api_key)
+
+    # 5. Cleanup
+    if is_ci
+      delete_keychain(name: keychain_name)
+    end
   end
 end
