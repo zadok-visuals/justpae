@@ -26,10 +26,17 @@ platform :ios do
         key: ENV["APPSTORE_P8"]
       )
       
-      # Fetch the Team ID dynamically
-      team_id = Spaceship::ConnectAPI.client.teams.first.id
-      
+      # Fetch the Team ID dynamically from any existing certificate or bundle ID
       certs = Spaceship::ConnectAPI::Certificate.all
+      team_id = certs.first&.team_id
+      
+      if team_id.nil? || team_id.empty?
+        bundle_ids = Spaceship::ConnectAPI::BundleId.all
+        team_id = bundle_ids.first&.seed_id
+      end
+      
+      UI.message("Detected Team ID: #{team_id}") if team_id && !team_id.empty?
+      
       certs.each do |c|
         if c.certificate_type.to_s.include?("DISTRIBUTION")
           UI.important("Revoking old distribution certificate (#{c.certificate_type}) to free up space: #{c.id}")
