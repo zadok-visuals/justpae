@@ -25,10 +25,12 @@ platform :ios do
         key: ENV["APPSTORE_P8"]
       )
       
-      certs = Spaceship::ConnectAPI::Certificate.all(filter: { certificateType: "IOS_DISTRIBUTION" })
+      certs = Spaceship::ConnectAPI::Certificate.all
       certs.each do |c|
-        UI.important("Revoking old distribution certificate to free up space: #{c.id}")
-        Spaceship::ConnectAPI.client.delete_certificate(certificate_id: c.id)
+        if c.certificate_type.to_s.include?("DISTRIBUTION")
+          UI.important("Revoking old distribution certificate (#{c.certificate_type}) to free up space: #{c.id}")
+          Spaceship::ConnectAPI.client.delete_certificate(certificate_id: c.id)
+        end
       end
     rescue => e
       UI.error("Notice: Could not revoke old certificates: #{e.message}")
