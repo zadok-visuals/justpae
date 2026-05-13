@@ -16,7 +16,8 @@ import {
   User,
   FileText,
   MessageSquare,
-  Trash2
+  Trash2,
+  Scale
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -221,6 +222,38 @@ const Settings = () => {
                       <div className="flex-1">
                         <h3 className="font-semibold text-gray-900 dark:text-white">Privacy Policy</h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400">Read our privacy policy</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              <Link to="/terms">
+                <Card className="rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-fintech-blue rounded-full flex items-center justify-center">
+                        <Scale className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900 dark:text-white">Terms of Use</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Our terms and conditions</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              <Link to="/data-protection">
+                <Card className="rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
+                        <Shield className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900 dark:text-white">Data Protection</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Data compliance & safety</p>
                       </div>
                     </div>
                   </CardContent>

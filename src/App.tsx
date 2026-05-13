@@ -37,6 +37,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminLogin from "./pages/AdminLogin";
 import Notifications from "@/pages/Notifications";
 import Chat from "@/pages/Chat";
+import TermsOfUse from "./pages/TermsOfUse";
+import DataProtection from "./pages/DataProtection";
 
 const queryClient = new QueryClient();
 
@@ -174,6 +176,8 @@ const App = () => (
                 </Layout>
               } />
               <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/terms" element={<TermsOfUse />} />
+              <Route path="/data-protection" element={<DataProtection />} />
               <Route path="/change-password" element={
                 <Layout>
                   <ProtectedRoute>
