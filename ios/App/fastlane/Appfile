@@ -1,3 +1,3 @@
-app_identifier("app.amazingpay.trade") 
+app_identifier("app.amazingpay.amazingpay") 
 
 apple_id("[EMAIL_ADDRESS]")
