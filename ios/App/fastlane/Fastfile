@@ -46,7 +46,8 @@ platform :ios do
     build_app(
       scheme: "App",
       workspace: "App.xcworkspace",
-      include_bitcode: false
+      include_bitcode: false,
+      xcargs: "DEVELOPMENT_TEAM='#{lane_context[SharedValues::SIGH_TEAM_ID]}' PROVISIONING_PROFILE_SPECIFIER='#{lane_context[SharedValues::SIGH_NAME]}'"
     )
     
     # 4. Upload build to TestFlight
