@@ -39,6 +39,21 @@ const SignupForm: React.FC = () => {
     }
   };
 
+  const isPasswordStrong = (pass: string) => {
+    const minLength = pass.length >= 8;
+    const hasUpper = /[A-Z]/.test(pass);
+    const hasLower = /[a-z]/.test(pass);
+    const hasNumber = /[0-9]/.test(pass);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(pass);
+    
+    return {
+      score: [minLength, hasUpper, hasLower, hasNumber, hasSpecial].filter(Boolean).length,
+      requirements: { minLength, hasUpper, hasLower, hasNumber, hasSpecial }
+    };
+  };
+
+  const passwordStrength = isPasswordStrong(password);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -51,10 +66,10 @@ const SignupForm: React.FC = () => {
       return;
     }
 
-    if (password.length < 6) {
+    if (passwordStrength.score < 5) {
       toast({
         title: "Weak Password",
-        description: "Password must be at least 6 characters long.",
+        description: "Password must be at least 8 characters and include uppercase, lowercase, numbers, and symbols.",
         variant: "destructive",
       });
       return;
@@ -107,7 +122,7 @@ const SignupForm: React.FC = () => {
 
   const handleResendCode = async () => {
     try {
-      const result = await resendOtp(signupEmail);
+      const result = await resendOtp(signupEmail || email);
       if (result.error) {
         toast({
           title: "Resend Failed",
@@ -133,7 +148,7 @@ const SignupForm: React.FC = () => {
   if (showVerification) {
     return (
       <EmailVerificationForm
-        email={signupEmail}
+        email={signupEmail || email}
         onVerificationSuccess={handleVerificationSuccess}
         onResendCode={handleResendCode}
         onBack={() => setShowVerification(false)}
@@ -182,9 +197,8 @@ const SignupForm: React.FC = () => {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
+                placeholder="Minimum 8 characters"
                 required
-                minLength={6}
                 className="bg-gray-700/50 border-gray-600 text-white placeholder:text-gray-500 focus:ring-primary/50 h-11 pr-10"
               />
               <button
@@ -199,6 +213,31 @@ const SignupForm: React.FC = () => {
                 )}
               </button>
             </div>
+            
+            {/* Password Strength Indicator */}
+            {password.length > 0 && (
+              <div className="space-y-2 mt-2">
+                <div className="flex gap-1">
+                  {[...Array(5)].map((_, i) => (
+                    <div 
+                      key={i} 
+                      className={`h-1.5 flex-1 rounded-full transition-colors ${
+                        i < passwordStrength.score 
+                          ? i < 2 ? 'bg-red-500' : i < 4 ? 'bg-yellow-500' : 'bg-emerald-500'
+                          : 'bg-gray-700'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] text-gray-400">
+                  <div className={passwordStrength.requirements.minLength ? 'text-emerald-500' : ''}>• 8+ characters</div>
+                  <div className={passwordStrength.requirements.hasUpper ? 'text-emerald-500' : ''}>• Uppercase</div>
+                  <div className={passwordStrength.requirements.hasLower ? 'text-emerald-500' : ''}>• Lowercase</div>
+                  <div className={passwordStrength.requirements.hasNumber ? 'text-emerald-500' : ''}>• Number</div>
+                  <div className={passwordStrength.requirements.hasSpecial ? 'text-emerald-500' : ''}>• Special character</div>
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="pt-2">

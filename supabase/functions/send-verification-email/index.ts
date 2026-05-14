@@ -92,9 +92,9 @@ function buildEmailHtml(otp: string, email: string): string {
           <tr>
             <td align="center">
               <p style="margin:0;font-size:12px;color:#475569;">
-                <a href="#" style="color:#475569;text-decoration:none;margin:0 8px;">Support</a>
-                <a href="#" style="color:#475569;text-decoration:none;margin:0 8px;">Privacy Policy</a>
-                <a href="#" style="color:#475569;text-decoration:none;margin:0 8px;">Terms of Use</a>
+                <a href="https://trade.amazingpay.app/help" style="color:#475569;text-decoration:none;margin:0 8px;">Support</a>
+                <a href="https://trade.amazingpay.app/privacy" style="color:#475569;text-decoration:none;margin:0 8px;">Privacy Policy</a>
+                <a href="https://trade.amazingpay.app/terms" style="color:#475569;text-decoration:none;margin:0 8px;">Terms of Use</a>
               </p>
             </td>
           </tr>
@@ -179,12 +179,16 @@ serve(async (req) => {
       );
     }
 
+    // Build the plain text version for better deliverability
+    const plainTextContent = `Your Amazingpay verification code is: ${otp}. This code will expire in 10 minutes. If you did not request this code, please ignore this email.`;
+
     // Send email via Resend
     const emailPayload = {
-      from: "Amazingpay <admin@trade.amazingpay.app>",  // Verified sender domain from Resend
+      from: "Amazingpay <admin@trade.amazingpay.app>",
       to: [email],
       subject: `${otp} is your Amazingpay verification code`,
       html: buildEmailHtml(otp, email),
+      text: plainTextContent, // Added plain text version
     };
 
     const resendResponse = await fetch("https://api.resend.com/emails", {
