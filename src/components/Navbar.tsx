@@ -1,16 +1,54 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Home, History, MessageCircle, Gift, User } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Navbar = () => {
   const location = useLocation();
+  const { user } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = async () => {
+    if (!user) return;
+    const { count, error } = await supabase
+      .from('chat_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_read', false)
+      .eq('sender_type', 'admin');
+    
+    if (!error) setUnreadCount(count || 0);
+  };
+
+  useEffect(() => {
+    fetchUnreadCount();
+
+    if (!user) return;
+
+    const channel = supabase
+      .channel('navbar_unread_count')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages'
+        },
+        () => fetchUnreadCount()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
   
   const navItems = [
     { path: '/dashboard', label: 'Home', icon: Home },
     { path: '/wallet', label: 'History', icon: History },
-    { path: '/chat', label: 'Chat', icon: MessageCircle },
+    { path: '/chat', label: 'Chat', icon: MessageCircle, hasBadge: true },
     { path: '/gift-cards', label: 'Cards', icon: Gift },
     { path: '/profile', label: 'Profile', icon: User }
   ];
@@ -38,13 +76,18 @@ const Navbar = () => {
                   key={item.path}
                   to={item.path}
                   className={cn(
-                    "flex flex-col md:flex-row items-center py-2 px-3 transition-all duration-200 group",
+                    "flex flex-col md:flex-row items-center py-2 px-3 transition-all duration-200 group relative",
                     isActive 
                       ? "text-primary" 
                       : "text-gray-500 hover:text-primary"
                   )}
                 >
-                  <IconComponent className="w-5 h-5 mb-1 md:mb-0 md:mr-2 group-hover:scale-110 transition-transform" />
+                  <div className="relative">
+                    <IconComponent className="w-5 h-5 mb-1 md:mb-0 md:mr-2 group-hover:scale-110 transition-transform" />
+                    {item.hasBadge && unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 md:right-1 w-3 h-3 bg-red-500 border-2 border-white dark:border-gray-900 rounded-full animate-pulse" />
+                    )}
+                  </div>
                   <span className="text-[10px] md:text-sm font-medium">{item.label}</span>
                   {isActive && (
                     <div className="w-1 h-1 bg-primary rounded-full mt-1 md:hidden" />

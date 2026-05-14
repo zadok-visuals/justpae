@@ -16,6 +16,7 @@ interface AdminTabsProps {
     pendingGiftCards: number;
     pendingTransactions: number;
     pendingKyc: number;
+    unreadChatCount: number;
   };
   onStatsUpdate: () => void;
 }
@@ -50,7 +51,14 @@ const AdminTabs: React.FC<AdminTabsProps> = ({ stats, onStatsUpdate }) => {
             )}
           </TabsTrigger>
           <TabsTrigger value="feedback" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Feedback</TabsTrigger>
-          <TabsTrigger value="chat" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Chat Support</TabsTrigger>
+          <TabsTrigger value="chat" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white relative whitespace-nowrap">
+            Chat Support
+            {stats.unreadChatCount > 0 && (
+              <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 text-xs flex items-center justify-center rounded-full animate-pulse">
+                {stats.unreadChatCount}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="notifications" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Notifications</TabsTrigger>
           <TabsTrigger value="analytics" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Analytics</TabsTrigger>
           <TabsTrigger value="settings" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Settings</TabsTrigger>

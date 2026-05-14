@@ -1,76 +1,71 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import Layout from '@/components/Layout';
+import { ShieldCheck, Phone, FileText, Upload, CheckCircle2 } from 'lucide-react';
 
 const KYCVerification = () => {
-  const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    dateOfBirth: '',
-    nationality: '',
-    address: '',
-    city: '',
-    postalCode: '',
-    phoneNumber: '',
-    idType: '',
-    idNumber: ''
-  });
-  const [documents, setDocuments] = useState({
-    idFront: null as File | null,
-    idBack: null as File | null,
-    selfie: null as File | null,
-    proofOfAddress: null as File | null
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const { updateKYCStatus } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [document, setDocument] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleFileUpload = (field: string, file: File | null) => {
-    setDocuments(prev => ({ ...prev, [field]: file }));
-  };
-
-  const handleNext = () => {
-    if (step < 4) {
-      setStep(step + 1);
-    }
-  };
-
-  const handleBack = () => {
-    if (step > 1) {
-      setStep(step - 1);
-    }
-  };
-
-  const handleSubmit = async () => {
-    setIsLoading(true);
-    
-    try {
-      // Simulate KYC processing
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      updateKYCStatus(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phoneNumber || !document) {
       toast({
-        title: "KYC Submitted Successfully!",
-        description: "Your verification is being reviewed. You'll be notified within 24 hours.",
+        title: "Missing Information",
+        description: "Please provide both your phone number and proof of address.",
+        variant: "destructive",
       });
-      
-      setStep(5); // Success step
-    } catch (error) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // 1. Upload Document to Supabase Storage
+      const fileExt = document.name.split('.').pop();
+      const fileName = `${user?.id}/address_proof_${Date.now()}.${fileExt}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('kyc-documents')
+        .upload(fileName, document);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('kyc-documents')
+        .getPublicUrl(uploadData.path);
+
+      // 2. Update User Profile with KYC Data
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          kyc_phone_number: phoneNumber,
+          kyc_address_proof_url: publicUrl,
+          kyc_submitted_at: new Date().toISOString(),
+          is_kyc_verified: false // Reset/Set to false until admin approves
+        })
+        .eq('id', user?.id);
+
+      if (updateError) throw updateError;
+
+      setIsSubmitted(true);
+      toast({
+        title: "KYC Submitted!",
+        description: "Our team will review your documents within 24 hours.",
+      });
+    } catch (error: any) {
+      console.error('KYC Error:', error);
       toast({
         title: "Submission Failed",
-        description: "Please try again later.",
+        description: error.message || "Something went wrong. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -78,217 +73,21 @@ const KYCVerification = () => {
     }
   };
 
-  const renderStep = () => {
-    switch (step) {
-      case 1:
-        return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>First Name</Label>
-                <Input
-                  value={formData.firstName}
-                  onChange={(e) => handleInputChange('firstName', e.target.value)}
-                  placeholder="Enter first name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Last Name</Label>
-                <Input
-                  value={formData.lastName}
-                  onChange={(e) => handleInputChange('lastName', e.target.value)}
-                  placeholder="Enter last name"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Date of Birth</Label>
-              <Input
-                type="date"
-                value={formData.dateOfBirth}
-                onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Nationality</Label>
-              <Select value={formData.nationality} onValueChange={(value) => handleInputChange('nationality', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select nationality" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="bj">Benin</SelectItem>
-                  <SelectItem value="bf">Burkina Faso</SelectItem>
-                  <SelectItem value="cv">Cape Verde</SelectItem>
-                  <SelectItem value="gm">Gambia</SelectItem>
-                  <SelectItem value="gh">Ghana</SelectItem>
-                  <SelectItem value="gn">Guinea</SelectItem>
-                  <SelectItem value="gw">Guinea-Bissau</SelectItem>
-                  <SelectItem value="ci">Ivory Coast</SelectItem>
-                  <SelectItem value="lr">Liberia</SelectItem>
-                  <SelectItem value="ml">Mali</SelectItem>
-                  <SelectItem value="mr">Mauritania</SelectItem>
-                  <SelectItem value="ne">Niger</SelectItem>
-                  <SelectItem value="ng">Nigeria</SelectItem>
-                  <SelectItem value="sn">Senegal</SelectItem>
-                  <SelectItem value="sl">Sierra Leone</SelectItem>
-                  <SelectItem value="tg">Togo</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-
-            </div>
-          </div>
-        );
-
-      case 2:
-        return (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Address</Label>
-              <Input
-                value={formData.address}
-                onChange={(e) => handleInputChange('address', e.target.value)}
-                placeholder="Enter your full address"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>City</Label>
-                <Input
-                  value={formData.city}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                  placeholder="Enter city"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Postal Code</Label>
-                <Input
-                  value={formData.postalCode}
-                  onChange={(e) => handleInputChange('postalCode', e.target.value)}
-                  placeholder="Enter postal code"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Phone Number</Label>
-              <Input
-                value={formData.phoneNumber}
-                onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
-                placeholder="+1 (555) 123-4567"
-              />
-            </div>
-          </div>
-        );
-
-      case 3:
-        return (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>ID Type</Label>
-              <Select value={formData.idType} onValueChange={(value) => handleInputChange('idType', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select ID type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="passport">Passport</SelectItem>
-                  <SelectItem value="drivers_license">Driver's License</SelectItem>
-                  <SelectItem value="national_id">National ID Card</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>ID Number</Label>
-              <Input
-                value={formData.idNumber}
-                onChange={(e) => handleInputChange('idNumber', e.target.value)}
-                placeholder="Enter ID number"
-              />
-            </div>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>ID Front</Label>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleFileUpload('idFront', e.target.files?.[0] || null)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>ID Back</Label>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleFileUpload('idBack', e.target.files?.[0] || null)}
-                />
-              </div>
-            </div>
-          </div>
-        );
-
-      case 4:
-        return (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Selfie with ID</Label>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleFileUpload('selfie', e.target.files?.[0] || null)}
-              />
-              <p className="text-xs text-gray-500">Take a clear selfie holding your ID next to your face</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Proof of Address</Label>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleFileUpload('proofOfAddress', e.target.files?.[0] || null)}
-              />
-              <p className="text-xs text-gray-500">Bank statement, utility bill, or government letter (not older than 3 months)</p>
-            </div>
-            <div className="bg-yellow-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-yellow-800 mb-2">⚠️ Important Notes:</h3>
-              <ul className="text-sm text-yellow-700 space-y-1">
-                <li>• All documents must be clear and legible</li>
-                <li>• Photos should be taken in good lighting</li>
-                <li>• All information must match exactly</li>
-                <li>• Review may take 24-48 hours</li>
-              </ul>
-            </div>
-          </div>
-        );
-
-      case 5:
-        return (
-          <div className="text-center space-y-6">
-            <div className="w-20 h-20 mx-auto bg-green-100 rounded-full flex items-center justify-center">
-              <span className="text-3xl">✅</span>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-green-800">Verification Submitted!</h2>
-              <p className="text-gray-600 mt-2">
-                Your KYC documents have been submitted successfully. We'll review your information and notify you within 24 hours.
-              </p>
-            </div>
-            <Button onClick={() => window.location.href = '/dashboard'} className="w-full">
-              Return to Dashboard
-            </Button>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  if (step === 5) {
+  if (isSubmitted) {
     return (
       <Layout>
-        <div className="p-6 pb-24">
-          <Card>
-            <CardContent className="p-8">
-              {renderStep()}
-            </CardContent>
+        <div className="max-w-md mx-auto pt-12 pb-24 px-4">
+          <Card className="text-center p-8 border-green-100 bg-green-50/30">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle2 className="w-10 h-10 text-green-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Verification Pending</h2>
+            <p className="text-gray-600 mb-8">
+              We've received your documents! You'll receive a notification as soon as our team completes the review.
+            </p>
+            <Button onClick={() => window.location.href = '/dashboard'} className="w-full bg-fintech-blue hover:bg-fintech-blue/90">
+              Return to Dashboard
+            </Button>
           </Card>
         </div>
       </Layout>
@@ -297,61 +96,108 @@ const KYCVerification = () => {
 
   return (
     <Layout>
-      <div className="pt-6 pb-24 space-y-6">
-        <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold">KYC Verification</h1>
-          <p className="text-gray-600">Complete verification to unlock all features</p>
+      <div className="max-w-2xl mx-auto pt-8 pb-24 px-4">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-fintech-blue/10 rounded-full mb-4">
+            <ShieldCheck className="w-8 h-8 text-fintech-blue" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900">Identity Verification</h1>
+          <p className="text-gray-600 mt-2">Complete this quick step to secure your account and unlock higher limits.</p>
         </div>
 
-        <div className="flex items-center justify-between mb-6">
-          {[1, 2, 3, 4].map((stepNumber) => (
-            <div key={stepNumber} className="flex items-center">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                step >= stepNumber ? 'bg-fintech-blue text-white' : 'bg-gray-200 text-gray-600'
-              }`}>
-                {stepNumber}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <Card className="overflow-hidden border-gray-200 shadow-sm">
+            <CardHeader className="bg-gray-50 border-b border-gray-100 py-4">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Phone className="w-4 h-4 text-fintech-blue" />
+                Contact Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="+234 800 000 0000"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  className="h-12 text-lg"
+                  required
+                />
+                <p className="text-xs text-gray-500 italic">We'll use this for security alerts and account recovery.</p>
               </div>
-              {stepNumber < 4 && (
-                <div className={`w-8 h-1 ${step > stepNumber ? 'bg-fintech-blue' : 'bg-gray-200'}`} />
-              )}
-            </div>
-          ))}
-        </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              Step {step}: {step === 1 ? 'Personal Information' : 
-                         step === 2 ? 'Address Information' : 
-                         step === 3 ? 'Identity Verification' : 
-                         'Document Upload'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {renderStep()}
-          </CardContent>
-        </Card>
+          <Card className="overflow-hidden border-gray-200 shadow-sm">
+            <CardHeader className="bg-gray-50 border-b border-gray-100 py-4">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileText className="w-4 h-4 text-fintech-blue" />
+                Proof of Address
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-center w-full">
+                  <label className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
+                    document ? 'border-green-400 bg-green-50/50' : 'border-gray-200 bg-gray-50/50 hover:border-fintech-blue/40'
+                  }`}>
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6 px-4 text-center">
+                      {document ? (
+                        <>
+                          <CheckCircle2 className="w-10 h-10 text-green-500 mb-3" />
+                          <p className="text-sm font-medium text-green-700">{document.name}</p>
+                          <p className="text-xs text-green-600 mt-1">File ready for upload</p>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-10 h-10 text-gray-400 mb-3" />
+                          <p className="text-sm font-medium text-gray-700">Click to upload or drag and drop</p>
+                          <p className="text-xs text-gray-500 mt-1">Bank Statement or Utility Bill (PDF, JPG, PNG)</p>
+                        </>
+                      )}
+                    </div>
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      onChange={(e) => setDocument(e.target.files?.[0] || null)}
+                      accept=".pdf,image/*"
+                      required
+                    />
+                  </label>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-lg flex gap-3">
+                  <div className="shrink-0 w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center mt-0.5">
+                    <span className="text-blue-700 text-[10px] font-bold">i</span>
+                  </div>
+                  <p className="text-xs text-blue-700 leading-relaxed">
+                    Document must be issued within the last 3 months and clearly show your full name and current residential address.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-        <div className="flex space-x-4">
-          {step > 1 && (
-            <Button variant="outline" onClick={handleBack} className="flex-1">
-              Back
-            </Button>
-          )}
-          {step < 4 ? (
-            <Button onClick={handleNext} className="flex-1">
-              Next
-            </Button>
-          ) : (
-            <Button 
-              onClick={handleSubmit} 
-              disabled={isLoading}
-              className="flex-1"
-            >
-              {isLoading ? 'Submitting...' : 'Submit for Review'}
-            </Button>
-          )}
-        </div>
+          <Button 
+            type="submit" 
+            disabled={isLoading || !phoneNumber || !document}
+            className="w-full h-14 text-lg font-bold bg-fintech-blue hover:bg-fintech-blue/90 shadow-lg shadow-fintech-blue/20 transition-all"
+          >
+            {isLoading ? (
+              <span className="flex items-center gap-2">
+                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Processing Verification...
+              </span>
+            ) : (
+              "Submit Verification"
+            )}
+          </Button>
+          
+          <p className="text-center text-xs text-gray-500">
+            By submitting, you agree to our verification terms. Review typically takes less than 24 hours.
+          </p>
+        </form>
       </div>
     </Layout>
   );

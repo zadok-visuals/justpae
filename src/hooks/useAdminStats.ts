@@ -8,6 +8,7 @@ interface AdminStats {
   totalRevenue: number;
   pendingKyc: number;
   pendingGiftCards: number;
+  unreadChatCount: number;
 }
 
 export const useAdminStats = () => {
@@ -16,7 +17,8 @@ export const useAdminStats = () => {
     pendingTransactions: 0,
     totalRevenue: 0,
     pendingKyc: 0,
-    pendingGiftCards: 0
+    pendingGiftCards: 0,
+    unreadChatCount: 0
   });
   const { toast } = useToast();
 
@@ -71,12 +73,24 @@ export const useAdminStats = () => {
         console.error('Error fetching gift cards:', giftCardError);
       }
 
+      // Fetch unread chat count
+      const { data: unreadChats, error: chatError } = await supabase
+        .from('chat_messages')
+        .select('id')
+        .eq('is_read', false)
+        .eq('sender_type', 'user');
+
+      if (chatError) {
+        console.error('Error fetching unread chats:', chatError);
+      }
+
       const newStats = {
         totalUsers,
         pendingTransactions: pendingTransactions?.length || 0,
         totalRevenue,
         pendingKyc,
-        pendingGiftCards: pendingGiftCards?.length || 0
+        pendingGiftCards: pendingGiftCards?.length || 0,
+        unreadChatCount: unreadChats?.length || 0
       };
 
       console.log('Updated stats:', newStats);
