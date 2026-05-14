@@ -55,7 +55,7 @@ export const useUserManagement = (onStatsUpdate: () => void) => {
 
       let query = supabase
         .from('profiles')
-        .select('*')
+        .select('*, kyc_phone_number, kyc_address_proof_url, kyc_submitted_at')
         .order('created_at', { ascending: false });
 
       if (statusFilter === 'pending_kyc') {
@@ -66,6 +66,8 @@ export const useUserManagement = (onStatsUpdate: () => void) => {
 
       const { data, error } = await query;
       if (error) throw error;
+
+      console.log('Raw users data from Supabase:', data?.slice(0, 2));
 
       setUsers(data || []);
     } catch (error) {

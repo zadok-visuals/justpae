@@ -246,10 +246,13 @@ const Profile = () => {
                     Change Password
                   </Button>
                 </Link>
+
                 {!profile.is_kyc_verified && (
-                  <Button className="w-full bg-fintech-orange hover:bg-fintech-orange/90">
-                    Complete KYC Verification
-                  </Button>
+                  <Link to="/kyc">
+                    <Button className="w-full bg-fintech-orange hover:bg-fintech-orange/90 mt-2">
+                      Complete KYC Verification
+                    </Button>
+                  </Link>
                 )}
                 {isAdmin && (
                   <Button 
