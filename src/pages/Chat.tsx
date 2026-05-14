@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, Image, Mic, CheckCheck } from 'lucide-react';
 import { VoiceRecorder } from '@/components/chat/VoiceRecorder';
+import { AudioPlayer } from '@/components/chat/AudioPlayer';
 import { useChat, ChatMessage } from '@/hooks/useChat';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
@@ -84,14 +85,7 @@ const Chat: React.FC = () => {
 
     return (
       <div key={message.id} className={`flex flex-col gap-1 mb-6 ${isCurrentUser ? 'items-end' : 'items-start'}`}>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
-          <span>{message.sender_name}</span>
-          <span>•</span>
-          <span>{messageTime}</span>
-          {isCurrentUser && (
-            <CheckCheck className={`w-3 h-3 ${message.is_read ? 'text-primary' : 'text-muted-foreground'}`} />
-          )}
-        </div>
+
         
         <div className={`max-w-[75%] p-3 rounded-2xl shadow-sm ${
           isCurrentUser
@@ -103,9 +97,26 @@ const Chat: React.FC = () => {
             <img src={message.file_url} alt="Shared" className="max-w-full rounded-lg cursor-pointer" onClick={() => window.open(message.file_url || '', '_blank')} />
           )}
           {message.message_type === 'voice' && message.file_url && (
-            <audio controls src={message.file_url} className="w-full h-8" />
+            <div className="mt-1 -mx-2 -mb-2">
+              <AudioPlayer 
+                src={message.file_url} 
+                theme={isCurrentUser ? 'dark' : 'light'} 
+                timestamp={messageTime}
+                isRead={message.is_read}
+                isCurrentUser={isCurrentUser}
+                avatarUrl={isCurrentUser ? "https://ui-avatars.com/api/?name=You&background=FF8A00&color=fff" : "https://ui-avatars.com/api/?name=Support&background=111827&color=fff"}
+              />
+            </div>
           )}
         </div>
+        {message.message_type !== 'voice' && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground px-1 mt-1">
+            <span>{messageTime}</span>
+            {isCurrentUser && (
+              <CheckCheck className={`w-3 h-3 ${message.is_read ? 'text-primary' : 'text-muted-foreground'}`} />
+            )}
+          </div>
+        )}
       </div>
     );
   };

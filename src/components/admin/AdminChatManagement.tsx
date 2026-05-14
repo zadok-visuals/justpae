@@ -22,6 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { VoiceRecorder } from '@/components/chat/VoiceRecorder';
+import { AudioPlayer } from '@/components/chat/AudioPlayer';
 import { useRef } from 'react';
 
 interface ChatConversation {
@@ -365,16 +366,8 @@ export const AdminChatManagement: React.FC = () => {
           )}
           
           {message.message_type === 'voice' && (
-            <div className="flex items-center gap-2">
-              <Mic className="w-4 h-4" />
-              <span className="text-sm">Voice message</span>
-              <audio
-                controls
-                src={message.file_url || ''}
-                className="max-w-full"
-              >
-                Your browser does not support audio playback.
-              </audio>
+            <div className="mt-1">
+              <AudioPlayer src={message.file_url || ''} theme={isAdmin ? 'dark' : 'light'} />
             </div>
           )}
         </div>
