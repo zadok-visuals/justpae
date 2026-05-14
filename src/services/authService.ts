@@ -102,6 +102,23 @@ export const authService = {
 
       if (data.user && !data.session) {
         console.log('User created, email confirmation required. User ID:', data.user.id);
+        
+        // Call our custom Edge Function to send the OTP via Resend
+        console.log('Invoking send-verification-email function...');
+        const { error: funcError } = await supabase.functions.invoke('send-verification-email', {
+          body: { 
+            email: email.toLowerCase(), 
+            user_id: data.user.id,
+            action: 'signup'
+          }
+        });
+
+        if (funcError) {
+          console.error('Error invoking send-verification-email:', funcError);
+          // We don't return an error here because the user is still created, 
+          // they just might need to click "Resend" if the first one failed.
+        }
+
         return {
           user: data.user,
           needsVerification: true,
@@ -118,21 +135,22 @@ export const authService = {
 
   verifyOtp: async (email: string, token: string) => {
     try {
-      console.log('Verifying OTP for:', email);
+      console.log('Verifying OTP for:', email, 'using custom Edge Function');
 
-      const { data, error } = await supabase.auth.verifyOtp({
-        email,
-        token,
-        type: 'signup'
+      const { data, error } = await supabase.functions.invoke('verify-email-otp', {
+        body: { 
+          email: email.toLowerCase(), 
+          otp: token 
+        }
       });
 
-      if (error) {
-        console.error('OTP verification error:', error);
-        return { error: error.message };
+      if (error || (data && data.error)) {
+        console.error('OTP verification error:', error || data.error);
+        return { error: error?.message || data?.error || 'Verification failed' };
       }
 
-      console.log('OTP verification successful');
-      return { success: true, user: data.user };
+      console.log('OTP verification successful via Edge Function');
+      return { success: true };
     } catch (error) {
       console.error('OTP verification catch error:', error);
       return { error: 'An unexpected error occurred during verification.' };
@@ -141,25 +159,21 @@ export const authService = {
 
   resendOtp: async (email: string) => {
     try {
-      console.log('Resending OTP for:', email);
+      console.log('Resending OTP for:', email, 'using custom Edge Function');
 
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/login`
+      const { data, error } = await supabase.functions.invoke('send-verification-email', {
+        body: { 
+          email: email.toLowerCase(),
+          action: 'resend'
         }
       });
 
-      if (error) {
-        console.error('Resend OTP error details:', {
-          message: error.message,
-          status: error.status
-        });
-        return { error: error.message };
+      if (error || (data && data.error)) {
+        console.error('Resend OTP error details:', error || data.error);
+        return { error: error?.message || data?.error || 'Failed to resend code' };
       }
 
-      console.log('OTP resent successfully');
+      console.log('OTP resent successfully via Edge Function');
       return { success: true };
     } catch (error) {
       console.error('Resend OTP catch error:', error);
