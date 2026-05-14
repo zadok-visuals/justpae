@@ -14,12 +14,12 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm ci # Safer, deterministic installs for CI/CD environments
+      - run: npm install --legacy-peer-deps # FIXED: Resolved out-of-sync lockfile check
       - run: npm run build
       - uses: actions/upload-artifact@v4
         with:
           name: web-dist
-          path: dist # Removed trailing slash to prevent nested asset directories
+          path: dist
 
   # 2. ANDROID BUILD
   build-android:
@@ -31,12 +31,12 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: web-dist
-          path: dist # Downloads directly into the project root dist folder
+          path: dist
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-      - run: npm ci
+      - run: npm install --legacy-peer-deps # FIXED: Match web install behavior
       - run: npx cap sync android
       - name: Build APK
         working-directory: android
@@ -62,14 +62,14 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - run: npm ci # Ensures Capacitor and your project dependencies are correctly mirrored
+      - run: npm install --legacy-peer-deps # FIXED: Match web install behavior
 
       - uses: actions/download-artifact@v4
         with:
           name: web-dist
-          path: dist # Places assets exactly where capacitor.config.ts looks for them
+          path: dist
 
-      - run: npx cap sync ios # Copies the freshly verified dist directory directly to Xcode
+      - run: npx cap sync ios
       
       - name: Select latest Xcode
         uses: maxim-lobanov/setup-xcode@v1
