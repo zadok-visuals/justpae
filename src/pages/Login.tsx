@@ -170,7 +170,7 @@ const Login = () => {
                 type="button"
                 variant="outline"
                 onClick={() => loginWithGoogle()}
-                className="w-full h-12 border-white/10 rounded-xl font-bold text-white hover:bg-white/5 transition-all active:scale-[0.98]"
+                className="w-full h-12 border-white/10 rounded-xl font-bold text-gray-500 dark:text-gray-400 hover:bg-white/5 transition-all active:scale-[0.98]"
               >
                 <svg className="h-5 w-5 mr-3" viewBox="0 0 24 24">
                   <path
