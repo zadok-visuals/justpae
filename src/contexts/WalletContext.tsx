@@ -73,7 +73,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .select('balance, currency')
         .eq('user_id', user.id)
         .eq('currency', 'NGN')
-        .single();
+        .maybeSingle();
 
       if (walletError && walletError.code !== 'PGRST116') {
         console.error('Error fetching wallet:', walletError);

@@ -51,8 +51,16 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/welcome" element={<Welcome />} />
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <Index />
+                </ProtectedRoute>
+              } />
+              <Route path="/welcome" element={
+                <ProtectedRoute>
+                  <Welcome />
+                </ProtectedRoute>
+              } />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -71,126 +79,138 @@ const App = () => (
               
               {/* Protected Routes with Layout */}
               <Route path="/dashboard" element={
-                <Layout>
-                  <ProtectedRoute>
+                <ProtectedRoute>
+                  <Layout>
                     <Dashboard />
-                  </ProtectedRoute>
-                </Layout>
+                  </Layout>
+                </ProtectedRoute>
               } />
               <Route path="/notifications" element={
-                <Layout>
-                  <ProtectedRoute>
+                <ProtectedRoute>
+                  <Layout>
                     <Notifications />
-                  </ProtectedRoute>
-                </Layout>
+                  </Layout>
+                </ProtectedRoute>
               } />
               <Route path="/chat" element={
-                <Layout>
-                  <ProtectedRoute>
+                <ProtectedRoute>
+                  <Layout>
                     <Chat />
-                  </ProtectedRoute>
-                </Layout>
+                  </Layout>
+                </ProtectedRoute>
               } />
               <Route path="/buy-crypto" element={
-                <Layout>
-                  <ProtectedRoute>
+                <ProtectedRoute>
+                  <Layout>
                     <BuyCrypto />
-                  </ProtectedRoute>
-                </Layout>
+                  </Layout>
+                </ProtectedRoute>
               } />
               <Route path="/sell-crypto" element={
-                <Layout>
-                  <ProtectedRoute>
+                <ProtectedRoute>
+                  <Layout>
                     <SellCrypto />
-                  </ProtectedRoute>
-                </Layout>
+                  </Layout>
+                </ProtectedRoute>
               } />
               <Route path="/gift-cards" element={
-                <Layout>
-                  <ProtectedRoute>
+                <ProtectedRoute>
+                  <Layout>
                     <GiftCards />
-                  </ProtectedRoute>
-                </Layout>
+                  </Layout>
+                </ProtectedRoute>
               } />
               <Route path="/kyc" element={
-                <Layout>
-                  <ProtectedRoute>
+                <ProtectedRoute>
+                  <Layout>
                     <KYCVerification />
-                  </ProtectedRoute>
-                </Layout>
+                  </Layout>
+                </ProtectedRoute>
               } />
               <Route path="/wallet" element={
-                <Layout>
-                  <ProtectedRoute>
+                <ProtectedRoute>
+                  <Layout>
                     <Wallet />
-                  </ProtectedRoute>
-                </Layout>
+                  </Layout>
+                </ProtectedRoute>
               } />
               <Route path="/profile" element={
-                <Layout>
-                  <ProtectedRoute>
+                <ProtectedRoute>
+                  <Layout>
                     <Profile />
-                  </ProtectedRoute>
-                </Layout>
+                  </Layout>
+                </ProtectedRoute>
               } />
               <Route path="/deposit" element={
-                <Layout>
-                  <ProtectedRoute>
+                <ProtectedRoute>
+                  <Layout>
                     <Deposit />
-                  </ProtectedRoute>
-                </Layout>
+                  </Layout>
+                </ProtectedRoute>
               } />
               <Route path="/withdraw" element={
-                <Layout>
-                  <ProtectedRoute>
+                <ProtectedRoute>
+                  <Layout>
                     <Withdraw />
-                  </ProtectedRoute>
-                </Layout>
+                  </Layout>
+                </ProtectedRoute>
               } />
               <Route path="/crypto-deposit" element={
-                <Layout>
-                  <ProtectedRoute>
+                <ProtectedRoute>
+                  <Layout>
                     <CryptoDeposit />
-                  </ProtectedRoute>
-                </Layout>
+                  </Layout>
+                </ProtectedRoute>
               } />
               <Route path="/settings" element={
-                <Layout>
-                  <ProtectedRoute>
+                <ProtectedRoute>
+                  <Layout>
                     <Settings />
-                  </ProtectedRoute>
-                </Layout>
+                  </Layout>
+                </ProtectedRoute>
               } />
               <Route path="/security" element={
-                <Layout>
-                  <ProtectedRoute>
+                <ProtectedRoute>
+                  <Layout>
                     <Security />
-                  </ProtectedRoute>
-                </Layout>
+                  </Layout>
+                </ProtectedRoute>
               } />
               <Route path="/help" element={
-                <Layout>
-                  <ProtectedRoute>
+                <ProtectedRoute>
+                  <Layout>
                     <HelpSupport />
-                  </ProtectedRoute>
-                </Layout>
+                  </Layout>
+                </ProtectedRoute>
               } />
-              <Route path="/privacy" element={<PrivacyPolicy />} />
-              <Route path="/terms" element={<TermsOfUse />} />
-              <Route path="/data-protection" element={<DataProtection />} />
+              <Route path="/privacy" element={
+                <ProtectedRoute>
+                  <PrivacyPolicy />
+                </ProtectedRoute>
+              } />
+              <Route path="/terms" element={
+                <ProtectedRoute>
+                  <TermsOfUse />
+                </ProtectedRoute>
+              } />
+              <Route path="/data-protection" element={
+                <ProtectedRoute>
+                  <DataProtection />
+                </ProtectedRoute>
+              } />
               <Route path="/change-password" element={
-                <Layout>
-                  <ProtectedRoute>
+                <ProtectedRoute>
+                  <Layout>
                     <ChangePassword />
-                  </ProtectedRoute>
-                </Layout>
+                  </Layout>
+                </ProtectedRoute>
               } />
               <Route path="/two-factor-auth" element={
-                <Layout>
-                  <ProtectedRoute>
+                <ProtectedRoute>
+                  <Layout>
                     <TwoFactorAuth />
-                  </ProtectedRoute>
-                </Layout>
+                  </Layout>
+                </ProtectedRoute>
               } />
               <Route path="*" element={<NotFound />} />
             </Routes>

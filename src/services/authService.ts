@@ -115,8 +115,12 @@ export const authService = {
 
       console.log('Signup response data:', data);
 
-      if (data.user && !data.session) {
-        console.log('User created, email confirmation required. User ID:', data.user.id);
+      if (data.user) {
+        console.log('User created/identified. Triggering custom verification flow. User ID:', data.user.id);
+
+        // If we got a session but email isn't confirmed, we should technically sign them out 
+        // or just proceed to verification and let the app handle the state.
+        // For our flow, we want them to verify first.
 
         // Call our custom Edge Function to send the OTP via Resend
         console.log('Invoking send-verification-email function...');
