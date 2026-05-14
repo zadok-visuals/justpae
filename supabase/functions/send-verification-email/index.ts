@@ -36,7 +36,6 @@ function buildEmailHtml(otp: string, email: string): string {
           <!-- Content -->
           <tr>
             <td style="padding:48px 40px;">
-              <!-- Logo/Icon -->
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td align="center" style="padding-bottom:32px;">
@@ -47,7 +46,7 @@ function buildEmailHtml(otp: string, email: string): string {
                 </tr>
               </table>
 
-              <h1 style="margin:0;font-size:28px;font-weight:800;text-align:center;letter-spacing:-0.025em;color:#ffffff;">Confirm your identity</h1>
+              <h1 style="margin:0;font-size:28px;font-weight:800;text-align:center;letter-spacing:-0.025em;color:#ffffff;">Verify your account</h1>
               <p style="margin:16px 0 0;font-size:16px;line-height:1.6;text-align:center;color:#94a3b8;">
                 To finish creating your Amazingpay account, please enter the following verification code:
               </p>
@@ -69,8 +68,15 @@ function buildEmailHtml(otp: string, email: string): string {
                 </p>
               </div>
 
+              <div style="padding:20px;background:rgba(255,255,255,0.02);border-radius:16px;margin-bottom:32px;">
+                <h4 style="margin:0 0 8px;font-size:14px;color:#ffffff;font-weight:600;">Security Tip</h4>
+                <p style="margin:0;font-size:13px;line-height:1.5;color:#64748b;">
+                  Never share this code with anyone. Amazingpay staff will never ask for your verification code or password via email or chat.
+                </p>
+              </div>
+
               <p style="margin:0;font-size:14px;line-height:1.6;text-align:center;color:#64748b;">
-                If you didn't request this, you can safely ignore this email. Your account security is our priority.
+                If you didn't request this, you can safely ignore this email.
               </p>
             </td>
           </tr>
@@ -78,10 +84,13 @@ function buildEmailHtml(otp: string, email: string): string {
           <!-- Footer -->
           <tr>
             <td style="padding:32px 40px;background-color:rgba(255,255,255,0.02);border-top:1px solid rgba(255,255,255,0.05);">
-              <p style="margin:0;font-size:12px;text-align:center;color:#475569;line-height:1.5;">
+              <p style="margin:0;font-size:12px;text-align:center;color:#475569;line-height:1.8;">
                 Sent to <span style="color:#94a3b8;">${email}</span><br>
-                &copy; ${new Date().getFullYear()} Amazingpay Inc. All rights reserved.<br>
-                Secure Payments · Trusted by Millions
+                <strong>Amazingpay Inc.</strong><br>
+                123 Business Way, Suite 500<br>
+                San Francisco, CA 94107<br>
+                <br>
+                &copy; ${new Date().getFullYear()} All rights reserved.
               </p>
             </td>
           </tr>
@@ -188,7 +197,7 @@ serve(async (req) => {
       to: [email],
       subject: `${otp} is your Amazingpay verification code`,
       html: buildEmailHtml(otp, email),
-      text: plainTextContent, // Added plain text version
+      text: plainTextContent,
     };
 
     const resendResponse = await fetch("https://api.resend.com/emails", {
