@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   MessageCircle, 
   Clock, 
@@ -15,7 +13,8 @@ import {
   Image,
   Mic,
   User,
-  Users
+  Users,
+  ChevronLeft
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,7 +22,6 @@ import { useToast } from '@/components/ui/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { VoiceRecorder } from '@/components/chat/VoiceRecorder';
 import { AudioPlayer } from '@/components/chat/AudioPlayer';
-import { useRef } from 'react';
 
 interface ChatConversation {
   id: string;
@@ -57,24 +55,40 @@ export const AdminChatManagement: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageText, setMessageText] = useState('');
   const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({
-    total: 0,
-    open: 0,
-    pending: 0,
-    closed: 0
-  });
+  const [stats, setStats] = useState({ total: 0, open: 0, pending: 0, closed: 0 });
+  const [isMobile, setIsMobile] = useState(false);
 
   const [isSending, setIsSending] = useState(false);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when messages change
+  // 1. Monitor screens size via dynamic listener to enforce absolute layout breaking points
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const checkViewportWidth = () => {
+      setIsMobile(window.innerWidth < 1024); // Matches 'lg' Tailwind parameter
+    };
+    checkViewportWidth();
+    window.addEventListener('resize', checkViewportWidth);
+    return () => window.removeEventListener('resize', checkViewportWidth);
+  }, []);
+
+  const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
+    if (scrollContainerRef.current) {
+      const scrollAreaElement = scrollContainerRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollAreaElement) {
+        scrollAreaElement.scrollTo({
+          top: scrollAreaElement.scrollHeight,
+          behavior
+        });
+      }
+    }
+  };
+
+  useEffect(() => {
+    scrollToBottom('smooth');
   }, [messages]);
 
-  // Fetch conversations
   const fetchConversations = async () => {
     try {
       const { data, error } = await supabase
@@ -94,7 +108,6 @@ export const AdminChatManagement: React.FC = () => {
 
       setConversations(conversationsWithUserNames);
 
-      // Calculate stats
       const total = conversationsWithUserNames.length;
       const open = conversationsWithUserNames.filter(c => c.status === 'open').length;
       const pending = conversationsWithUserNames.filter(c => c.status === 'pending').length;
@@ -106,7 +119,6 @@ export const AdminChatManagement: React.FC = () => {
     }
   };
 
-  // Fetch messages for a conversation
   const fetchMessages = async (conversationId: string) => {
     try {
       setLoading(true);
@@ -119,13 +131,13 @@ export const AdminChatManagement: React.FC = () => {
       if (error) throw error;
       setMessages(data || []);
 
-      // Mark messages as read
-      await supabase
-        .from('chat_messages')
-        .update({ is_read: true })
-        .eq('conversation_id', conversationId)
-        .neq('sender_id', user?.id);
-
+      if (user?.id) {
+        await supabase
+          .from('chat_messages')
+          .update({ is_read: true })
+          .eq('conversation_id', conversationId)
+          .neq('sender_id', user.id);
+      }
     } catch (error) {
       console.error('Error fetching messages:', error);
     } finally {
@@ -133,7 +145,6 @@ export const AdminChatManagement: React.FC = () => {
     }
   };
 
-  // Send admin reply
   const sendAdminReply = async () => {
     if (!messageText.trim() || !selectedConversation || !user) return;
 
@@ -150,7 +161,6 @@ export const AdminChatManagement: React.FC = () => {
 
       if (error) throw error;
 
-      // Update conversation status and last message time
       await supabase
         .from('chat_conversations')
         .update({ 
@@ -162,18 +172,12 @@ export const AdminChatManagement: React.FC = () => {
       setMessageText('');
       await fetchMessages(selectedConversation.id);
       await fetchConversations();
-
     } catch (error) {
       console.error('Error sending reply:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send reply",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to send reply", variant: "destructive" });
     }
   };
 
-  // Update conversation status
   const updateConversationStatus = async (conversationId: string, status: string) => {
     try {
       const { error } = await supabase
@@ -184,21 +188,16 @@ export const AdminChatManagement: React.FC = () => {
       if (error) throw error;
 
       await fetchConversations();
-      
       if (selectedConversation?.id === conversationId) {
         setSelectedConversation(prev => prev ? { ...prev, status } : null);
       }
 
-      toast({
-        title: "Status updated",
-        description: `Conversation marked as ${status}`,
-      });
+      toast({ title: "Status updated", description: `Conversation marked as ${status}` });
     } catch (error) {
       console.error('Error updating status:', error);
     }
   };
 
-  // Send admin media message
   const sendAdminMedia = async (file: File, messageType: 'image' | 'voice') => {
     if (!selectedConversation || !user || !file) return;
 
@@ -207,7 +206,6 @@ export const AdminChatManagement: React.FC = () => {
       const bucketName = messageType === 'image' ? 'chat-images' : 'chat-voice';
       const fileName = `admin/${user.id}/${Date.now()}-${file.name}`;
 
-      // Upload file
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(bucketName)
         .upload(fileName, file);
@@ -218,7 +216,6 @@ export const AdminChatManagement: React.FC = () => {
         .from(bucketName)
         .getPublicUrl(uploadData.path);
 
-      // Insert message
       const { error: messageError } = await supabase
         .from('chat_messages')
         .insert({
@@ -232,7 +229,6 @@ export const AdminChatManagement: React.FC = () => {
 
       if (messageError) throw messageError;
 
-      // Update conversation
       await supabase
         .from('chat_conversations')
         .update({ 
@@ -243,54 +239,30 @@ export const AdminChatManagement: React.FC = () => {
 
       await fetchMessages(selectedConversation.id);
       await fetchConversations();
-
     } catch (error) {
       console.error('Error sending media:', error);
-      toast({
-        title: "Error",
-        description: `Failed to send ${messageType}`,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: `Failed to send ${messageType}`, variant: "destructive" });
     } finally {
       setIsSending(false);
     }
   };
 
-  // Real-time subscriptions
   useEffect(() => {
     fetchConversations();
 
     const messagesChannel = supabase
       .channel('admin_chat_messages')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'chat_messages'
-        },
-        () => {
-          fetchConversations();
-          if (selectedConversation) {
-            fetchMessages(selectedConversation.id);
-          }
-        }
-      )
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, () => {
+        fetchConversations();
+        if (selectedConversation) fetchMessages(selectedConversation.id);
+      })
       .subscribe();
 
     const conversationsChannel = supabase
       .channel('admin_chat_conversations')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'chat_conversations'
-        },
-        () => {
-          fetchConversations();
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_conversations' }, () => {
+        fetchConversations();
+      })
       .subscribe();
 
     return () => {
@@ -301,27 +273,19 @@ export const AdminChatManagement: React.FC = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'open':
-        return <AlertCircle className="w-4 h-4 text-green-500" />;
-      case 'pending':
-        return <Clock className="w-4 h-4 text-yellow-500" />;
-      case 'closed':
-        return <CheckCircle className="w-4 h-4 text-gray-500" />;
-      default:
-        return <MessageCircle className="w-4 h-4" />;
+      case 'open': return <AlertCircle className="w-4 h-4 text-green-500" />;
+      case 'pending': return <Clock className="w-4 h-4 text-yellow-500" />;
+      case 'closed': return <CheckCircle className="w-4 h-4 text-gray-500" />;
+      default: return <MessageCircle className="w-4 h-4" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'open':
-        return 'bg-green-100 text-green-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'closed':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-blue-100 text-blue-800';
+      case 'open': return 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-400';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-400';
+      case 'closed': return 'bg-gray-100 text-gray-800 dark:bg-neutral-800 dark:text-neutral-400';
+      default: return 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400';
     }
   };
 
@@ -330,294 +294,288 @@ export const AdminChatManagement: React.FC = () => {
     const messageTime = formatDistanceToNow(new Date(message.created_at), { addSuffix: true });
 
     return (
-      <div
-        key={message.id}
-        className={`flex flex-col gap-1 ${isAdmin ? 'items-end' : 'items-start'}`}
-      >
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{isAdmin ? 'Admin' : 'User'}</span>
-          <span>•</span>
-          <span>{messageTime}</span>
-        </div>
-        
-        <div
-          className={`max-w-[80%] p-3 rounded-lg ${
-            isAdmin
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted'
-          }`}
-        >
+      <div key={message.id} className={`flex flex-col gap-1 w-full ${isAdmin ? 'items-end' : 'items-start'}`}>
+        <div className={`max-w-[85%] sm:max-w-[75%] shadow-sm transition-all ${
+          message.message_type === 'voice' 
+            ? 'bg-transparent shadow-none'
+            : isAdmin
+              ? 'bg-fintech-orange text-white rounded-2xl rounded-tr-none p-3'
+              : 'bg-gray-100 dark:bg-neutral-800 text-gray-900 dark:text-white rounded-2xl rounded-tl-none p-3'
+        }`}>
           {message.message_type === 'text' && (
-            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+            <p className="text-[14px] leading-relaxed break-words whitespace-pre-wrap">{message.content}</p>
           )}
           
-          {message.message_type === 'image' && (
-            <div className="space-y-2">
-              <img
-                src={message.file_url || ''}
-                alt="Shared image"
-                className="max-w-full h-auto rounded-md"
-                loading="lazy"
+          {message.message_type === 'image' && message.file_url && (
+            <div className="relative rounded-lg overflow-hidden max-w-xs border border-black/5">
+              <img 
+                src={message.file_url} 
+                alt="Shared attachment" 
+                className="max-w-full h-auto object-cover cursor-pointer" 
+                onClick={() => window.open(message.file_url || '', '_blank')} 
               />
-              {message.file_name && (
-                <p className="text-xs opacity-75">{message.file_name}</p>
-              )}
             </div>
           )}
-          
-          {message.message_type === 'voice' && (
-            <div className="mt-1">
-              <AudioPlayer src={message.file_url || ''} theme={isAdmin ? 'dark' : 'light'} />
-            </div>
+
+          {message.message_type === 'voice' && message.file_url && (
+            <AudioPlayer 
+              src={message.file_url} 
+              timestamp={messageTime}
+              isRead={message.is_read}
+              isCurrentUser={isAdmin}
+            />
           )}
         </div>
+
+        {message.message_type !== 'voice' && (
+          <div className="flex items-center gap-1.5 text-[10px] text-gray-400 dark:text-gray-500 px-1 mt-0.5">
+            <span>{isAdmin ? 'Admin' : 'User'}</span>
+            <span>•</span>
+            <span>{messageTime}</span>
+          </div>
+        )}
       </div>
     );
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-muted-foreground" />
-              <div>
-                <p className="text-2xl font-bold">{stats.total}</p>
-                <p className="text-sm text-muted-foreground">Total Conversations</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-green-500" />
-              <div>
-                <p className="text-2xl font-bold">{stats.open}</p>
-                <p className="text-sm text-muted-foreground">Open</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-yellow-500" />
-              <div>
-                <p className="text-2xl font-bold">{stats.pending}</p>
-                <p className="text-sm text-muted-foreground">Pending</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-gray-500" />
-              <div>
-                <p className="text-2xl font-bold">{stats.closed}</p>
-                <p className="text-sm text-muted-foreground">Closed</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Chat Interface */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
-        {/* Conversations List */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-lg">Conversations</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[500px]">
-              <div className="space-y-2 p-4">
-                {conversations.map((conversation) => (
-                  <div
-                    key={conversation.id}
-                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                      selectedConversation?.id === conversation.id
-                        ? 'bg-primary/10 border-primary'
-                        : 'hover:bg-muted/50'
-                    }`}
-                    onClick={() => {
-                      setSelectedConversation(conversation);
-                      fetchMessages(conversation.id);
-                    }}
+  // Shared Sub-component: Conversation list structural builder
+  const renderConversationsList = () => (
+    <Card className="border-gray-100 dark:border-neutral-900 bg-white dark:bg-neutral-900 shadow-sm flex flex-col overflow-hidden h-full w-full">
+      <CardHeader className="py-4 px-4 border-b border-gray-50 dark:border-neutral-850">
+        <CardTitle className="text-sm font-bold tracking-wide uppercase text-gray-400">Conversations List</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0 flex-1 overflow-hidden">
+        <ScrollArea className="h-full">
+          <div className="p-3 space-y-2">
+            {conversations.map((conversation) => (
+              <div
+                key={conversation.id}
+                className={`p-3 rounded-xl border transition-all duration-200 cursor-pointer ${
+                  selectedConversation?.id === conversation.id
+                    ? 'bg-orange-50/60 dark:bg-neutral-850 border-orange-500 shadow-sm'
+                    : 'border-gray-50 dark:border-neutral-850 bg-white dark:bg-neutral-900 hover:bg-gray-50/60 dark:hover:bg-neutral-850'
+                }`}
+                onClick={() => {
+                  setSelectedConversation(conversation);
+                  fetchMessages(conversation.id);
+                }}
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-muted-foreground" />
-                        <span className="font-medium text-sm">{conversation.user_name}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(conversation.status)}
-                        <Badge
-                          variant="secondary"
-                          className={`text-xs ${getStatusColor(conversation.status)}`}
-                        >
-                          {conversation.status}
-                        </Badge>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {conversation.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true })}
-                    </p>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <User className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                    <span className="font-semibold text-xs truncate">{conversation.user_name}</span>
                   </div>
-                ))}
+                  <Badge className={`text-[9px] px-1.5 py-0.5 rounded shadow-none font-bold uppercase tracking-wide border-transparent ${getStatusColor(conversation.status)}`}>
+                    {conversation.status}
+                  </Badge>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-neutral-400 truncate pl-5 mb-1">
+                  {conversation.title || "No Subject text payload"}
+                </p>
+                <div className="flex items-center gap-1 text-[10px] text-gray-400 pl-5">
+                  {getStatusIcon(conversation.status)}
+                  <span>{formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true })}</span>
+                </div>
               </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  );
+
+  // Shared Sub-component: Message feed area structural builder
+  const renderChatArea = () => (
+    <Card className="border-gray-100 dark:border-neutral-900 bg-white dark:bg-neutral-900 shadow-sm flex flex-col overflow-hidden h-full w-full">
+      {selectedConversation ? (
+        <>
+          <CardHeader className="py-3 px-3 sm:px-4 border-b border-gray-50 dark:border-neutral-850 flex flex-row items-center justify-between shrink-0 gap-2">
+            <div className="flex items-center min-w-0 gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => setSelectedConversation(null)}
+                className="lg:hidden rounded-full w-8 h-8 text-gray-500 shrink-0"
+              >
+                <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
+              </Button>
+              <div className="min-w-0">
+                <CardTitle className="text-xs sm:text-sm font-bold truncate">{selectedConversation.user_name}</CardTitle>
+                <p className="text-[9px] sm:text-[10px] text-gray-400 truncate">Active Workspace Thread</p>
+              </div>
+            </div>
+            <div className="flex gap-1 sm:gap-1.5 shrink-0">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => updateConversationStatus(selectedConversation.id, 'pending')}
+                className="h-7 text-[10px] sm:text-xs font-semibold px-2 rounded-lg border-gray-200 dark:border-neutral-800 text-gray-600 dark:text-neutral-400"
+              >
+                Hold Case
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => updateConversationStatus(selectedConversation.id, 'closed')}
+                className="h-7 text-[10px] sm:text-xs font-semibold px-2 rounded-lg border-gray-200 dark:border-neutral-800 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500"
+              >
+                Close
+              </Button>
+            </div>
+          </CardHeader>
+
+          <CardContent ref={scrollContainerRef} className="flex-1 overflow-hidden p-0 bg-gray-50/20 dark:bg-neutral-950/10">
+            <ScrollArea className="h-full px-3 sm:px-4 py-4">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-400 mt-20">
+                  <div className="w-5 h-5 border-2 border-fintech-orange border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs">Loading logs...</span>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {messages.map(renderMessage)}
+                </div>
+              )}
             </ScrollArea>
           </CardContent>
-        </Card>
 
-        {/* Chat Messages */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">
-                {selectedConversation ? selectedConversation.user_name : 'Select a conversation'}
-              </CardTitle>
-              {selectedConversation && (
-                <div className="flex gap-2">
+          <div className="shrink-0 p-3 bg-white dark:bg-neutral-900 border-t border-gray-50 dark:border-neutral-850">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-end gap-2">
+                <div className="flex items-center h-10">
                   <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => updateConversationStatus(selectedConversation.id, 'pending')}
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-9 h-9 rounded-full text-gray-400 hover:text-fintech-orange hover:bg-gray-50 dark:hover:bg-neutral-850 transition-colors"
                   >
-                    Mark Pending
+                    <Image className="w-4 h-4" />
                   </Button>
                   <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => updateConversationStatus(selectedConversation.id, 'closed')}
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setShowVoiceRecorder(!showVoiceRecorder)}
+                    className={`w-9 h-9 rounded-full transition-colors ${
+                      showVoiceRecorder 
+                        ? "bg-red-50 text-red-500 dark:bg-red-950/30 dark:text-red-400" 
+                        : "text-gray-400 hover:text-fintech-orange hover:bg-gray-50 dark:hover:bg-neutral-850"
+                    }`}
                   >
-                    Close
+                    <Mic className="w-4 h-4" />
                   </Button>
+                </div>
+
+                <div className="flex-1 relative flex items-center min-w-0">
+                  <Input
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    placeholder="Type reply..."
+                    disabled={isSending}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        sendAdminReply();
+                      }
+                    }}
+                    className="w-full h-10 pl-3 pr-12 rounded-xl bg-gray-50 border-none dark:bg-neutral-950 focus-visible:ring-2 focus-visible:ring-fintech-orange/10 transition-all text-xs"
+                  />
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                    <Button
+                      onClick={sendAdminReply}
+                      disabled={!messageText.trim() || isSending}
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                        messageText.trim() 
+                          ? "bg-fintech-orange scale-100 opacity-100" 
+                          : "bg-gray-200 dark:bg-neutral-800 scale-90 opacity-0 pointer-events-none"
+                      }`}
+                    >
+                      <Send className="w-3.5 h-3.5 text-white" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {showVoiceRecorder && (
+                <div className="p-3 bg-gray-50 dark:bg-neutral-950 rounded-xl border border-gray-100 dark:border-neutral-850 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                  <div className="flex justify-between items-center px-1 mb-2">
+                    <span className="text-[9px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest">Voice Memo Panel</span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setShowVoiceRecorder(false)}
+                      className="h-5 px-1 text-[11px] text-gray-400 hover:text-red-500"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                  <VoiceRecorder 
+                    onRecordingComplete={(blob) => sendAdminMedia(new File([blob], 'voice.webm'), 'voice')}
+                    disabled={isSending}
+                  />
                 </div>
               )}
             </div>
-          </CardHeader>
-          <CardContent className="flex flex-col h-[500px] p-0">
-            {selectedConversation ? (
-              <>
-                {/* Messages */}
-                <ScrollArea className="flex-1 p-4">
-                  {loading ? (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-sm text-muted-foreground">Loading messages...</div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="space-y-4">
-                        {messages.map(renderMessage)}
-                        <div ref={messagesEndRef} />
-                      </div>
-                    </div>
-                  )}
-                </ScrollArea>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) sendAdminMedia(file, 'image');
+              }}
+              accept="image/*" 
+              className="hidden" 
+            />
+          </div>
+        </>
+      ) : (
+        <div className="flex items-center justify-center h-full bg-gray-50/10 dark:bg-neutral-950/5 p-8 select-none">
+          <div className="text-center max-w-xs">
+            <div className="w-12 h-12 bg-gray-50 dark:bg-neutral-850 rounded-full flex items-center justify-center mx-auto mb-3">
+              <MessageCircle className="w-5 h-5 text-gray-400" />
+            </div>
+            <p className="text-xs font-bold text-gray-900 dark:text-white">Select a conversation</p>
+            <p className="text-[11px] text-gray-400 mt-1">Choose an open case from the list to begin chatting.</p>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
 
-                  {/* Reply Input Area */}
-                  <div className="p-4 bg-muted/20 border-t">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-10 h-10 rounded-full text-muted-foreground hover:text-fintech-orange hover:bg-fintech-orange/5 transition-colors"
-                      >
-                        <Image className="w-5 h-5" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => setShowVoiceRecorder(!showVoiceRecorder)}
-                        className={`w-10 h-10 rounded-full transition-colors ${
-                          showVoiceRecorder 
-                            ? "bg-red-50 text-red-500" 
-                            : "text-muted-foreground hover:text-fintech-orange hover:bg-fintech-orange/5"
-                        }`}
-                      >
-                        <Mic className="w-5 h-5" />
-                      </Button>
-                    </div>
-
-                    {showVoiceRecorder && (
-                      <div className="mb-4 p-4 bg-background border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl animate-in fade-in slide-in-from-bottom-2">
-                        <div className="flex justify-between items-center mb-2 px-1">
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Admin Voice Note</span>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => setShowVoiceRecorder(false)}
-                            className="h-6 text-xs text-muted-foreground hover:text-red-500"
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                        <VoiceRecorder 
-                          onRecordingComplete={(blob) => sendAdminMedia(new File([blob], 'voice.webm'), 'voice')}
-                          disabled={isSending}
-                        />
-                      </div>
-                    )}
-
-                    <div className="flex gap-2">
-                      <Input
-                        value={messageText}
-                        onChange={(e) => setMessageText(e.target.value)}
-                        placeholder="Type your reply..."
-                        disabled={isSending}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            sendAdminReply();
-                          }
-                        }}
-                        className="flex-1 rounded-full px-4 h-11 bg-white dark:bg-gray-800"
-                      />
-                      <Button
-                        onClick={sendAdminReply}
-                        disabled={!messageText.trim() || isSending}
-                        className="rounded-full w-11 h-11 p-0 bg-fintech-orange hover:bg-fintech-orange/90"
-                      >
-                        <Send className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <input 
-                      type="file" 
-                      ref={fileInputRef} 
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) sendAdminMedia(file, 'image');
-                      }}
-                      accept="image/*" 
-                      className="hidden" 
-                    />
-                  </div>
-                </>
-              ) : (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center space-y-2">
-                    <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <MessageCircle className="w-8 h-8 text-muted-foreground" />
-                    </div>
-                    <p className="font-medium text-gray-900 dark:text-white">Select a conversation</p>
-                    <p className="text-sm text-muted-foreground">Pick a user from the left to start chatting</p>
-                  </div>
-                </div>
-              )}
+  return (
+    <div className="space-y-6 max-w-6xl mx-auto px-2 sm:px-4 py-2 select-none">
+      {/* Stats Cards Header */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        {[
+          { label: 'Total Conversations', value: stats.total, icon: <Users className="w-4 h-4 text-gray-400" /> },
+          { label: 'Open Track', value: stats.open, icon: <AlertCircle className="w-4 h-4 text-green-500" /> },
+          { label: 'Pending Hold', value: stats.pending, icon: <Clock className="w-4 h-4 text-yellow-500" /> },
+          { label: 'Closed Cases', value: stats.closed, icon: <CheckCircle className="w-4 h-4 text-gray-500" /> }
+        ].map((card, i) => (
+          <Card key={i} className="border-gray-100 dark:border-neutral-900 bg-white dark:bg-neutral-900 shadow-sm">
+            <CardContent className="p-3 sm:p-4 flex items-center justify-between">
+              <div>
+                <p className="text-lg sm:text-xl font-bold tracking-tight">{card.value}</p>
+                <p className="text-[10px] sm:text-xs text-gray-400 font-medium truncate max-w-[100px] sm:max-w-none">{card.label}</p>
+              </div>
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-50 dark:bg-neutral-850 flex items-center justify-center shrink-0">{card.icon}</div>
             </CardContent>
           </Card>
-        </div>
+        ))}
       </div>
-    );
-  };
+
+      {/* 2. Dynamic Structural Grid Node */}
+      <div className="w-full h-[600px] lg:h-[620px]">
+        {isMobile ? (
+          // Enforces single-view toggles on mobile screens (No stack possible)
+          selectedConversation ? renderChatArea() : renderConversationsList()
+        ) : (
+          // Renders the verified side-by-side split layout on desktop screens
+          <div className="grid grid-cols-3 gap-4 h-full w-full">
+            <div className="col-span-1 h-full">{renderConversationsList()}</div>
+            <div className="col-span-2 h-full">{renderChatArea()}</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
