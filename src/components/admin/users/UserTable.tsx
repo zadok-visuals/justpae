@@ -18,9 +18,10 @@ interface User {
 interface UserTableProps {
   users: User[];
   onSelectUser: (user: User) => void;
+  onChatUser?: (user: User) => void;
 }
 
-const UserTable: React.FC<UserTableProps> = ({ users, onSelectUser }) => {
+const UserTable: React.FC<UserTableProps> = ({ users, onSelectUser, onChatUser }) => {
   const getStatusBadge = (status: string) => {
     const variants = {
       active: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
@@ -68,14 +69,26 @@ const UserTable: React.FC<UserTableProps> = ({ users, onSelectUser }) => {
                 {new Date(user.created_at).toLocaleDateString()}
               </TableCell>
               <TableCell>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onSelectUser(user)}
-                  className="text-fintech-orange hover:bg-fintech-orange/10"
-                >
-                  Manage
-                </Button>
+                <div className="flex space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onSelectUser(user)}
+                    className="text-fintech-orange hover:bg-fintech-orange/10"
+                  >
+                    Manage
+                  </Button>
+                  {onChatUser && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onChatUser(user)}
+                      className="text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                    >
+                      Chat
+                    </Button>
+                  )}
+                </div>
               </TableCell>
             </TableRow>
           ))}

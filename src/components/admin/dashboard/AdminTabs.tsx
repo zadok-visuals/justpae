@@ -23,37 +23,39 @@ interface AdminTabsProps {
 const AdminTabs: React.FC<AdminTabsProps> = ({ stats, onStatsUpdate }) => {
   return (
     <Tabs defaultValue="giftcards" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-        <TabsTrigger value="giftcards" className="data-[state=active]:bg-fintech-orange data-[state=active]:text-white relative">
-          Gift Cards
-          {stats.pendingGiftCards > 0 && (
-            <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 text-xs flex items-center justify-center">
-              {stats.pendingGiftCards}
-            </Badge>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="transactions" className="data-[state=active]:bg-fintech-orange data-[state=active]:text-white relative">
-          Transactions
-          {stats.pendingTransactions > 0 && (
-            <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 text-xs flex items-center justify-center">
-              {stats.pendingTransactions}
-            </Badge>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="users" className="data-[state=active]:bg-fintech-orange data-[state=active]:text-white relative">
-          Users
-          {stats.pendingKyc > 0 && (
-            <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 text-xs flex items-center justify-center">
-              {stats.pendingKyc}
-            </Badge>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="feedback" className="data-[state=active]:bg-fintech-orange data-[state=active]:text-white">Feedback</TabsTrigger>
-        <TabsTrigger value="chat" className="data-[state=active]:bg-fintech-orange data-[state=active]:text-white">Chat Support</TabsTrigger>
-        <TabsTrigger value="notifications" className="data-[state=active]:bg-fintech-orange data-[state=active]:text-white">Notifications</TabsTrigger>
-        <TabsTrigger value="analytics" className="data-[state=active]:bg-fintech-orange data-[state=active]:text-white">Analytics</TabsTrigger>
-        <TabsTrigger value="settings" className="data-[state=active]:bg-fintech-orange data-[state=active]:text-white">Settings</TabsTrigger>
-      </TabsList>
+      <div className="w-full overflow-x-auto pb-2 scrollbar-hide">
+        <TabsList className="flex w-max min-w-full h-auto p-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl">
+          <TabsTrigger value="giftcards" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white relative whitespace-nowrap">
+            Gift Cards
+            {stats.pendingGiftCards > 0 && (
+              <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 text-xs flex items-center justify-center rounded-full">
+                {stats.pendingGiftCards}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="transactions" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white relative whitespace-nowrap">
+            Transactions
+            {stats.pendingTransactions > 0 && (
+              <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 text-xs flex items-center justify-center rounded-full">
+                {stats.pendingTransactions}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="users" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white relative whitespace-nowrap">
+            Users
+            {stats.pendingKyc > 0 && (
+              <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 text-xs flex items-center justify-center rounded-full">
+                {stats.pendingKyc}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="feedback" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Feedback</TabsTrigger>
+          <TabsTrigger value="chat" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Chat Support</TabsTrigger>
+          <TabsTrigger value="notifications" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Notifications</TabsTrigger>
+          <TabsTrigger value="analytics" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Analytics</TabsTrigger>
+          <TabsTrigger value="settings" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Settings</TabsTrigger>
+        </TabsList>
+      </div>
 
       <TabsContent value="giftcards">
         <GiftCardManagement onStatsUpdate={onStatsUpdate} />

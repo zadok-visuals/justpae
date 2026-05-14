@@ -66,15 +66,18 @@ export const AdminChatManagement: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('chat_conversations')
-        .select('*')
+        .select('*, profiles:user_id(name, full_name, email)')
         .order('last_message_at', { ascending: false });
 
       if (error) throw error;
 
-      const conversationsWithUserNames = data?.map(conv => ({
-        ...conv,
-        user_name: 'User'
-      })) || [];
+      const conversationsWithUserNames = data?.map(conv => {
+        const profile = conv.profiles as any;
+        return {
+          ...conv,
+          user_name: profile?.full_name || profile?.name || 'Unknown User'
+        };
+      }) || [];
 
       setConversations(conversationsWithUserNames);
 
