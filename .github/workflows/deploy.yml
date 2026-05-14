@@ -14,8 +14,10 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      # FIXED: Added optional compilation flags to prevent Rollup architecture dropouts
-      - run: npm install --legacy-peer-deps --include=optional
+      # FIXED: Force a clean installation architecture mapping in the cloud container
+      - run: |
+          rm -f package-lock.json
+          npm install --legacy-peer-deps
       - run: npm run build
       - uses: actions/upload-artifact@v4
         with:
@@ -37,8 +39,10 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      # FIXED: Added optional compilation flags to prevent Rollup architecture dropouts
-      - run: npm install --legacy-peer-deps --include=optional
+      # FIXED: Force a clean installation architecture mapping in the cloud container
+      - run: |
+          rm -f package-lock.json
+          npm install --legacy-peer-deps
       - run: npx cap sync android
       - name: Build APK
         working-directory: android
@@ -64,8 +68,10 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      # FIXED: Added optional compilation flags to prevent Rollup architecture dropouts
-      - run: npm install --legacy-peer-deps --include=optional
+      # FIXED: Force a clean installation architecture mapping in the cloud container
+      - run: |
+          rm -f package-lock.json
+          npm install --legacy-peer-deps
 
       - uses: actions/download-artifact@v4
         with:
