@@ -22,52 +22,79 @@ function buildEmailHtml(otp: string, email: string): string {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Verify your Amazingpay account</title>
 </head>
-<body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background:#0f172a;color:#f1f5f9;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;padding:40px 20px;">
+<body style="margin:0;padding:0;font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;background-color:#020617;color:#f8fafc;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#020617;padding:40px 20px;">
     <tr>
       <td align="center">
-        <table width="520" cellpadding="0" cellspacing="0" style="background:#1e293b;border-radius:16px;overflow:hidden;border:1px solid #334155;">
-          <!-- Header -->
+        <!-- Main Card -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:500px;background-color:#0f172a;border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
+          <!-- Header Accent -->
           <tr>
-            <td align="center" style="padding:32px 32px 24px;background:linear-gradient(135deg,#f97316,#ea580c);">
-              <div style="width:56px;height:56px;background:rgba(255,255,255,0.15);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">
-                <span style="font-size:28px;">✉️</span>
-              </div>
-              <h1 style="margin:0;color:#fff;font-size:24px;font-weight:700;letter-spacing:-0.5px;">Verify Your Email</h1>
-              <p style="margin:8px 0 0;color:rgba(255,255,255,0.8);font-size:14px;">Amazingpay Account Verification</p>
-            </td>
+            <td style="height:8px;background:linear-gradient(90deg, #f97316, #ea580c, #c2410c);"></td>
           </tr>
-
-          <!-- Body -->
+          
+          <!-- Content -->
           <tr>
-            <td style="padding:32px;">
-              <p style="margin:0 0 16px;color:#94a3b8;font-size:15px;line-height:1.6;">
-                Hi there! You're almost ready to start using Amazingpay. Enter the 6-digit code below to verify your email address:
-              </p>
-
-              <!-- OTP Box -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;">
+            <td style="padding:48px 40px;">
+              <!-- Logo/Icon -->
+              <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td align="center">
-                    <div style="display:inline-block;background:#0f172a;border:2px solid #f97316;border-radius:12px;padding:20px 40px;">
-                      <span style="font-size:40px;font-weight:800;letter-spacing:12px;color:#f97316;font-family:'Courier New',monospace;">${otp}</span>
+                  <td align="center" style="padding-bottom:32px;">
+                    <div style="width:64px;height:64px;background:rgba(249,115,22,0.1);border-radius:20px;display:inline-block;line-height:64px;text-align:center;">
+                      <span style="font-size:32px;">🔥</span>
                     </div>
                   </td>
                 </tr>
               </table>
 
-              <p style="margin:0 0 8px;color:#64748b;font-size:13px;text-align:center;">
-                ⏱ This code expires in <strong style="color:#f97316;">10 minutes</strong>
-              </p>
-              <p style="margin:0 0 24px;color:#64748b;font-size:13px;text-align:center;">
-                If you didn't create an account, you can safely ignore this email.
+              <h1 style="margin:0;font-size:28px;font-weight:800;text-align:center;letter-spacing:-0.025em;color:#ffffff;">Confirm your identity</h1>
+              <p style="margin:16px 0 0;font-size:16px;line-height:1.6;text-align:center;color:#94a3b8;">
+                To finish creating your Amazingpay account, please enter the following verification code:
               </p>
 
-              <hr style="border:none;border-top:1px solid #334155;margin:24px 0;">
+              <!-- OTP Display -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin:40px 0;">
+                <tr>
+                  <td align="center">
+                    <div style="background-color:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px 32px;display:inline-block;">
+                      <span style="font-size:36px;font-weight:800;letter-spacing:8px;color:#f97316;font-family:'Monaco', 'Consolas', monospace;">${otp}</span>
+                    </div>
+                  </td>
+                </tr>
+              </table>
 
-              <p style="margin:0;color:#475569;font-size:12px;text-align:center;">
-                This email was sent to <strong style="color:#94a3b8;">${email}</strong><br>
-                © ${new Date().getFullYear()} Amazingpay · Secure Payments Platform
+              <div style="background-color:rgba(249,115,22,0.05);border-radius:12px;padding:16px;margin-bottom:32px;">
+                <p style="margin:0;font-size:14px;color:#f97316;text-align:center;font-weight:500;">
+                  ⏱ This code expires in 10 minutes
+                </p>
+              </div>
+
+              <p style="margin:0;font-size:14px;line-height:1.6;text-align:center;color:#64748b;">
+                If you didn't request this, you can safely ignore this email. Your account security is our priority.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:32px 40px;background-color:rgba(255,255,255,0.02);border-top:1px solid rgba(255,255,255,0.05);">
+              <p style="margin:0;font-size:12px;text-align:center;color:#475569;line-height:1.5;">
+                Sent to <span style="color:#94a3b8;">${email}</span><br>
+                &copy; ${new Date().getFullYear()} Amazingpay Inc. All rights reserved.<br>
+                Secure Payments · Trusted by Millions
+              </p>
+            </td>
+          </tr>
+        </table>
+        
+        <!-- Bottom Links -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:500px;margin-top:24px;">
+          <tr>
+            <td align="center">
+              <p style="margin:0;font-size:12px;color:#475569;">
+                <a href="#" style="color:#475569;text-decoration:none;margin:0 8px;">Support</a>
+                <a href="#" style="color:#475569;text-decoration:none;margin:0 8px;">Privacy Policy</a>
+                <a href="#" style="color:#475569;text-decoration:none;margin:0 8px;">Terms of Use</a>
               </p>
             </td>
           </tr>
@@ -139,7 +166,7 @@ serve(async (req) => {
 
     // Send email via Resend
     const emailPayload = {
-      from: "Amazingpay <noreply@amazingpay.com>",  // UPDATE: use your verified Resend sender domain
+      from: "Amazingpay <admin@trade.amazingpay.app>",  // Verified sender domain from Resend
       to: [email],
       subject: `${otp} is your Amazingpay verification code`,
       html: buildEmailHtml(otp, email),

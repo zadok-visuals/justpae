@@ -112,7 +112,7 @@ const Chat: React.FC = () => {
 
   return (
     <Layout showNavbar={false} fullWidth={true}>
-      <div className="min-h-screen w-full bg-white dark:bg-gray-900 flex flex-col text-white relative overflow-hidden">
+      <div className="h-screen w-full bg-white dark:bg-gray-900 flex flex-col text-gray-900 dark:text-white relative overflow-hidden">
         {/* Flat Header */}
         <div className="border-b px-6 py-4">
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Support Chat</h1>
@@ -167,13 +167,17 @@ const Chat: React.FC = () => {
 
               {/* Modern Expanding Input Area */}
               <div className="flex-1 relative group">
-                <Input
+                <textarea
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyPress}
                   placeholder="Type your message..."
                   disabled={isSending}
-                  className="w-full min-h-[44px] max-h-32 py-3 px-4 rounded-[22px] bg-gray-100 dark:bg-gray-800 border-none focus-visible:ring-2 focus-visible:ring-fintech-orange/20 transition-all text-sm md:text-base pr-12"
+                  rows={1}
+                  className="w-full min-h-[44px] max-h-40 py-3 px-4 rounded-[22px] bg-gray-100 dark:bg-gray-800 border-none focus:outline-none focus:ring-2 focus:ring-fintech-orange/20 transition-all text-sm md:text-base pr-12 text-gray-900 dark:text-white resize-none overflow-y-auto"
+                  style={{ 
+                    height: messageText ? 'auto' : '44px',
+                  }}
                 />
                 
                 {/* Floating Send Button Inside Input */}
@@ -181,10 +185,10 @@ const Chat: React.FC = () => {
                   size="icon"
                   onClick={handleSendMessage}
                   disabled={!messageText.trim() || isSending}
-                  className={`absolute right-1 bottom-1 w-9 h-9 rounded-full shadow-md transition-all duration-300 transform ${
+                  className={`absolute right-1 bottom-1.5 w-8 h-8 rounded-full shadow-md transition-all duration-300 transform ${
                     messageText.trim() 
                       ? "bg-fintech-orange scale-100 opacity-100" 
-                      : "bg-gray-300 scale-90 opacity-0 pointer-events-none"
+                      : "bg-gray-300 dark:bg-gray-700 scale-90 opacity-0 pointer-events-none"
                   }`}
                 >
                   <Send className="w-4 h-4 text-white" />

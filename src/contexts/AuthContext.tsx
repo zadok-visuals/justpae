@@ -28,8 +28,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const result = await authService.login(email, password);
 
     // Set session if login successful
-    if (!result.error && user) {
-      sessionService.setUserSession(user.id);
+    if (!result.error && result.user) {
+      sessionService.setUserSession(result.user.id);
     }
 
     return result;

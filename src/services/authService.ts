@@ -80,13 +80,13 @@ export const authService = {
           status: error.status,
           name: error.name
         });
-        
+
         // If user already exists, they might be unconfirmed. 
         // We should try to resend the verification code instead of just failing.
         if (error.message.includes('User already registered') || error.status === 422) {
           console.log('User already registered, attempting to resend OTP');
           const resendResult = await authService.resendOtp(email);
-          
+
           if (!resendResult.error) {
             return {
               needsVerification: true,
@@ -94,7 +94,7 @@ export const authService = {
             };
           }
         }
-        
+
         return { error: error.message };
       }
 
@@ -102,12 +102,12 @@ export const authService = {
 
       if (data.user && !data.session) {
         console.log('User created, email confirmation required. User ID:', data.user.id);
-        
+
         // Call our custom Edge Function to send the OTP via Resend
         console.log('Invoking send-verification-email function...');
         const { error: funcError } = await supabase.functions.invoke('send-verification-email', {
-          body: { 
-            email: email.toLowerCase(), 
+          body: {
+            email: email.toLowerCase(),
             user_id: data.user.id,
             action: 'signup'
           }
@@ -117,15 +117,15 @@ export const authService = {
           console.error('Error invoking send-verification-email:', funcError);
           // Try to log more details if it's an HTTP error
           if (funcError instanceof Error && 'context' in funcError) {
-             const context = (funcError as any).context;
-             if (context instanceof Response) {
-               try {
-                 const errorBody = await context.json();
-                 console.error('Function error body:', errorBody);
-               } catch (e) {
-                 console.error('Could not parse function error body');
-               }
-             }
+            const context = (funcError as any).context;
+            if (context instanceof Response) {
+              try {
+                const errorBody = await context.json();
+                console.error('Function error body:', JSON.stringify(errorBody, null, 2));
+              } catch (e) {
+                console.error('Could not parse function error body');
+              }
+            }
           }
         }
 
@@ -148,9 +148,9 @@ export const authService = {
       console.log('Verifying OTP for:', email, 'using custom Edge Function');
 
       const { data, error } = await supabase.functions.invoke('verify-email-otp', {
-        body: { 
-          email: email.toLowerCase(), 
-          otp: token 
+        body: {
+          email: email.toLowerCase(),
+          otp: token
         }
       });
 
@@ -172,7 +172,7 @@ export const authService = {
       console.log('Resending OTP for:', email, 'using custom Edge Function');
 
       const { data, error } = await supabase.functions.invoke('send-verification-email', {
-        body: { 
+        body: {
           email: email.toLowerCase(),
           action: 'resend'
         }
