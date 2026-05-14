@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
@@ -70,6 +69,7 @@ const Dashboard = () => {
                 Enable Two-Factor Authentication (2FA) to add an extra layer of security to your account.
               </p>
             </div>
+          </div>
           </div>
         </div>
       </div>
