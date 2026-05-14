@@ -5,22 +5,36 @@ import { cleanupAuthState } from '@/utils/authUtils';
 export const authService = {
   login: async (email: string, password: string) => {
     try {
-      console.log('Attempting login for:', email);
+      const normalizedEmail = email.trim().toLowerCase();
+      console.log('Attempting login for:', normalizedEmail);
 
-      // Clean up any existing auth state first
-      cleanupAuthState();
+      // Removed cleanupAuthState() as it may interfere with Supabase client session handling
+      // during the immediate subsequent signInWithPassword call.
 
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: normalizedEmail,
         password,
       });
 
       if (error) {
-        console.error('Login error:', error);
+        console.error('Login error details:', {
+          message: error.message,
+          status: error.status,
+          name: error.name,
+          email: normalizedEmail
+        });
+        
+        // If it's a 400 with 'Invalid login credentials', it could also mean unconfirmed
+        // depending on project configuration, though usually it returns 'Email not confirmed'.
+        if (error.message.includes('Email not confirmed')) {
+          return { error: 'Please verify your email before logging in.' };
+        }
+        
         return { error: error.message };
       }
 
       if (data.user && !data.user.email_confirmed_at) {
+        console.warn('User logged in but email not confirmed yet. Confirming status...', data.user.email_confirmed_at);
         return { error: 'Please verify your email before logging in.' };
       }
 
@@ -56,13 +70,14 @@ export const authService = {
 
   signup: async (email: string, password: string, name: string, phone?: string, country?: string) => {
     try {
-      console.log('Attempting signup for:', email);
+      const normalizedEmail = email.trim().toLowerCase();
+      console.log('Attempting signup for:', normalizedEmail);
 
       // Clean up any existing auth state first
       cleanupAuthState();
 
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
         options: {
           data: {
@@ -84,13 +99,13 @@ export const authService = {
         // If user already exists, they might be unconfirmed. 
         // We should try to resend the verification code instead of just failing.
         if (error.message.includes('User already registered') || error.status === 422) {
-          console.log('User already registered, attempting to resend OTP');
-          const resendResult = await authService.resendOtp(email);
+          console.warn('User already registered. Resending OTP. Note: The password was NOT updated.', normalizedEmail);
+          const resendResult = await authService.resendOtp(normalizedEmail);
 
           if (!resendResult.error) {
             return {
               needsVerification: true,
-              message: 'Account already exists. A new verification code has been sent to your email.'
+              message: 'This email is already registered. We\'ve sent a verification code to confirm your identity. Note: If you signed up with Google, you may need to use the Forgot Password flow to set a password.'
             };
           }
         }
@@ -107,7 +122,7 @@ export const authService = {
         console.log('Invoking send-verification-email function...');
         const { error: funcError } = await supabase.functions.invoke('send-verification-email', {
           body: {
-            email: email.toLowerCase(),
+            email: normalizedEmail,
             user_id: data.user.id,
             action: 'signup'
           }
@@ -145,11 +160,12 @@ export const authService = {
 
   verifyOtp: async (email: string, token: string) => {
     try {
-      console.log('Verifying OTP for:', email, 'using custom Edge Function');
+      const normalizedEmail = email.trim().toLowerCase();
+      console.log('Verifying OTP for:', normalizedEmail, 'using custom Edge Function');
 
       const { data, error } = await supabase.functions.invoke('verify-email-otp', {
         body: {
-          email: email.toLowerCase(),
+          email: normalizedEmail,
           otp: token
         }
       });
@@ -169,11 +185,12 @@ export const authService = {
 
   resendOtp: async (email: string) => {
     try {
-      console.log('Resending OTP for:', email, 'using custom Edge Function');
+      const normalizedEmail = email.trim().toLowerCase();
+      console.log('Resending OTP for:', normalizedEmail, 'using custom Edge Function');
 
       const { data, error } = await supabase.functions.invoke('send-verification-email', {
         body: {
-          email: email.toLowerCase(),
+          email: normalizedEmail,
           action: 'resend'
         }
       });

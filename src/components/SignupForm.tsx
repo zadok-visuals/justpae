@@ -142,14 +142,14 @@ const SignupForm: React.FC = () => {
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-100 dark:border-gray-700 shadow-xl rounded-xl">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold text-center">Create Account</CardTitle>
+    <Card className="w-full max-w-md mx-auto bg-gray-800 text-white border-gray-700 shadow-2xl rounded-2xl overflow-hidden">
+      <CardHeader className="pt-8 pb-4">
+        <CardTitle className="text-2xl font-bold text-center tracking-tight">Create Account</CardTitle>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <CardContent className="px-6 pb-8">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-gray-700 dark:text-gray-300">Full Name *</Label>
+            <Label htmlFor="name" className="text-gray-300 text-sm font-medium ml-1">Full Name *</Label>
             <Input
               id="name"
               type="text"
@@ -157,12 +157,12 @@ const SignupForm: React.FC = () => {
               onChange={(e) => setName(e.target.value)}
               placeholder="Enter your full name"
               required
-              className="bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white"
+              className="bg-gray-700/50 border-gray-600 text-white placeholder:text-gray-500 focus:ring-primary/50 h-11"
             />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-gray-700 dark:text-gray-300">Email *</Label>
+            <Label htmlFor="email" className="text-gray-300 text-sm font-medium ml-1">Email *</Label>
             <Input
               id="email"
               type="email"
@@ -170,12 +170,12 @@ const SignupForm: React.FC = () => {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
               required
-              className="bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white"
+              className="bg-gray-700/50 border-gray-600 text-white placeholder:text-gray-500 focus:ring-primary/50 h-11"
             />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-gray-700 dark:text-gray-300">Password *</Label>
+            <Label htmlFor="password" className="text-gray-300 text-sm font-medium ml-1">Password *</Label>
             <div className="relative">
               <Input
                 id="password"
@@ -185,7 +185,7 @@ const SignupForm: React.FC = () => {
                 placeholder="Enter your password"
                 required
                 minLength={6}
-                className="bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white pr-10"
+                className="bg-gray-700/50 border-gray-600 text-white placeholder:text-gray-500 focus:ring-primary/50 h-11 pr-10"
               />
               <button
                 type="button"
@@ -193,37 +193,39 @@ const SignupForm: React.FC = () => {
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? (
-                  <EyeOff className="h-4 w-4 text-gray-400" />
+                  <EyeOff className="h-4 w-4 text-gray-400 hover:text-gray-300 transition-colors" />
                 ) : (
-                  <Eye className="h-4 w-4 text-gray-400" />
+                  <Eye className="h-4 w-4 text-gray-400 hover:text-gray-300 transition-colors" />
                 )}
               </button>
             </div>
           </div>
           
-          <PhoneInput
-            phone={phone}
-            phoneCode={phoneCode}
-            country={country}
-            onPhoneChange={setPhone}
-            onPhoneCodeChange={setPhoneCode}
-            onCountryChange={setCountry}
-          />
+          <div className="pt-2">
+            <PhoneInput
+              phone={phone}
+              phoneCode={phoneCode}
+              country={country}
+              onPhoneChange={setPhone}
+              onPhoneCodeChange={setPhoneCode}
+              onCountryChange={setCountry}
+            />
+          </div>
           
           <Button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-primary hover:bg-primary/95 text-white"
+            className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12 rounded-xl transition-all shadow-lg shadow-primary/20 mt-4"
           >
             {isLoading ? 'Creating Account...' : 'Create Account'}
           </Button>
 
-          <div className="relative my-4">
+          <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
+              <div className="w-full border-t border-gray-700"></div>
             </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white dark:bg-gray-800 text-gray-500">Or continue with</span>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="px-3 bg-gray-800 text-gray-500 font-medium tracking-wider">Or continue with</span>
             </div>
           </div>
 
@@ -231,7 +233,7 @@ const SignupForm: React.FC = () => {
             type="button"
             variant="outline"
             onClick={handleGoogleSignup}
-            className="w-full bg-transparent border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-white"
+            className="w-full bg-gray-700/30 border-gray-600 hover:bg-gray-700/60 text-white h-11 rounded-xl transition-all"
           >
             <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
               <path
@@ -255,9 +257,9 @@ const SignupForm: React.FC = () => {
           </Button>
         </form>
         
-        <div className="mt-4 text-center text-sm text-gray-600 dark:text-gray-300">
-          Already have an account?{' '}
-          <Link to="/login" className="text-primary hover:text-primary/80 font-medium">
+        <div className="mt-6 text-center text-sm">
+          <span className="text-gray-400">Already have an account? </span>
+          <Link to="/login" className="text-primary hover:text-primary/80 font-bold transition-colors">
             Sign in
           </Link>
         </div>

@@ -99,26 +99,26 @@ const EmailVerificationForm: React.FC<EmailVerificationFormProps> = ({
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader className="text-center">
-        <div className="flex justify-center mb-4">
-          <div className="w-16 h-16 bg-fintech-orange rounded-full flex items-center justify-center">
-            <Mail className="w-8 h-8 text-white" />
+    <Card className="w-full max-w-md mx-auto bg-gray-800 text-white border-gray-700 shadow-2xl rounded-2xl overflow-hidden">
+      <CardHeader className="text-center pt-10 pb-6">
+        <div className="flex justify-center mb-6">
+          <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 shadow-inner">
+            <Mail className="w-10 h-10 text-primary" />
           </div>
         </div>
-        <CardTitle className="text-2xl font-bold">Verify Your Email</CardTitle>
-        <p className="text-gray-600 dark:text-gray-400">
-          We've sent a 6-digit verification code to
-        </p>
-        <p className="font-medium text-fintech-orange">{email}</p>
-        <p className="text-sm text-gray-500 mt-2">
-          Enter the code below to verify your account.
-        </p>
+        <CardTitle className="text-3xl font-extrabold tracking-tight mb-2">Verify Your Email</CardTitle>
+        <div className="space-y-1 px-4">
+          <p className="text-gray-400 text-sm">
+            We've sent a 6-digit verification code to
+          </p>
+          <p className="font-bold text-primary text-lg break-all">{email}</p>
+        </div>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleVerifyCode} className="space-y-4">
-          <div>
-            <Label htmlFor="code">Verification Code</Label>
+      
+      <CardContent className="px-8 pb-10">
+        <form onSubmit={handleVerifyCode} className="space-y-6">
+          <div className="space-y-3">
+            <Label htmlFor="code" className="text-gray-300 text-sm font-medium ml-1">Verification Code</Label>
             <Input
               id="code"
               type="text"
@@ -127,30 +127,34 @@ const EmailVerificationForm: React.FC<EmailVerificationFormProps> = ({
               maxLength={6}
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-              placeholder="Enter 6-digit code"
-              className="text-center text-lg tracking-widest"
+              placeholder="0 0 0 0 0 0"
+              className="text-center text-3xl font-mono tracking-[0.5em] h-16 bg-gray-700/50 border-gray-600 text-white focus:ring-primary/50 placeholder:text-gray-600 rounded-xl"
               required
+              autoFocus
             />
+            <p className="text-center text-xs text-gray-500">
+              Enter the 6-digit code from your inbox
+            </p>
           </div>
           
           <Button
             type="submit"
             disabled={isVerifying || code.length !== 6}
-            className="w-full bg-fintech-orange hover:bg-fintech-orange/90"
+            className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12 rounded-xl transition-all shadow-lg shadow-primary/20"
           >
             {isVerifying ? 'Verifying...' : 'Verify Email'}
           </Button>
         </form>
 
-        <div className="mt-4 text-center">
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+        <div className="mt-8 text-center border-t border-gray-700 pt-6">
+          <p className="text-sm text-gray-400 mb-3">
             Didn't receive the code?
           </p>
           <Button
-            variant="link"
+            variant="outline"
             onClick={handleResendCode}
             disabled={isResending || countdown > 0}
-            className="text-fintech-orange hover:text-fintech-orange/80"
+            className="w-full bg-transparent border-gray-600 hover:bg-gray-700 text-gray-300 h-11 rounded-xl transition-all"
           >
             {isResending ? (
               <>
@@ -166,11 +170,11 @@ const EmailVerificationForm: React.FC<EmailVerificationFormProps> = ({
         </div>
 
         {onBack && (
-          <div className="mt-2 text-center">
+          <div className="mt-4 text-center">
             <Button
-              variant="ghost"
+              variant="link"
               onClick={onBack}
-              className="text-sm text-gray-500 hover:text-gray-700"
+              className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
             >
               Change email address
             </Button>

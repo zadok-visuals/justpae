@@ -134,8 +134,23 @@ serve(async (req) => {
       );
     }
 
-    // Use the service role client so we can write to email_verifications table
+    // Use the service role client so we can write to email_verifications table and look up users
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    let finalUserId = user_id;
+
+    // If user_id is not provided, try to look it up by email
+    if (!finalUserId) {
+      console.log("user_id not provided, looking up user by email:", email);
+      const { data: userData, error: userError } = await supabase.auth.admin.listUsers();
+      if (!userError && userData && userData.users) {
+        const user = userData.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+        if (user) {
+          finalUserId = user.id;
+          console.log("Found user_id:", finalUserId);
+        }
+      }
+    }
 
     // Invalidate any existing unused OTPs for this email
     await supabase
@@ -151,7 +166,7 @@ serve(async (req) => {
     // Store in DB
     const { error: dbError } = await supabase.from("email_verifications").insert({
       email: email.toLowerCase(),
-      user_id: user_id || null,
+      user_id: finalUserId || null,
       otp,
       expires_at: expiresAt,
     });
