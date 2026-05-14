@@ -40,7 +40,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 max-w-2xl">
+      <DialogContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 max-w-2xl" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="text-gray-900 dark:text-white">User Management</DialogTitle>
         </DialogHeader>

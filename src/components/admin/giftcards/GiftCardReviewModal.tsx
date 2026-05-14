@@ -43,7 +43,7 @@ const GiftCardReviewModal: React.FC<GiftCardReviewModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="text-xl text-gray-900 dark:text-white">
             Review Gift Card Submission
