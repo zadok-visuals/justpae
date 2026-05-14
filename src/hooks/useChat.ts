@@ -65,7 +65,7 @@ export const useChat = () => {
         .from('chat_messages')
         .select(`
           *,
-          sender_profile:profiles!sender_id(full_name)
+          sender_profile:profiles!sender_id(full_name, name)
         `)
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true });
@@ -76,7 +76,7 @@ export const useChat = () => {
         ...msg,
         sender_name: msg.sender_type === 'admin' 
           ? 'Support' 
-          : (msg.sender_profile?.full_name || 'User')
+          : (msg.sender_profile?.full_name || msg.sender_profile?.name || 'User')
       })) || [];
 
       setMessages(messagesWithSenderNames);

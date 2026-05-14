@@ -112,42 +112,47 @@ const Chat: React.FC = () => {
 
   return (
     <Layout showNavbar={false} fullWidth={true}>
-      <div className="h-screen w-full bg-white dark:bg-gray-900 flex flex-col text-gray-900 dark:text-white relative overflow-hidden">
-        {/* Flat Header */}
-        <div className="border-b px-6 py-4">
+      <div className="h-[100dvh] w-full bg-white dark:bg-gray-900 flex flex-col text-gray-900 dark:text-white relative overflow-hidden">
+        {/* Sticky Header */}
+        <div className="shrink-0 border-b px-6 py-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md z-10">
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Support Chat</h1>
-          <p className="text-sm text-gray-500">Chat with our support team</p>
+          <p className="text-xs text-gray-500">Typical response time: <span className="text-fintech-orange font-medium">Under 5 mins</span></p>
         </div>
 
-        {/* Scrollable Area */}
-        <ScrollArea className="flex-1 p-6">
+        {/* Scrollable Area - Using native scroll for better mobile feel */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth">
           {loading ? (
-            <div className="flex items-center justify-center h-full text-sm text-gray-400">Loading...</div>
+            <div className="flex items-center justify-center h-full text-sm text-gray-400">
+              <div className="animate-pulse">Loading conversation...</div>
+            </div>
           ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full opacity-30">
-              <Send className="w-12 h-12 mb-2" />
-              <p>No messages yet</p>
+            <div className="flex flex-col items-center justify-center h-full opacity-20">
+              <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                <Send className="w-10 h-10" />
+              </div>
+              <p className="font-medium">No messages yet</p>
+              <p className="text-xs">Start the conversation below</p>
             </div>
           ) : (
-            <div>
+            <div className="max-w-4xl mx-auto w-full">
               {messages.map(renderMessage)}
-              <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} className="h-4" />
             </div>
           )}
-        </ScrollArea>
+        </div>
 
-        {/* Bottom Input Section - Redesigned */}
-        <div className="p-4 bg-white dark:bg-gray-900 border-t backdrop-blur-lg">
+        {/* Bottom Input Section - Sticky at bottom */}
+        <div className="shrink-0 p-4 pb-8 md:pb-4 bg-white dark:bg-gray-900 border-t">
           <div className="max-w-4xl mx-auto">
-            <div className="flex items-end gap-2">
+            <div className="flex items-center gap-2">
               
               {/* Utilities Group (Left) */}
-              <div className="flex items-center mb-1">
+              <div className="flex items-center">
                 <Button
                   size="icon"
                   variant="ghost"
                   onClick={handleImageUpload}
-                  className="w-10 h-10 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="w-10 h-10 rounded-full text-gray-400 hover:text-fintech-orange hover:bg-fintech-orange/5 transition-colors"
                 >
                   <Image className="w-5 h-5" />
                 </Button>
@@ -158,7 +163,7 @@ const Chat: React.FC = () => {
                   className={`w-10 h-10 rounded-full transition-colors ${
                     showVoiceRecorder 
                       ? "bg-red-50 text-red-500" 
-                      : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      : "text-gray-400 hover:text-fintech-orange hover:bg-fintech-orange/5"
                   }`}
                 >
                   <Mic className="w-5 h-5" />
@@ -166,7 +171,7 @@ const Chat: React.FC = () => {
               </div>
 
               {/* Modern Expanding Input Area */}
-              <div className="flex-1 relative group">
+              <div className="flex-1 relative flex items-center">
                 <textarea
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
@@ -174,25 +179,24 @@ const Chat: React.FC = () => {
                   placeholder="Type your message..."
                   disabled={isSending}
                   rows={1}
-                  className="w-full min-h-[44px] max-h-40 py-3 px-4 rounded-[22px] bg-gray-100 dark:bg-gray-800 border-none focus:outline-none focus:ring-2 focus:ring-fintech-orange/20 transition-all text-sm md:text-base pr-12 text-gray-900 dark:text-white resize-none overflow-y-auto"
-                  style={{ 
-                    height: messageText ? 'auto' : '44px',
-                  }}
+                  className="w-full min-h-[44px] max-h-32 py-3 px-4 pr-12 rounded-[24px] bg-gray-100 dark:bg-gray-800 border-none focus:outline-none focus:ring-2 focus:ring-fintech-orange/20 transition-all text-[15px] text-gray-900 dark:text-white resize-none overflow-y-auto"
                 />
                 
-                {/* Floating Send Button Inside Input */}
-                <Button
-                  size="icon"
-                  onClick={handleSendMessage}
-                  disabled={!messageText.trim() || isSending}
-                  className={`absolute right-1 bottom-1.5 w-8 h-8 rounded-full shadow-md transition-all duration-300 transform ${
-                    messageText.trim() 
-                      ? "bg-fintech-orange scale-100 opacity-100" 
-                      : "bg-gray-300 dark:bg-gray-700 scale-90 opacity-0 pointer-events-none"
-                  }`}
-                >
-                  <Send className="w-4 h-4 text-white" />
-                </Button>
+                {/* Floating Send Button - Perfectly Centered */}
+                <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
+                  <Button
+                    size="icon"
+                    onClick={handleSendMessage}
+                    disabled={!messageText.trim() || isSending}
+                    className={`w-8 h-8 rounded-full shadow-sm transition-all duration-300 transform ${
+                      messageText.trim() 
+                        ? "bg-fintech-orange scale-100 opacity-100" 
+                        : "bg-gray-300 dark:bg-gray-700 scale-75 opacity-0 pointer-events-none"
+                    }`}
+                  >
+                    <Send className="w-4 h-4 text-white" />
+                  </Button>
+                </div>
               </div>
             </div>
 
