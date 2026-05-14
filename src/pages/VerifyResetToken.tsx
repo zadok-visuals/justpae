@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import Layout from '@/components/Layout';
 import { ArrowLeft, Key } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
@@ -120,7 +119,6 @@ const VerifyResetToken = () => {
 
   if (!email) {
     return (
-      <Layout showNavbar={false}>
         <div className="min-h-screen bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
           <div className="sm:mx-auto sm:w-full sm:max-w-md">
             <div className="bg-gray-800 py-8 px-4 shadow-xl sm:rounded-lg sm:px-10 border border-gray-700">
@@ -136,12 +134,10 @@ const VerifyResetToken = () => {
             </div>
           </div>
         </div>
-      </Layout>
     );
   }
 
   return (
-    <Layout showNavbar={false}>
       <div className="min-h-screen bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <div className="flex justify-center">
@@ -216,7 +212,6 @@ const VerifyResetToken = () => {
           </div>
         </div>
       </div>
-    </Layout>
   );
 };
 

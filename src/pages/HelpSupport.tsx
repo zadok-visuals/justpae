@@ -2,7 +2,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import Layout from '@/components/Layout';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, MessageCircle, Instagram } from 'lucide-react';
 
@@ -16,7 +15,6 @@ const HelpSupport = () => {
   };
 
   return (
-    <Layout>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="p-4 pb-24 space-y-6">
           {/* Header */}
@@ -115,7 +113,6 @@ const HelpSupport = () => {
           </div>
         </div>
       </div>
-    </Layout>
   );
 };
 

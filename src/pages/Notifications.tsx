@@ -1,5 +1,4 @@
 import React from 'react';
-import Layout from '@/components/Layout';
 import NotificationHeader from '@/components/notifications/NotificationHeader';
 import NotificationList from '@/components/notifications/NotificationList';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -41,7 +40,7 @@ const Notifications = () => {
   };
 
   return (
-    <Layout showNavbar={false} fullWidth={true}>
+
       <div className="flex flex-col h-[100dvh] w-full bg-white dark:bg-neutral-950 text-gray-900 dark:text-white overflow-hidden relative">
         
         {/* Sticky Header Layer */}
@@ -66,7 +65,6 @@ const Notifications = () => {
           </div>
         </div>
       </div>
-    </Layout>
   );
 };
 

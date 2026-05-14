@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import Layout from '@/components/Layout';
 import { ShieldCheck, Phone, FileText, Upload, CheckCircle2 } from 'lucide-react';
 
 const KYCVerification = () => {
@@ -75,7 +74,7 @@ const KYCVerification = () => {
 
   if (isSubmitted) {
     return (
-      <Layout>
+
         <div className="max-w-md mx-auto pt-12 pb-24 px-4">
           <Card className="text-center p-8 border-green-100 bg-green-50/30">
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -90,12 +89,11 @@ const KYCVerification = () => {
             </Button>
           </Card>
         </div>
-      </Layout>
+
     );
   }
 
   return (
-    <Layout>
       <div className="max-w-2xl mx-auto pt-8 pb-24 px-4">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-fintech-blue/10 rounded-full mb-4">
@@ -199,7 +197,6 @@ const KYCVerification = () => {
           </p>
         </form>
       </div>
-    </Layout>
   );
 };
 

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import Layout from '@/components/Layout';
+
 import { Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
@@ -63,7 +63,7 @@ const Login = () => {
   };
 
   return (
-    <Layout showNavbar={false} fullWidth={true}>
+
       <div className="min-h-screen w-full bg-[#0a0c10] flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 text-white relative overflow-hidden">
         {/* Decorative Background Glows */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -208,7 +208,6 @@ const Login = () => {
           </div>
         </div>
       </div>
-    </Layout>
   );
 };
 

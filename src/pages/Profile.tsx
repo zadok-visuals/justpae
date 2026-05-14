@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import Layout from '@/components/Layout';
 import { Link, useNavigate } from 'react-router-dom';
 import { Camera, ArrowLeft, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -103,18 +102,18 @@ const Profile = () => {
 
   if (!user || !profile) {
     return (
-      <Layout>
+
         <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
           <div className="text-center">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Loading...</h2>
           </div>
         </div>
-      </Layout>
+
     );
   }
 
   return (
-    <Layout fullWidth={true}>
+
       <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-900 flex flex-col relative overflow-hidden">
         <div className="flex-1 w-full max-w-2xl mx-auto p-4 pb-32 space-y-6">
           <div className="space-y-6">
@@ -275,7 +274,6 @@ const Profile = () => {
           </div>
         </div>
       </div>
-    </Layout>
   );
 };
 

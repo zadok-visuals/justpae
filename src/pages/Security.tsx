@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { usePinAuth } from '@/hooks/usePinAuth';
-import Layout from '@/components/Layout';
 import PinSetup from '@/components/PinSetup';
 import PinVerification from '@/components/PinVerification';
 import { Link } from 'react-router-dom';
@@ -94,7 +93,7 @@ const Security = () => {
   };
 
   return (
-    <Layout>
+    <>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="p-4 pb-24 space-y-6">
           {/* Header */}
@@ -205,7 +204,7 @@ const Security = () => {
           description="Enter your current PIN to change it"
         />
       )}
-    </Layout>
+    </>
   );
 };
 

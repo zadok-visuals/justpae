@@ -52,35 +52,31 @@ const DeepLinkHandler = () => {
     const initDeepLinks = async () => {
       await CapacitorApp.addListener("appUrlOpen", async (event: URLOpenListenerEvent) => {
         const urlString = event.url;
+        
+        // Handle variations in how iOS formats deep links
         const hashSplit = urlString.split("#");
+        const cleanUrl = hashSplit[0]; // This is 'amazingpay://oauth2redirect'
         
         if (hashSplit.length > 1) {
-          // Parse hash string parameters cleanly
           const hashParams = new URLSearchParams(hashSplit[1]);
           const accessToken = hashParams.get("access_token");
           const refreshToken = hashParams.get("refresh_token");
-          const errorDescription = hashParams.get("error_description");
-
-          // Handle any potential errors during the signup redirect loop
-          if (errorDescription) {
-            console.error("Authentication redirect error:", errorDescription);
-            navigate("/login");
-            return;
-          }
 
           if (accessToken && refreshToken) {
-            // Log the user in natively using the tokens from the email or Google link
+            // Direct injection to ensure Supabase bypasses network delays
             const { error } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
             });
 
             if (!error) {
-              // Direct them straight to the welcome page or onboarding layout
-              navigate("/welcome"); 
+              // Crucial step: give the context provider half a second to save state, then push
+              setTimeout(() => {
+                navigate("/dashboard", { replace: true });
+              }, 500);
             } else {
-              console.error("Supabase verification sync failed:", error.message);
-              navigate("/login");
+              console.error("Session sync issue:", error.message);
+              navigate("/login", { replace: true });
             }
           }
         }
@@ -96,6 +92,7 @@ const DeepLinkHandler = () => {
 
   return null;
 };
+
 
 
 const App = () => (

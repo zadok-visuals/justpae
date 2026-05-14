@@ -4,7 +4,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useTheme } from '@/contexts/ThemeContext';
-import Layout from '@/components/Layout';
 import FeedbackForm from '@/components/FeedbackForm';
 import { Link } from 'react-router-dom';
 import {
@@ -59,7 +58,6 @@ const Settings = () => {
   };
 
   return (
-    <Layout>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="p-4 pb-24 space-y-6">
           {/* Header */}
@@ -289,7 +287,6 @@ const Settings = () => {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    </Layout>
   );
 };
 

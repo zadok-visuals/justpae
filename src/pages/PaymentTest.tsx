@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import Layout from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -98,7 +97,6 @@ const PaymentTest: React.FC = () => {
   };
 
   return (
-    <Layout>
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
           <Card className="mb-6">
@@ -221,7 +219,7 @@ const PaymentTest: React.FC = () => {
           </Card>
         </div>
       </div>
-    </Layout>
+
   );
 };
 

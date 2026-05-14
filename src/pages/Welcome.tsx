@@ -2,11 +2,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Bitcoin, DollarSign, Zap, ShieldCheck, Globe } from 'lucide-react';
-import Layout from '@/components/Layout';
+
 
 const Welcome = () => {
   return (
-    <Layout showNavbar={false} fullWidth={true}>
+    <>
       {/* Container limits height to 100vh on desktop to prevent unnecessary scrolling */}
       <div className="min-h-screen lg:h-screen w-full bg-[#0a0c10] flex flex-col text-white relative overflow-hidden font-sans">
         
@@ -109,7 +109,7 @@ const Welcome = () => {
           </div>
         </div>
       </div>
-    </Layout>
+    </>
   );
 };
 

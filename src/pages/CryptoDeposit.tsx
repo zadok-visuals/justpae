@@ -121,7 +121,7 @@ const CryptoDeposit = () => {
   const selectedCryptoInfo = supportedCryptos.find(c => c.id === selectedCrypto);
 
   return (
-    <Layout>
+
       <div className="p-4 pb-24 space-y-6 bg-gray-50 min-h-screen">
         {/* Header */}
         <div className="flex items-center space-x-4 mb-6">
@@ -256,7 +256,7 @@ const CryptoDeposit = () => {
           </Card>
         )}
       </div>
-    </Layout>
+
   );
 };
 

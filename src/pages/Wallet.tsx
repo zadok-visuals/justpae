@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useWallet } from '@/contexts/WalletContext';
-import Layout from '@/components/Layout';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import WalletHeader from '@/components/wallet/WalletHeader';
@@ -105,7 +104,6 @@ const Wallet = () => {
   };
 
   return (
-    <Layout fullWidth={true}>
       <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-900 flex flex-col relative overflow-hidden">
         <div className="flex-1 w-full max-w-4xl mx-auto p-4 pb-24 space-y-6">
           <WalletHeader />
@@ -158,7 +156,7 @@ const Wallet = () => {
           </Tabs>
         </div>
       </div>
-    </Layout>
+
   );
 };
 

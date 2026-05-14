@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useWallet } from '@/contexts/WalletContext';
 import { useToast } from '@/hooks/use-toast';
-import Layout from '@/components/Layout';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cryptoService, CryptoPrice } from '@/services/cryptoService';
@@ -161,7 +160,6 @@ const SellCrypto = () => {
   };
 
   return (
-    <Layout>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="p-4 pb-24 space-y-6">
           {/* Header */}
@@ -194,7 +192,6 @@ const SellCrypto = () => {
           <SaleInstructions />
         </div>
       </div>
-    </Layout>
   );
 };
 

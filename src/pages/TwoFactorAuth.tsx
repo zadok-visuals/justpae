@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import Layout from '@/components/Layout';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Shield, Smartphone, Key, Copy } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -130,7 +129,6 @@ const TwoFactorAuth = () => {
   };
 
   return (
-    <Layout>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="p-4 pb-24 space-y-6">
           {/* Header */}
@@ -275,7 +273,6 @@ const TwoFactorAuth = () => {
           </Card>
         </div>
       </div>
-    </Layout>
   );
 };
 

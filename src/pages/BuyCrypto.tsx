@@ -162,7 +162,7 @@ const BuyCrypto = () => {
   };
 
   return (
-    <Layout fullWidth={true}>
+
       <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-900 flex flex-col relative overflow-hidden">
         <div className="flex-1 w-full max-w-2xl mx-auto p-4 pb-24 space-y-6">
           {/* Header */}
@@ -329,7 +329,7 @@ const BuyCrypto = () => {
           </Card>
         </div>
       </div>
-    </Layout>
+
   );
 };
 

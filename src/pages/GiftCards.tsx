@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import Layout from '@/components/Layout';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -63,7 +62,7 @@ const GiftCards = () => {
   };
 
   return (
-    <Layout fullWidth={true}>
+
       <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-900 flex flex-col relative overflow-hidden">
         <div className="pb-24 space-y-6">
           {/* Header */}
@@ -94,7 +93,7 @@ const GiftCards = () => {
           />
         </div>
       </div>
-    </Layout>
+
   );
 };
 

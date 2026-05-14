@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import Layout from '@/components/Layout';
 import { ArrowLeft, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -50,7 +49,6 @@ const ForgotPassword = () => {
   };
 
   return (
-    <Layout showNavbar={false}>
       <div className="min-h-screen bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <div className="flex justify-center">
@@ -113,7 +111,6 @@ const ForgotPassword = () => {
           </div>
         </div>
       </div>
-    </Layout>
   );
 };
 

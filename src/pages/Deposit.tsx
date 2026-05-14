@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useWallet } from '@/contexts/WalletContext';
-import Layout from '@/components/Layout';
 import CardPaymentForm from '@/components/CardPaymentForm';
 import StableBankAccountDetails from '@/components/StableBankAccountDetails';
 import { ArrowLeft, CreditCard, Building, Smartphone } from 'lucide-react';
@@ -104,7 +103,7 @@ const Deposit = () => {
 
   if (showPaymentForm && paymentMethod === 'debit_card') {
     return (
-      <Layout>
+
         <div className="p-4 pb-24 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
           <div className="flex items-center space-x-4 mb-6">
             <Button 
@@ -127,13 +126,13 @@ const Deposit = () => {
             loading={loading}
           />
         </div>
-      </Layout>
+
     );
   }
 
   if (showPaymentForm && (paymentMethod === 'bank_transfer' || paymentMethod === 'ussd')) {
     return (
-      <Layout>
+
         <div className="p-4 pb-24 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
           <div className="flex items-center space-x-4 mb-6">
             <Button 
@@ -163,12 +162,12 @@ const Deposit = () => {
             {loading ? 'Processing...' : 'I have completed the transfer'}
           </Button>
         </div>
-      </Layout>
+
     );
   }
 
   return (
-    <Layout>
+
       <div className="p-4 pb-24 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         {/* Header */}
         <div className="flex items-center space-x-4 mb-6">
@@ -299,7 +298,7 @@ const Deposit = () => {
           </CardContent>
         </Card>
       </div>
-    </Layout>
+
   );
 };
 

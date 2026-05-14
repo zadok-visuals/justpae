@@ -8,7 +8,7 @@ import { ArrowLeft, ShieldCheck, Database, Server, UserCheck } from 'lucide-reac
 
 const DataProtection = () => {
   return (
-    <Layout>
+
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="p-4 pb-24 space-y-6">
           {/* Header */}
@@ -110,7 +110,7 @@ const DataProtection = () => {
           </Card>
         </div>
       </div>
-    </Layout>
+
   );
 };
 

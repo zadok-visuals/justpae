@@ -5,7 +5,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useWallet } from '@/contexts/WalletContext';
-import Layout from '@/components/Layout';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { paystackService } from '@/services/paystackService';
 
@@ -86,7 +85,6 @@ const PaymentCallback = () => {
   };
 
   return (
-    <Layout>
       <div className="p-4 pb-24 space-y-6 bg-gray-50 min-h-screen">
         <div className="max-w-md mx-auto mt-20">
           <Card className="rounded-2xl shadow-lg">
@@ -130,7 +128,6 @@ const PaymentCallback = () => {
           </Card>
         </div>
       </div>
-    </Layout>
   );
 };
 

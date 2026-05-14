@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useWallet } from '@/contexts/WalletContext';
-import Layout from '@/components/Layout';
 import BankAccountManager from '@/components/BankAccountManager';
 import { ArrowLeft } from 'lucide-react';
 import { cryptoService } from '@/services/cryptoService';
@@ -131,7 +130,6 @@ const Withdraw = () => {
   };
 
   return (
-    <Layout>
       <div className="p-4 pb-24 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         {/* Header */}
         <div className="flex items-center space-x-4 mb-6">
@@ -267,7 +265,6 @@ const Withdraw = () => {
           </CardContent>
         </Card>
       </div>
-    </Layout>
   );
 };
 
