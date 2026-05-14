@@ -2,13 +2,10 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.vercel.amazingpayment',
+  appId: 'app.amazingpay.amazingpay',
   appName: 'AmazingPay',
   webDir: 'dist',
-  server: {
-    url: 'https://amazingpayment.vercel.app?forceHideBadge=true',
-    cleartext: true
-  },
+
   ios: {
     minVersion: '13.0'
   },
