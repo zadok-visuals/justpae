@@ -115,8 +115,18 @@ export const authService = {
 
         if (funcError) {
           console.error('Error invoking send-verification-email:', funcError);
-          // We don't return an error here because the user is still created, 
-          // they just might need to click "Resend" if the first one failed.
+          // Try to log more details if it's an HTTP error
+          if (funcError instanceof Error && 'context' in funcError) {
+             const context = (funcError as any).context;
+             if (context instanceof Response) {
+               try {
+                 const errorBody = await context.json();
+                 console.error('Function error body:', errorBody);
+               } catch (e) {
+                 console.error('Could not parse function error body');
+               }
+             }
+          }
         }
 
         return {

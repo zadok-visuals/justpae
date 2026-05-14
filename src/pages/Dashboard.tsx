@@ -28,8 +28,9 @@ const Dashboard = () => {
   const displayName = (profile?.full_name || '').split(' ')[0] || 'User';
 
   return (
-    <Layout>
-      <div className="py-6 space-y-6">
+    <Layout fullWidth={true}>
+      <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-900 flex flex-col relative overflow-hidden">
+        <div className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 space-y-6 pb-24">
         <DashboardHeader
           userName={displayName}
           unreadNotifications={unreadNotifications}
