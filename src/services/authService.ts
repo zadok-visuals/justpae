@@ -70,12 +70,16 @@ export const authService = {
             phone: phone || '',
             country: country || ''
           },
-          emailRedirectTo: undefined // Force email confirmation workflow
+          emailRedirectTo: `${window.location.origin}/login`
         }
       });
 
       if (error) {
-        console.error('Signup error:', error);
+        console.error('Signup error details:', {
+          message: error.message,
+          status: error.status,
+          name: error.name
+        });
         
         // If user already exists, they might be unconfirmed. 
         // We should try to resend the verification code instead of just failing.
@@ -94,8 +98,10 @@ export const authService = {
         return { error: error.message };
       }
 
+      console.log('Signup response data:', data);
+
       if (data.user && !data.session) {
-        console.log('User created, email confirmation required');
+        console.log('User created, email confirmation required. User ID:', data.user.id);
         return {
           user: data.user,
           needsVerification: true,
@@ -139,11 +145,17 @@ export const authService = {
 
       const { error } = await supabase.auth.resend({
         type: 'signup',
-        email
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/login`
+        }
       });
 
       if (error) {
-        console.error('Resend OTP error:', error);
+        console.error('Resend OTP error details:', {
+          message: error.message,
+          status: error.status
+        });
         return { error: error.message };
       }
 
