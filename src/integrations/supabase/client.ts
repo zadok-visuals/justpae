@@ -2,16 +2,13 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const VITE_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://enqakeujjvnibtcoeewn.supabase.co";
+const VITE_SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVucWFrZXVqanZuaWJ0Y29lZXduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2ODgwODQsImV4cCI6MjA4NTI2NDA4NH0.NrgxcyaAmBSbWl0KQkFUo90tgVjyniLUxz3rCs8U9jo";
 
-console.log('Initializing Supabase with URL:', SUPABASE_URL ? 'PRESENT' : 'MISSING');
+console.log('Initializing Supabase with URL:', VITE_SUPABASE_URL ? 'PRESENT' : 'MISSING');
 
-if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-  console.error('Supabase URL or Anon Key is missing! Check your .env file.');
+if (!import.meta.env.VITE_SUPABASE_URL) {
+  console.warn('VITE_SUPABASE_URL is missing from environment, using fallback.');
 }
 
-export const supabase = createClient<Database>(
-  SUPABASE_URL || '', 
-  SUPABASE_PUBLISHABLE_KEY || ''
-);
+export const supabase = createClient<Database>(VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY);
