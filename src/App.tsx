@@ -1,11 +1,13 @@
-
+import { useEffect } from "react";
+import { App as CapacitorApp, URLOpenListenerEvent } from "@capacitor/app";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { WalletProvider } from "@/contexts/WalletContext";
+import { supabase } from "@/integrations/supabase/client"; // Replace with your exact custom client path if different
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminRouteGuard from "@/components/admin/AdminRouteGuard";
 import Layout from "@/components/Layout";
@@ -42,6 +44,60 @@ import DataProtection from "./pages/DataProtection";
 
 const queryClient = new QueryClient();
 
+// NEW ISOLATED CORE DEEP LINK LISTENER
+const DeepLinkHandler = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const initDeepLinks = async () => {
+      await CapacitorApp.addListener("appUrlOpen", async (event: URLOpenListenerEvent) => {
+        const urlString = event.url;
+        const hashSplit = urlString.split("#");
+        
+        if (hashSplit.length > 1) {
+          // Parse hash string parameters cleanly
+          const hashParams = new URLSearchParams(hashSplit[1]);
+          const accessToken = hashParams.get("access_token");
+          const refreshToken = hashParams.get("refresh_token");
+          const errorDescription = hashParams.get("error_description");
+
+          // Handle any potential errors during the signup redirect loop
+          if (errorDescription) {
+            console.error("Authentication redirect error:", errorDescription);
+            navigate("/login");
+            return;
+          }
+
+          if (accessToken && refreshToken) {
+            // Log the user in natively using the tokens from the email or Google link
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+
+            if (!error) {
+              // Direct them straight to the welcome page or onboarding layout
+              navigate("/welcome"); 
+            } else {
+              console.error("Supabase verification sync failed:", error.message);
+              navigate("/login");
+            }
+          }
+        }
+      });
+    };
+
+    initDeepLinks();
+
+    return () => {
+      CapacitorApp.removeAllListeners();
+    };
+  }, [navigate]);
+
+  return null;
+};
+
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -50,6 +106,8 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            {/* INJECTED INSIDE BROWSERROUTER PARENT CONTEXT CONTAINER */}
+            <DeepLinkHandler />
             <Routes>
               <Route path="/" element={
                 <ProtectedRoute>

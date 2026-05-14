@@ -17,7 +17,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.3.1</string>
+	<string>1.3.2</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>LSRequiresIPhoneOS</key>
@@ -45,5 +45,18 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+
+	<!-- ADDED FOR GOOGLE AUTH DEEP LINKING -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>app.amazingpay.amazingpay</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>amazingpay</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

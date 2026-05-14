@@ -52,7 +52,9 @@ export const authService = {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          // redirectTo: `${window.location.origin}/dashboard`,
+          // Redirects back into your native app bundle
+          redirectTo: 'amazingpay://oauth2redirect', 
         }
       });
 
@@ -85,7 +87,9 @@ export const authService = {
             phone: phone || '',
             country: country || ''
           },
-          emailRedirectTo: `${window.location.origin}/login`
+          // emailRedirectTo: `${window.location.origin}/login`
+          // Tells Supabase to point the email confirmation button to your app
+          emailRedirectTo: 'amazingpay://oauth2redirect',
         }
       });
 

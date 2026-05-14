@@ -1,10 +1,16 @@
-
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'app.amazingpay.amazingpay',
   appName: 'AmazingPay',
   webDir: 'dist',
+
+  // ADD THIS BLOCK START
+  server: {
+    iosScheme: 'amazingpay',
+    androidScheme: 'amazingpay'
+  },
+  // ADD THIS BLOCK END
 
   ios: {
     minVersion: '13.0'
