@@ -116,15 +116,26 @@ const KYCVerification = () => {
                   <SelectValue placeholder="Select nationality" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="us">United States</SelectItem>
-                  <SelectItem value="uk">United Kingdom</SelectItem>
-                  <SelectItem value="ca">Canada</SelectItem>
-                  <SelectItem value="au">Australia</SelectItem>
-                  <SelectItem value="de">Germany</SelectItem>
-                  <SelectItem value="fr">France</SelectItem>
+                  <SelectItem value="bj">Benin</SelectItem>
+                  <SelectItem value="bf">Burkina Faso</SelectItem>
+                  <SelectItem value="cv">Cape Verde</SelectItem>
+                  <SelectItem value="gm">Gambia</SelectItem>
+                  <SelectItem value="gh">Ghana</SelectItem>
+                  <SelectItem value="gn">Guinea</SelectItem>
+                  <SelectItem value="gw">Guinea-Bissau</SelectItem>
+                  <SelectItem value="ci">Ivory Coast</SelectItem>
+                  <SelectItem value="lr">Liberia</SelectItem>
+                  <SelectItem value="ml">Mali</SelectItem>
+                  <SelectItem value="mr">Mauritania</SelectItem>
+                  <SelectItem value="ne">Niger</SelectItem>
+                  <SelectItem value="ng">Nigeria</SelectItem>
+                  <SelectItem value="sn">Senegal</SelectItem>
+                  <SelectItem value="sl">Sierra Leone</SelectItem>
+                  <SelectItem value="tg">Togo</SelectItem>
                   <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
+
             </div>
           </div>
         );
@@ -286,7 +297,7 @@ const KYCVerification = () => {
 
   return (
     <Layout>
-      <div className="p-6 pb-24 space-y-6">
+      <div className="pt-6 pb-24 space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold">KYC Verification</h1>
           <p className="text-gray-600">Complete verification to unlock all features</p>
