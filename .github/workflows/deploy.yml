@@ -14,7 +14,8 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm install --legacy-peer-deps # FIXED: Resolved out-of-sync lockfile check
+      # FIXED: Added optional compilation flags to prevent Rollup architecture dropouts
+      - run: npm install --legacy-peer-deps --include=optional
       - run: npm run build
       - uses: actions/upload-artifact@v4
         with:
@@ -36,7 +37,8 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - run: npm install --legacy-peer-deps # FIXED: Match web install behavior
+      # FIXED: Added optional compilation flags to prevent Rollup architecture dropouts
+      - run: npm install --legacy-peer-deps --include=optional
       - run: npx cap sync android
       - name: Build APK
         working-directory: android
@@ -62,7 +64,8 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - run: npm install --legacy-peer-deps # FIXED: Match web install behavior
+      # FIXED: Added optional compilation flags to prevent Rollup architecture dropouts
+      - run: npm install --legacy-peer-deps --include=optional
 
       - uses: actions/download-artifact@v4
         with:
