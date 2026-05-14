@@ -1,9 +1,6 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Image, Mic, CheckCheck } from 'lucide-react';
+import { Send, Image, Mic, CheckCheck, ChevronLeft } from 'lucide-react';
 import { VoiceRecorder } from '@/components/chat/VoiceRecorder';
 import { AudioPlayer } from '@/components/chat/AudioPlayer';
 import { useChat, ChatMessage } from '@/hooks/useChat';
@@ -30,9 +27,21 @@ const Chat: React.FC = () => {
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Structural auto-scroll positioning calculation
+  const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
+    if (scrollContainerRef.current) {
+      const { scrollHeight } = scrollContainerRef.current;
+      scrollContainerRef.current.scrollTo({
+        top: scrollHeight,
+        behavior,
+      });
+    }
+  };
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    scrollToBottom('smooth');
   }, [messages]);
 
   useEffect(() => {
@@ -42,6 +51,7 @@ const Chat: React.FC = () => {
         if (conversation) {
           await fetchMessages(conversation.id);
           await markMessagesAsRead(conversation.id);
+          setTimeout(() => scrollToBottom('auto'), 150);
         }
       };
       initChat();
@@ -66,6 +76,15 @@ const Chat: React.FC = () => {
     }
   };
 
+  const handleBackNavigation = () => {
+    // Falls back gracefully if no history engine framework context is loaded
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.href = '/';
+    }
+  };
+
   const handleImageUpload = () => fileInputRef.current?.click();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -84,36 +103,44 @@ const Chat: React.FC = () => {
     const messageTime = formatDistanceToNow(new Date(message.created_at), { addSuffix: true });
 
     return (
-      <div key={message.id} className={`flex flex-col gap-1 mb-6 ${isCurrentUser ? 'items-end' : 'items-start'}`}>
-
-        
-        <div className={`max-w-[75%] p-3 rounded-2xl shadow-sm ${
-          isCurrentUser
-            ? 'bg-fintech-orange text-white rounded-tr-none'
-            : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-tl-none'
+      <div key={message.id} className={`flex flex-col gap-1 mb-4 ${isCurrentUser ? 'items-end' : 'items-start'}`}>
+        <div className={`max-w-[85%] sm:max-w-[75%] shadow-sm transition-all ${
+          message.message_type === 'voice' 
+            ? 'bg-transparent shadow-none' 
+            : isCurrentUser
+              ? 'bg-fintech-orange text-white rounded-2xl rounded-tr-none p-3'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-2xl rounded-tl-none p-3'
         }`}>
-          {message.message_type === 'text' && <p className="text-[15px] leading-relaxed">{message.content}</p>}
-          {message.message_type === 'image' && message.file_url && (
-            <img src={message.file_url} alt="Shared" className="max-w-full rounded-lg cursor-pointer" onClick={() => window.open(message.file_url || '', '_blank')} />
+          {message.message_type === 'text' && (
+            <p className="text-[15px] leading-relaxed break-words whitespace-pre-wrap">{message.content}</p>
           )}
-          {message.message_type === 'voice' && message.file_url && (
-            <div className="mt-1 -mx-2 -mb-2">
-              <AudioPlayer 
+          
+          {message.message_type === 'image' && message.file_url && (
+            <div className="relative rounded-lg overflow-hidden max-w-xs border border-black/5">
+              <img 
                 src={message.file_url} 
-                theme={isCurrentUser ? 'dark' : 'light'} 
-                timestamp={messageTime}
-                isRead={message.is_read}
-                isCurrentUser={isCurrentUser}
-                avatarUrl={isCurrentUser ? "https://ui-avatars.com/api/?name=You&background=FF8A00&color=fff" : "https://ui-avatars.com/api/?name=Support&background=111827&color=fff"}
+                alt="Shared attachment" 
+                className="max-w-full h-auto object-cover hover:opacity-95 transition-opacity cursor-pointer" 
+                onClick={() => window.open(message.file_url || '', '_blank')} 
               />
             </div>
           )}
+
+          {message.message_type === 'voice' && message.file_url && (
+            <AudioPlayer 
+              src={message.file_url} 
+              timestamp={messageTime}
+              isRead={message.is_read}
+              isCurrentUser={isCurrentUser}
+            />
+          )}
         </div>
+
         {message.message_type !== 'voice' && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground px-1 mt-1">
+          <div className="flex items-center gap-1.5 text-[11px] text-gray-400 dark:text-gray-500 px-1 mt-0.5 select-none">
             <span>{messageTime}</span>
             {isCurrentUser && (
-              <CheckCheck className={`w-3 h-3 ${message.is_read ? 'text-primary' : 'text-muted-foreground'}`} />
+              <CheckCheck className={`w-3.5 h-3.5 ${message.is_read ? 'text-blue-500' : 'text-gray-400'}`} />
             )}
           </div>
         )}
@@ -123,47 +150,67 @@ const Chat: React.FC = () => {
 
   return (
     <Layout showNavbar={false} fullWidth={true}>
-      <div className="h-[100dvh] w-full bg-white dark:bg-gray-900 flex flex-col text-gray-900 dark:text-white relative overflow-hidden">
-        {/* Sticky Header */}
-        <div className="shrink-0 border-b px-6 py-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md z-10">
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Support Chat</h1>
-          <p className="text-xs text-gray-500">Typical response time: <span className="text-fintech-orange font-medium">Under 5 mins</span></p>
+      {/* Changed fixed bounds to a clean flex-column page wrapper layout */}
+      <div className="flex flex-col h-[100dvh] w-full bg-white dark:bg-neutral-950 text-gray-900 dark:text-white overflow-hidden relative">
+        
+        {/* Sticky Header Node */}
+        <div className="shrink-0 border-b border-gray-100 dark:border-neutral-900 px-4 py-3 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-md z-20 flex items-center gap-2">
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            onClick={handleBackNavigation}
+            className="rounded-full w-9 h-9 text-gray-500 hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors"
+          >
+            <ChevronLeft className="w-6 h-6 stroke-[2.5]" />
+          </Button>
+          <div className="flex-1 min-w-0 ml-1">
+            <h1 className="text-base font-bold text-gray-900 dark:text-white truncate">Support Chat</h1>
+            <p className="text-xs text-gray-400 dark:text-neutral-500">
+              Typical response time: <span className="text-fintech-orange font-semibold">Under 5 mins</span>
+            </p>
+          </div>
         </div>
 
-        {/* Scrollable Area - Using native scroll for better mobile feel */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth">
+        {/* Scroll Container Area */}
+        <div 
+          ref={scrollContainerRef}
+          className="flex-1 overflow-y-auto bg-gray-50/20 dark:bg-neutral-900/5 px-4 py-4 scroll-smooth"
+        >
           {loading ? (
-            <div className="flex items-center justify-center h-full text-sm text-gray-400">
-              <div className="animate-pulse">Loading conversation...</div>
+            <div className="flex items-center justify-center h-full text-sm text-gray-400 dark:text-neutral-500">
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-5 h-5 border-2 border-fintech-orange border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs tracking-wide">Loading conversation...</span>
+              </div>
             </div>
           ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full opacity-20">
-              <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-                <Send className="w-10 h-10" />
+            <div className="flex flex-col items-center justify-center h-full max-w-xs mx-auto text-center opacity-40 select-none">
+              <div className="w-14 h-14 bg-gray-100 dark:bg-neutral-900 rounded-full flex items-center justify-center mb-3">
+                <Send className="w-6 h-6 text-gray-400" />
               </div>
-              <p className="font-medium">No messages yet</p>
-              <p className="text-xs">Start the conversation below</p>
+              <p className="text-sm font-semibold">No messages yet</p>
+              <p className="text-xs text-gray-400 mt-0.5">Start the conversation below</p>
             </div>
           ) : (
-            <div className="max-w-4xl mx-auto w-full">
+            <div className="max-w-3xl mx-auto w-full flex flex-col">
               {messages.map(renderMessage)}
-              <div ref={messagesEndRef} className="h-4" />
+              <div ref={messagesEndRef} className="h-2 shrink-0" />
             </div>
           )}
         </div>
 
-        {/* Bottom Input Section - Sticky at bottom */}
-        <div className="shrink-0 p-4 pb-8 md:pb-4 bg-white dark:bg-gray-900 border-t">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center gap-2">
+        {/* Bottom Input Console Panel */}
+        <div className="shrink-0 p-3 pb-safe border-t border-gray-100 dark:border-neutral-900 bg-white dark:bg-neutral-950 z-20">
+          <div className="max-w-3xl mx-auto w-full flex flex-col gap-2">
+            <div className="flex items-end gap-2">
               
-              {/* Utilities Group (Left) */}
-              <div className="flex items-center">
+              {/* Media Utilities */}
+              <div className="flex items-center h-11">
                 <Button
                   size="icon"
                   variant="ghost"
                   onClick={handleImageUpload}
-                  className="w-10 h-10 rounded-full text-gray-400 hover:text-fintech-orange hover:bg-fintech-orange/5 transition-colors"
+                  className="w-10 h-10 rounded-full text-gray-400 hover:text-fintech-orange hover:bg-gray-50 dark:hover:bg-neutral-900 transition-colors"
                 >
                   <Image className="w-5 h-5" />
                 </Button>
@@ -173,16 +220,16 @@ const Chat: React.FC = () => {
                   onClick={() => setShowVoiceRecorder(!showVoiceRecorder)}
                   className={`w-10 h-10 rounded-full transition-colors ${
                     showVoiceRecorder 
-                      ? "bg-red-50 text-red-500" 
-                      : "text-gray-400 hover:text-fintech-orange hover:bg-fintech-orange/5"
+                      ? "bg-red-50 text-red-500 dark:bg-red-950/30 dark:text-red-400" 
+                      : "text-gray-400 hover:text-fintech-orange hover:bg-gray-50 dark:hover:bg-neutral-900"
                   }`}
                 >
                   <Mic className="w-5 h-5" />
                 </Button>
               </div>
 
-              {/* Modern Expanding Input Area */}
-              <div className="flex-1 relative flex items-center">
+              {/* Text Area Box */}
+              <div className="flex-1 relative flex items-center min-w-0">
                 <textarea
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
@@ -190,37 +237,37 @@ const Chat: React.FC = () => {
                   placeholder="Type your message..."
                   disabled={isSending}
                   rows={1}
-                  className="w-full min-h-[44px] max-h-32 py-3 px-4 pr-12 rounded-[24px] bg-gray-100 dark:bg-gray-800 border-none focus:outline-none focus:ring-2 focus:ring-fintech-orange/20 transition-all text-[15px] text-gray-900 dark:text-white resize-none overflow-y-auto"
+                  className="w-full min-h-[44px] max-h-28 py-3 pl-4 pr-12 rounded-2xl bg-gray-100 dark:bg-neutral-900 border-none focus:outline-none focus:ring-2 focus:ring-fintech-orange/10 transition-all text-[15px] text-gray-900 dark:text-white resize-none overflow-y-auto"
                 />
                 
-                {/* Floating Send Button - Perfectly Centered */}
-                <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
+                {/* Floating Send Trigger */}
+                <div className="absolute right-1.5 bottom-1.5">
                   <Button
                     size="icon"
                     onClick={handleSendMessage}
                     disabled={!messageText.trim() || isSending}
-                    className={`w-8 h-8 rounded-full shadow-sm transition-all duration-300 transform ${
+                    className={`w-8 h-8 rounded-full shadow-sm transition-all duration-200 flex items-center justify-center ${
                       messageText.trim() 
-                        ? "bg-fintech-orange scale-100 opacity-100" 
-                        : "bg-gray-300 dark:bg-gray-700 scale-75 opacity-0 pointer-events-none"
+                        ? "bg-fintech-orange scale-100 opacity-100 cursor-pointer" 
+                        : "bg-gray-200 dark:bg-neutral-800 scale-90 opacity-0 pointer-events-none"
                     }`}
                   >
-                    <Send className="w-4 h-4 text-white" />
+                    <Send className="w-3.5 h-3.5 text-white fill-current" />
                   </Button>
                 </div>
               </div>
             </div>
 
-            {/* Voice Recorder Overlay */}
+            {/* Voice Drawer Modal panel */}
             {showVoiceRecorder && (
-              <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 animate-in fade-in slide-in-from-bottom-2">
-                <div className="flex justify-between items-center px-2">
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Voice Note</span>
+              <div className="p-3 bg-gray-50 dark:bg-neutral-900/60 rounded-xl border border-gray-100 dark:border-neutral-850 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                <div className="flex justify-between items-center px-1 mb-2">
+                  <span className="text-[10px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest">Voice Memo Panel</span>
                   <Button 
                     variant="ghost" 
                     size="sm" 
                     onClick={() => setShowVoiceRecorder(false)}
-                    className="h-6 text-gray-400 hover:text-gray-600"
+                    className="h-5 px-1.5 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-white"
                   >
                     Cancel
                   </Button>
