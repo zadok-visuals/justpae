@@ -100,8 +100,16 @@
     overflow: hidden;
   }
 
+  html {
+    @apply bg-gray-50;
+  }
+
+  html.dark {
+    @apply bg-gray-900;
+  }
+
   body {
-    @apply bg-gray-50 text-foreground;
+    @apply bg-transparent text-foreground;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 

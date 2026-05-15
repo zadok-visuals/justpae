@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Link, useNavigate } from 'react-router-dom';
-import { Camera, ArrowLeft, Shield } from 'lucide-react';
+import { Camera, ArrowLeft, Shield, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 const Profile = () => {
@@ -114,13 +114,20 @@ const Profile = () => {
       <div className="flex-1 w-full max-w-2xl mx-auto p-4 space-y-6">
         {/* Sticky Header Section */}
         <div className="sticky top-0 z-30 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-md -mx-4 px-4 sm:-mx-6 sm:px-6 pt-2 pb-2 border-b border-gray-100 dark:border-gray-800">
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Link to="/dashboard">
+                <Button variant="ghost" size="sm" className="p-2 text-gray-600 dark:text-gray-300">
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+              </Link>
+              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Profile</h1>
+            </div>
             <Link to="/settings">
               <Button variant="ghost" size="sm" className="p-2 text-gray-600 dark:text-gray-300">
-                <ArrowLeft className="w-5 h-5" />
+                <Settings className="w-5 h-5" />
               </Button>
             </Link>
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Profile</h1>
           </div>
         </div>
 

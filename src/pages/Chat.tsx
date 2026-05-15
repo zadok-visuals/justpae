@@ -206,10 +206,10 @@ const Chat: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-white relative">
+    <div className="flex-1 flex flex-col min-h-0 w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-white relative">
 
       {/* Sticky Header Node */}
-      <div className="shrink-0 border-b border-gray-100 dark:border-gray-800 px-4 py-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md z-20 flex items-center gap-2">
+      <div className="flex-none border-b border-gray-100 dark:border-gray-800 px-4 py-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md z-20 flex items-center gap-2">
         <Button
           size="icon"
           variant="ghost"
@@ -256,7 +256,7 @@ const Chat: React.FC = () => {
       </div>
 
       {/* Bottom Input Console Panel */}
-      <div className="shrink-0 p-3 pb-5 md:pb-6 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 z-20">
+      <div className="shrink-0 p-3 pb-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 z-20">
         <div className="max-w-3xl mx-auto w-full flex flex-col gap-2">
 
           {/* Staged Image Preview Box: Visible ONLY when image chosen but not sent */}
