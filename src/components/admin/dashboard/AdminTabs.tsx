@@ -10,6 +10,8 @@ import AdminAnalytics from '@/components/admin/AdminAnalytics';
 import GiftCardManagement from '@/components/admin/GiftCardManagement';
 import FeedbackManagement from '@/components/admin/FeedbackManagement';
 import { AdminChatManagement } from '@/components/admin/AdminChatManagement';
+import AdminManagement from '@/components/admin/AdminManagement';
+import { useAdminRole } from '@/hooks/useAdminRole';
 
 interface AdminTabsProps {
   stats: {
@@ -22,6 +24,9 @@ interface AdminTabsProps {
 }
 
 const AdminTabs: React.FC<AdminTabsProps> = ({ stats, onStatsUpdate }) => {
+  const { role } = useAdminRole();
+  const isSuperAdmin = role === 'super_admin';
+
   return (
     <Tabs defaultValue="giftcards" className="space-y-6">
       <div className="w-full overflow-x-auto pb-2 scrollbar-hide">
@@ -61,6 +66,11 @@ const AdminTabs: React.FC<AdminTabsProps> = ({ stats, onStatsUpdate }) => {
           </TabsTrigger>
           <TabsTrigger value="notifications" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Notifications</TabsTrigger>
           <TabsTrigger value="analytics" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Analytics</TabsTrigger>
+          
+          {isSuperAdmin && (
+            <TabsTrigger value="admins" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Administrators</TabsTrigger>
+          )}
+
           <TabsTrigger value="settings" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Settings</TabsTrigger>
         </TabsList>
       </div>
@@ -92,6 +102,12 @@ const AdminTabs: React.FC<AdminTabsProps> = ({ stats, onStatsUpdate }) => {
       <TabsContent value="analytics">
         <AdminAnalytics />
       </TabsContent>
+
+      {isSuperAdmin && (
+        <TabsContent value="admins">
+          <AdminManagement />
+        </TabsContent>
+      )}
 
       <TabsContent value="settings">
         <SystemSettings />
