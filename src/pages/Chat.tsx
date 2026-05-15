@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Image, Mic, CheckCheck, ChevronLeft } from 'lucide-react';
+import { Send, Image, Mic, CheckCheck, ChevronLeft, X } from 'lucide-react';
 import { VoiceRecorder } from '@/components/chat/VoiceRecorder';
 import { AudioPlayer } from '@/components/chat/AudioPlayer';
 import { useChat, ChatMessage } from '@/hooks/useChat';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast'; // Updated fallback to standard project toast hooks directory path
+import { useToast } from '@/hooks/use-toast'; 
 import { formatDistanceToNow } from 'date-fns';
 
 const Chat: React.FC = () => {
@@ -24,6 +24,11 @@ const Chat: React.FC = () => {
   const [messageText, setMessageText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  
+  // Staging state variables for image previews before manual transmission
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -37,6 +42,13 @@ const Chat: React.FC = () => {
       });
     }
   };
+
+  // Clean up object URLs to prevent system memory leaks when component drops
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   useEffect(() => {
     scrollToBottom('smooth');
@@ -56,12 +68,33 @@ const Chat: React.FC = () => {
     }
   }, [user, getOrCreateConversation, fetchMessages, markMessagesAsRead]);
 
+  // Combined manual dispatch router for both text and file pipelines
   const handleSendMessage = async () => {
-    if (!messageText.trim() || isSending) return;
+    if (isSending) return;
+    
+    // Check if there is a file staged, or text typed
+    if (!selectedFile && !messageText.trim()) return;
+
     setIsSending(true);
     try {
-      await sendMessage(messageText);
-      setMessageText('');
+      // 1. If an image file is staged, send it first
+      if (selectedFile) {
+        await sendFileMessage(selectedFile, 'image');
+        handleClearSelectedFile(); // Wipe staging slot instantly
+      }
+      
+      // 2. If text was also accompanied with it, send it right after
+      if (messageText.trim()) {
+        await sendMessage(messageText);
+        setMessageText('');
+      }
+    } catch (error) {
+      console.error('Failed dispatch sequence:', error);
+      toast({
+        title: "Message Failed",
+        description: "An error occurred while transmitting your payload.",
+        variant: "destructive",
+      });
     } finally {
       setIsSending(false);
     }
@@ -83,19 +116,17 @@ const Chat: React.FC = () => {
   };
 
   const handleImageUpload = () => {
-    // Force clear value cache so selecting the same image twice fires the change listener reliably
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
     fileInputRef.current?.click();
   };
 
-  // REBUILT: Fixes image uploading issues by safely formatting files before sending
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Stage chosen files locally instead of auto-running hook streams
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Defensive check: ensure file type matches image constraints
     if (!file.type.startsWith('image/')) {
       toast({
         title: "Unsupported File Type",
@@ -105,23 +136,23 @@ const Chat: React.FC = () => {
       return;
     }
 
-    setIsSending(true);
-    try {
-      // Pass file directly into your hook engine securely
-      await sendFileMessage(file, 'image');
-      toast({
-        title: "Success",
-        description: "Image sent successfully.",
-      });
-    } catch (error) {
-      console.error('File upload stream crash:', error);
-      toast({
-        title: "Upload Failed",
-        description: "Could not safely process the selected image. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSending(false);
+    // Revoke old blob addresses to avoid leaking memory cache blocks
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file)); // Generate browser visual proxy loop
+  };
+
+  const handleClearSelectedFile = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -164,7 +195,7 @@ const Chat: React.FC = () => {
         </div>
 
         {message.message_type !== 'voice' && (
-          <div className="flex items-center gap-1.5 text-[11px] text-gray-400 dark:text-gray-500 px-1 mt-0.5 select-none">
+          <div className="flex items-center gap-1.5 text-[11px] text-gray-400 dark:text-gray-400 px-1 mt-0.5 select-none">
             <span>{messageTime}</span>
             {isCurrentUser && (
               <CheckCheck className={`w-3.5 h-3.5 ${message.is_read ? 'text-blue-500' : 'text-gray-400'}`} />
@@ -176,46 +207,42 @@ const Chat: React.FC = () => {
   };
 
   return (
-    /* 
-      FIXES APPLIED:
-      1. Stripped away duplicate inner <Layout> structural containers to resolve dual Navbar mounting loops.
-      2. Set clean flex layout dimensions to center the canvas perfectly inside your master screen shell.
-    */
-    <div className="flex flex-col h-[100dvh] w-full bg-white dark:bg-neutral-950 text-gray-900 dark:text-white overflow-hidden relative">
+    <div className="flex flex-col h-[100dvh] w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-white overflow-hidden relative">
       
       {/* Sticky Header Node */}
-      <div className="shrink-0 border-b border-gray-100 dark:border-neutral-900 px-4 py-3 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-md z-20 flex items-center gap-2">
+      <div className="shrink-0 border-b border-gray-100 dark:border-gray-800 px-4 py-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md z-20 flex items-center gap-2">
         <Button 
           size="icon" 
           variant="ghost" 
           onClick={handleBackNavigation}
-          className="rounded-full w-9 h-9 text-gray-500 hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors"
+          className="rounded-full w-9 h-9 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         >
           <ChevronLeft className="w-6 h-6 stroke-[2.5]" />
         </Button>
         <div className="flex-1 min-w-0 ml-1">
           <h1 className="text-base font-bold text-gray-900 dark:text-white truncate">Support Chat</h1>
-          <p className="text-xs text-gray-400 dark:text-neutral-500">
+          <p className="text-xs text-gray-400 dark:text-gray-400">
             Typical response time: <span className="text-fintech-orange font-semibold">Under 5 mins</span>
           </p>
         </div>
       </div>
 
       {/* Scroll Container Area */}
+      {/* Scroll Container Area */}
       <div 
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto bg-gray-50/20 dark:bg-neutral-900/5 px-4 py-4 scroll-smooth"
+        className="flex-1 overflow-y-auto bg-gray-50/20 dark:bg-gray-800/5 px-4 py-4 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
       >
         {loading ? (
-          <div className="flex items-center justify-center h-full text-sm text-gray-400 dark:text-neutral-500">
+          <div className="flex items-center justify-center h-full text-sm text-gray-400 dark:text-gray-400">
             <div className="flex flex-col items-center gap-2">
               <div className="w-5 h-5 border-2 border-fintech-orange border-t-transparent rounded-full animate-spin" />
               <span className="text-xs tracking-wide">Loading conversation...</span>
             </div>
           </div>
-        ) : messages.length === 0 ? (
+        ) : messages.length === 0 && !previewUrl ? (
           <div className="flex flex-col items-center justify-center h-full max-w-xs mx-auto text-center opacity-40 select-none">
-            <div className="w-14 h-14 bg-gray-100 dark:bg-neutral-900 rounded-full flex items-center justify-center mb-3">
+            <div className="w-14 h-14 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-3">
               <Send className="w-6 h-6 text-gray-400" />
             </div>
             <p className="text-sm font-semibold">No messages yet</p>
@@ -230,10 +257,27 @@ const Chat: React.FC = () => {
       </div>
 
       {/* Bottom Input Console Panel */}
-      <div className="shrink-0 p-3 pb-safe border-t border-gray-100 dark:border-neutral-900 bg-white dark:bg-neutral-950 z-20">
+      <div className="shrink-0 p-3 pb-safe border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 z-20">
         <div className="max-w-3xl mx-auto w-full flex flex-col gap-2">
+          
+          {/* Staged Image Preview Box: Visible ONLY when image chosen but not sent */}
+          {previewUrl && (
+            <div className="relative align-middle self-start mb-1 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-xl border border-gray-200 dark:border-gray-700 animate-in zoom-in-95 duration-150">
+              <div className="relative max-w-[120px] max-h-[120px] rounded-lg overflow-hidden flex items-center justify-center">
+                <img src={previewUrl} alt="Staged upload preview" className="object-cover max-w-full h-24 rounded-lg" />
+              </div>
+              <Button
+                type="button"
+                onClick={handleClearSelectedFile}
+                disabled={isSending}
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-900/80 hover:bg-red-500 rounded-full flex items-center justify-center text-white border border-white/20 p-0 shadow-sm"
+              >
+                <X className="w-3 h-3 stroke-[3]" />
+              </Button>
+            </div>
+          )}
+
           <div className="flex items-end gap-2">
-            
             {/* Media Utilities */}
             <div className="flex items-center h-11">
               <Button
@@ -241,7 +285,8 @@ const Chat: React.FC = () => {
                 size="icon"
                 variant="ghost"
                 onClick={handleImageUpload}
-                className="w-10 h-10 rounded-full text-gray-400 hover:text-fintech-orange hover:bg-gray-50 dark:hover:bg-neutral-900 transition-colors"
+                disabled={isSending || !!previewUrl}
+                className="w-10 h-10 rounded-full text-gray-400 hover:text-fintech-orange hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-30"
               >
                 <Image className="w-5 h-5" />
               </Button>
@@ -250,10 +295,11 @@ const Chat: React.FC = () => {
                 size="icon"
                 variant="ghost"
                 onClick={() => setShowVoiceRecorder(!showVoiceRecorder)}
-                className={`w-10 h-10 rounded-full transition-colors ${
+                disabled={isSending || !!previewUrl}
+                className={`w-10 h-10 rounded-full transition-colors disabled:opacity-30 ${
                   showVoiceRecorder 
                     ? "bg-red-50 text-red-500 dark:bg-red-950/30 dark:text-red-400" 
-                    : "text-gray-400 hover:text-fintech-orange hover:bg-gray-50 dark:hover:bg-neutral-900"
+                    : "text-gray-400 hover:text-fintech-orange hover:bg-gray-50 dark:hover:bg-gray-800"
                 }`}
               >
                 <Mic className="w-5 h-5" />
@@ -266,10 +312,10 @@ const Chat: React.FC = () => {
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
                 onKeyDown={handleKeyPress}
-                placeholder="Type your message..."
+                placeholder={previewUrl ? "Add caption or hit send..." : "Type your message..."}
                 disabled={isSending}
                 rows={1}
-                className="w-full min-h-[44px] max-h-28 py-3 pl-4 pr-12 rounded-2xl bg-gray-100 dark:bg-neutral-900 border-none focus:outline-none focus:ring-2 focus:ring-fintech-orange/10 transition-all text-[15px] text-gray-900 dark:text-white resize-none overflow-y-auto"
+                className="w-full min-h-[44px] max-h-28 py-3 pl-4 pr-12 rounded-2xl bg-gray-100 dark:bg-gray-800 border-none focus:outline-none focus:ring-2 focus:ring-fintech-orange/10 transition-all text-[15px] text-gray-900 dark:text-white resize-none overflow-y-auto"
               />
               
               <div className="absolute right-1.5 bottom-1.5">
@@ -277,11 +323,11 @@ const Chat: React.FC = () => {
                   type="button"
                   size="icon"
                   onClick={handleSendMessage}
-                  disabled={!messageText.trim() || isSending}
+                  disabled={isSending || (!messageText.trim() && !selectedFile)}
                   className={`w-8 h-8 rounded-full shadow-sm transition-all duration-200 flex items-center justify-center ${
-                    messageText.trim() 
+                    messageText.trim() || selectedFile
                       ? "bg-fintech-orange scale-100 opacity-100 cursor-pointer" 
-                      : "bg-gray-200 dark:bg-neutral-800 scale-90 opacity-0 pointer-events-none"
+                      : "bg-gray-200 dark:bg-gray-700 scale-90 opacity-0 pointer-events-none"
                     }`}
                 >
                   <Send className="w-3.5 h-3.5 text-white fill-current" />
@@ -292,9 +338,9 @@ const Chat: React.FC = () => {
 
           {/* Voice Drawer Modal panel */}
           {showVoiceRecorder && (
-            <div className="p-3 bg-gray-50 dark:bg-neutral-900/60 rounded-xl border border-gray-100 dark:border-neutral-850 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-bottom-2 duration-200">
               <div className="flex justify-between items-center px-1 mb-2">
-                <span className="text-[10px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest">Voice Memo Panel</span>
+                <span className="text-[10px] font-bold text-gray-400 dark:text-gray-400 uppercase tracking-widest">Voice Memo Panel</span>
                 <Button 
                   type="button"
                   variant="ghost" 
