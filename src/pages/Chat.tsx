@@ -5,7 +5,7 @@ import { VoiceRecorder } from '@/components/chat/VoiceRecorder';
 import { AudioPlayer } from '@/components/chat/AudioPlayer';
 import { useChat, ChatMessage } from '@/hooks/useChat';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast'; 
+import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 
 const Chat: React.FC = () => {
@@ -24,7 +24,7 @@ const Chat: React.FC = () => {
   const [messageText, setMessageText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
-  
+
   // Staging state variables for image previews before manual transmission
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -71,7 +71,7 @@ const Chat: React.FC = () => {
   // Combined manual dispatch router for both text and file pipelines
   const handleSendMessage = async () => {
     if (isSending) return;
-    
+
     // Check if there is a file staged, or text typed
     if (!selectedFile && !messageText.trim()) return;
 
@@ -82,7 +82,7 @@ const Chat: React.FC = () => {
         await sendFileMessage(selectedFile, 'image');
         handleClearSelectedFile(); // Wipe staging slot instantly
       }
-      
+
       // 2. If text was also accompanied with it, send it right after
       if (messageText.trim()) {
         await sendMessage(messageText);
@@ -162,31 +162,30 @@ const Chat: React.FC = () => {
 
     return (
       <div key={message.id} className={`flex flex-col gap-1 mb-4 ${isCurrentUser ? 'items-end' : 'items-start'}`}>
-        <div className={`max-w-[85%] sm:max-w-[75%] shadow-sm transition-all ${
-          message.message_type === 'voice' 
-            ? 'bg-transparent shadow-none' 
+        <div className={`max-w-[85%] sm:max-w-[75%] shadow-sm transition-all ${message.message_type === 'voice'
+            ? 'bg-transparent shadow-none'
             : isCurrentUser
               ? 'bg-fintech-orange text-white rounded-2xl rounded-tr-none p-3'
               : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-2xl rounded-tl-none p-3'
-        }`}>
+          }`}>
           {message.message_type === 'text' && (
             <p className="text-[15px] leading-relaxed break-words whitespace-pre-wrap">{message.content}</p>
           )}
-          
+
           {message.message_type === 'image' && message.file_url && (
             <div className="relative rounded-lg overflow-hidden max-w-xs border border-black/5">
-              <img 
-                src={message.file_url} 
-                alt="Shared attachment" 
-                className="max-w-full h-auto object-cover hover:opacity-95 transition-opacity cursor-pointer" 
-                onClick={() => window.open(message.file_url || '', '_blank')} 
+              <img
+                src={message.file_url}
+                alt="Shared attachment"
+                className="max-w-full h-auto object-cover hover:opacity-95 transition-opacity cursor-pointer"
+                onClick={() => window.open(message.file_url || '', '_blank')}
               />
             </div>
           )}
 
           {message.message_type === 'voice' && message.file_url && (
-            <AudioPlayer 
-              src={message.file_url} 
+            <AudioPlayer
+              src={message.file_url}
               timestamp={messageTime}
               isRead={message.is_read}
               isCurrentUser={isCurrentUser}
@@ -207,13 +206,13 @@ const Chat: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-white overflow-hidden relative">
-      
+    <div className="flex flex-col h-full w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-white relative">
+
       {/* Sticky Header Node */}
       <div className="shrink-0 border-b border-gray-100 dark:border-gray-800 px-4 py-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md z-20 flex items-center gap-2">
-        <Button 
-          size="icon" 
-          variant="ghost" 
+        <Button
+          size="icon"
+          variant="ghost"
           onClick={handleBackNavigation}
           className="rounded-full w-9 h-9 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         >
@@ -229,7 +228,7 @@ const Chat: React.FC = () => {
 
       {/* Scroll Container Area */}
       {/* Scroll Container Area */}
-      <div 
+      <div
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto bg-gray-50/20 dark:bg-gray-800/5 px-4 py-4 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
       >
@@ -257,9 +256,9 @@ const Chat: React.FC = () => {
       </div>
 
       {/* Bottom Input Console Panel */}
-      <div className="shrink-0 p-3 pb-safe border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 z-20">
+      <div className="shrink-0 p-3 pb-5 md:pb-6 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 z-20">
         <div className="max-w-3xl mx-auto w-full flex flex-col gap-2">
-          
+
           {/* Staged Image Preview Box: Visible ONLY when image chosen but not sent */}
           {previewUrl && (
             <div className="relative align-middle self-start mb-1 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-xl border border-gray-200 dark:border-gray-700 animate-in zoom-in-95 duration-150">
@@ -296,11 +295,10 @@ const Chat: React.FC = () => {
                 variant="ghost"
                 onClick={() => setShowVoiceRecorder(!showVoiceRecorder)}
                 disabled={isSending || !!previewUrl}
-                className={`w-10 h-10 rounded-full transition-colors disabled:opacity-30 ${
-                  showVoiceRecorder 
-                    ? "bg-red-50 text-red-500 dark:bg-red-950/30 dark:text-red-400" 
+                className={`w-10 h-10 rounded-full transition-colors disabled:opacity-30 ${showVoiceRecorder
+                    ? "bg-red-50 text-red-500 dark:bg-red-950/30 dark:text-red-400"
                     : "text-gray-400 hover:text-fintech-orange hover:bg-gray-50 dark:hover:bg-gray-800"
-                }`}
+                  }`}
               >
                 <Mic className="w-5 h-5" />
               </Button>
@@ -317,16 +315,15 @@ const Chat: React.FC = () => {
                 rows={1}
                 className="w-full min-h-[44px] max-h-28 py-3 pl-4 pr-12 rounded-2xl bg-gray-100 dark:bg-gray-800 border-none focus:outline-none focus:ring-2 focus:ring-fintech-orange/10 transition-all text-[15px] text-gray-900 dark:text-white resize-none overflow-y-auto"
               />
-              
+
               <div className="absolute right-1.5 bottom-1.5">
                 <Button
                   type="button"
                   size="icon"
                   onClick={handleSendMessage}
                   disabled={isSending || (!messageText.trim() && !selectedFile)}
-                  className={`w-8 h-8 rounded-full shadow-sm transition-all duration-200 flex items-center justify-center ${
-                    messageText.trim() || selectedFile
-                      ? "bg-fintech-orange scale-100 opacity-100 cursor-pointer" 
+                  className={`w-8 h-8 rounded-full shadow-sm transition-all duration-200 flex items-center justify-center ${messageText.trim() || selectedFile
+                      ? "bg-fintech-orange scale-100 opacity-100 cursor-pointer"
                       : "bg-gray-200 dark:bg-gray-700 scale-90 opacity-0 pointer-events-none"
                     }`}
                 >
@@ -341,31 +338,31 @@ const Chat: React.FC = () => {
             <div className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-bottom-2 duration-200">
               <div className="flex justify-between items-center px-1 mb-2">
                 <span className="text-[10px] font-bold text-gray-400 dark:text-gray-400 uppercase tracking-widest">Voice Memo Panel</span>
-                <Button 
+                <Button
                   type="button"
-                  variant="ghost" 
-                  size="sm" 
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setShowVoiceRecorder(false)}
                   className="h-5 px-1.5 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-white"
                 >
                   Cancel
                 </Button>
               </div>
-              <VoiceRecorder 
-                onRecordingComplete={(blob) => sendFileMessage(new File([blob], 'voice.webm'), 'voice')} 
-                disabled={isSending} 
+              <VoiceRecorder
+                onRecordingComplete={(blob) => sendFileMessage(new File([blob], 'voice.webm'), 'voice')}
+                disabled={isSending}
               />
             </div>
           )}
         </div>
       </div>
 
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        onChange={handleFileChange} 
-        accept="image/*" 
-        className="hidden" 
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept="image/*"
+        className="hidden"
       />
     </div>
   );

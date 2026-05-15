@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useWallet } from '@/contexts/WalletContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -104,59 +103,61 @@ const Wallet = () => {
   };
 
   return (
-      <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-900 flex flex-col relative overflow-hidden">
-        <div className="flex-1 w-full max-w-4xl mx-auto p-4 pb-24 space-y-6">
+    <div className="w-full bg-gray-50 dark:bg-gray-900 flex flex-col relative">
+      <div className="flex-1 w-full max-w-4xl mx-auto p-4 space-y-6">
+        {/* Sticky Header Section */}
+        <div className="sticky top-0 z-30 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-md -mx-4 px-4 sm:-mx-6 sm:px-6 pt-2 pb-2 border-b border-gray-100 dark:border-gray-800">
           <WalletHeader />
-          
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TransactionFilters 
-              activeTab={activeTab} 
-              onTabChange={setActiveTab} 
-            />
-            
-            <TabsContent value="all" className="mt-4">
-              <TransactionList
-                activeTab="all"
-                transactions={getFilteredTransactions()}
-                formatCurrency={formatCurrency}
-              />
-            </TabsContent>
-            
-            <TabsContent value="deposits" className="mt-4">
-              <TransactionList
-                activeTab="deposits"
-                transactions={getFilteredTransactions()}
-                formatCurrency={formatCurrency}
-              />
-            </TabsContent>
-            
-            <TabsContent value="withdrawals" className="mt-4">
-              <TransactionList
-                activeTab="withdrawals"
-                transactions={getFilteredTransactions()}
-                formatCurrency={formatCurrency}
-              />
-            </TabsContent>
-            
-            <TabsContent value="crypto" className="mt-4">
-              <TransactionList
-                activeTab="crypto"
-                transactions={getFilteredTransactions()}
-                formatCurrency={formatCurrency}
-              />
-            </TabsContent>
-            
-            <TabsContent value="giftcards" className="mt-4">
-              <TransactionList
-                activeTab="giftcards"
-                transactions={getFilteredTransactions()}
-                formatCurrency={formatCurrency}
-              />
-            </TabsContent>
-          </Tabs>
         </div>
+          
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TransactionFilters 
+            activeTab={activeTab} 
+            onTabChange={setActiveTab} 
+          />
+          
+          <TabsContent value="all" className="mt-4">
+            <TransactionList
+              activeTab="all"
+              transactions={getFilteredTransactions()}
+              formatCurrency={formatCurrency}
+            />
+          </TabsContent>
+          
+          <TabsContent value="deposits" className="mt-4">
+            <TransactionList
+              activeTab="deposits"
+              transactions={getFilteredTransactions()}
+              formatCurrency={formatCurrency}
+            />
+          </TabsContent>
+          
+          <TabsContent value="withdrawals" className="mt-4">
+            <TransactionList
+              activeTab="withdrawals"
+              transactions={getFilteredTransactions()}
+              formatCurrency={formatCurrency}
+            />
+          </TabsContent>
+          
+          <TabsContent value="crypto" className="mt-4">
+            <TransactionList
+              activeTab="crypto"
+              transactions={getFilteredTransactions()}
+              formatCurrency={formatCurrency}
+            />
+          </TabsContent>
+          
+          <TabsContent value="giftcards" className="mt-4">
+            <TransactionList
+              activeTab="giftcards"
+              transactions={getFilteredTransactions()}
+              formatCurrency={formatCurrency}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
-
+    </div>
   );
 };
 

@@ -149,7 +149,7 @@ const App = () => (
               } />
               <Route path="/chat" element={
                 <ProtectedRoute>
-                  <Layout>
+                  <Layout noScroll={true} fullWidth={true}>
                     <Chat />
                   </Layout>
                 </ProtectedRoute>

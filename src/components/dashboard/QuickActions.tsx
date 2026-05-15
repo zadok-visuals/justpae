@@ -58,7 +58,7 @@ const QuickActions: React.FC = () => {
       <div className="grid grid-cols-4 gap-3">
         {actions.map((action) => {
           const ActionIcon = action.icon;
-          
+
           if (action.comingSoon) {
             return (
               <div key={action.to} className="text-center group relative cursor-not-allowed opacity-80">
@@ -72,7 +72,7 @@ const QuickActions: React.FC = () => {
               </div>
             );
           }
-          
+
           if (action.requiresAuth) {
             return (
               <TransactionAuth
@@ -103,7 +103,7 @@ const QuickActions: React.FC = () => {
           );
         })}
       </div>
-      
+
       {/* Gift Cards Link */}
       <div className="mt-4">
         <Link to="/gift-cards">

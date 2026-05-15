@@ -14,13 +14,13 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   unreadNotifications
 }) => {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm">
+    <div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
             Hello, {userName} 👋
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 text-sm">What are you trading today?</p>
+          <p className="text-gray-600 dark:text-gray-400 text-[12px]">What are you trading today?</p>
         </div>
         <div className="flex items-center space-x-3">
           <Link to="/notifications" className="relative">

@@ -63,9 +63,10 @@ const GiftCards = () => {
 
   return (
 
-      <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-900 flex flex-col relative overflow-hidden">
-        <div className="pb-24 space-y-6">
-          {/* Header */}
+    <div className="w-full bg-gray-50 dark:bg-gray-900 flex flex-col relative">
+      <div className="space-y-6">
+        {/* Sticky Header Section */}
+        <div className="sticky top-0 z-30 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-md -mx-4 px-4 sm:-mx-6 sm:px-6 pt-2 pb-2 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center space-x-4">
             <Link to="/dashboard">
               <Button variant="ghost" size="sm" className="p-2 text-gray-600 dark:text-gray-300">
@@ -74,6 +75,7 @@ const GiftCards = () => {
             </Link>
             <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Sell Gift Cards</h1>
           </div>
+        </div>
 
           {/* Upload Form */}
           <div id="gift-card-upload-form">
