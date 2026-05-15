@@ -63,10 +63,9 @@ export const AdminChatManagement: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // 1. Monitor screens size via dynamic listener to enforce absolute layout breaking points
   useEffect(() => {
     const checkViewportWidth = () => {
-      setIsMobile(window.innerWidth < 1024); // Matches 'lg' Tailwind parameter
+      setIsMobile(window.innerWidth < 1024);
     };
     checkViewportWidth();
     window.addEventListener('resize', checkViewportWidth);
@@ -284,7 +283,7 @@ export const AdminChatManagement: React.FC = () => {
     switch (status) {
       case 'open': return 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-400';
       case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-400';
-      case 'closed': return 'bg-gray-100 text-gray-800 dark:bg-neutral-800 dark:text-neutral-400';
+      case 'closed': return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
       default: return 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400';
     }
   };
@@ -300,7 +299,7 @@ export const AdminChatManagement: React.FC = () => {
             ? 'bg-transparent shadow-none'
             : isAdmin
               ? 'bg-fintech-orange text-white rounded-2xl rounded-tr-none p-3'
-              : 'bg-gray-100 dark:bg-neutral-800 text-gray-900 dark:text-white rounded-2xl rounded-tl-none p-3'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-2xl rounded-tl-none p-3'
         }`}>
           {message.message_type === 'text' && (
             <p className="text-[14px] leading-relaxed break-words whitespace-pre-wrap">{message.content}</p>
@@ -328,7 +327,7 @@ export const AdminChatManagement: React.FC = () => {
         </div>
 
         {message.message_type !== 'voice' && (
-          <div className="flex items-center gap-1.5 text-[10px] text-gray-400 dark:text-gray-500 px-1 mt-0.5">
+          <div className="flex items-center gap-1.5 text-[10px] text-gray-400 dark:text-gray-400 px-1 mt-0.5">
             <span>{isAdmin ? 'Admin' : 'User'}</span>
             <span>•</span>
             <span>{messageTime}</span>
@@ -338,11 +337,10 @@ export const AdminChatManagement: React.FC = () => {
     );
   };
 
-  // Shared Sub-component: Conversation list structural builder
   const renderConversationsList = () => (
-    <Card className="border-gray-100 dark:border-neutral-900 bg-white dark:bg-neutral-900 shadow-sm flex flex-col overflow-hidden h-full w-full">
-      <CardHeader className="py-4 px-4 border-b border-gray-50 dark:border-neutral-850">
-        <CardTitle className="text-sm font-bold tracking-wide uppercase text-gray-400">Conversations List</CardTitle>
+    <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm flex flex-col overflow-hidden h-full w-full">
+      <CardHeader className="py-4 px-4 border-b border-gray-200 dark:border-gray-700">
+        <CardTitle className="text-sm font-bold tracking-wide uppercase text-gray-500 dark:text-gray-400">Conversations List</CardTitle>
       </CardHeader>
       <CardContent className="p-0 flex-1 overflow-hidden">
         <ScrollArea className="h-full">
@@ -352,24 +350,24 @@ export const AdminChatManagement: React.FC = () => {
                 key={conversation.id}
                 className={`p-3 rounded-xl border transition-all duration-200 cursor-pointer ${
                   selectedConversation?.id === conversation.id
-                    ? 'bg-orange-50/60 dark:bg-neutral-850 border-orange-500 shadow-sm'
-                    : 'border-gray-50 dark:border-neutral-850 bg-white dark:bg-neutral-900 hover:bg-gray-50/60 dark:hover:bg-neutral-850'
+                    ? 'bg-orange-50/60 dark:bg-gray-700/50 border-orange-500 shadow-sm'
+                    : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/30'
                 }`}
                 onClick={() => {
                   setSelectedConversation(conversation);
                   fetchMessages(conversation.id);
                 }}
-                  >
+              >
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2 min-w-0">
                     <User className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                    <span className="font-semibold text-xs truncate">{conversation.user_name}</span>
+                    <span className="font-semibold text-xs truncate text-gray-900 dark:text-white">{conversation.user_name}</span>
                   </div>
                   <Badge className={`text-[9px] px-1.5 py-0.5 rounded shadow-none font-bold uppercase tracking-wide border-transparent ${getStatusColor(conversation.status)}`}>
                     {conversation.status}
                   </Badge>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-neutral-400 truncate pl-5 mb-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate pl-5 mb-1">
                   {conversation.title || "No Subject text payload"}
                 </p>
                 <div className="flex items-center gap-1 text-[10px] text-gray-400 pl-5">
@@ -384,12 +382,11 @@ export const AdminChatManagement: React.FC = () => {
     </Card>
   );
 
-  // Shared Sub-component: Message feed area structural builder
   const renderChatArea = () => (
-    <Card className="border-gray-100 dark:border-neutral-900 bg-white dark:bg-neutral-900 shadow-sm flex flex-col overflow-hidden h-full w-full">
+    <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm flex flex-col overflow-hidden h-full w-full">
       {selectedConversation ? (
         <>
-          <CardHeader className="py-3 px-3 sm:px-4 border-b border-gray-50 dark:border-neutral-850 flex flex-row items-center justify-between shrink-0 gap-2">
+          <CardHeader className="py-3 px-3 sm:px-4 border-b border-gray-200 dark:border-gray-700 flex flex-row items-center justify-between shrink-0 gap-2">
             <div className="flex items-center min-w-0 gap-1">
               <Button
                 size="icon"
@@ -400,8 +397,8 @@ export const AdminChatManagement: React.FC = () => {
                 <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
               </Button>
               <div className="min-w-0">
-                <CardTitle className="text-xs sm:text-sm font-bold truncate">{selectedConversation.user_name}</CardTitle>
-                <p className="text-[9px] sm:text-[10px] text-gray-400 truncate">Active Workspace Thread</p>
+                <CardTitle className="text-xs sm:text-sm font-bold truncate text-gray-900 dark:text-white">{selectedConversation.user_name}</CardTitle>
+                <p className="text-[9px] sm:text-[10px] text-gray-400">Active Workspace Thread</p>
               </div>
             </div>
             <div className="flex gap-1 sm:gap-1.5 shrink-0">
@@ -409,7 +406,7 @@ export const AdminChatManagement: React.FC = () => {
                 size="sm"
                 variant="outline"
                 onClick={() => updateConversationStatus(selectedConversation.id, 'pending')}
-                className="h-7 text-[10px] sm:text-xs font-semibold px-2 rounded-lg border-gray-200 dark:border-neutral-800 text-gray-600 dark:text-neutral-400"
+                className="h-7 text-[10px] sm:text-xs font-semibold px-2 rounded-lg border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300"
               >
                 Hold Case
               </Button>
@@ -417,14 +414,14 @@ export const AdminChatManagement: React.FC = () => {
                 size="sm"
                 variant="outline"
                 onClick={() => updateConversationStatus(selectedConversation.id, 'closed')}
-                className="h-7 text-[10px] sm:text-xs font-semibold px-2 rounded-lg border-gray-200 dark:border-neutral-800 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500"
+                className="h-7 text-[10px] sm:text-xs font-semibold px-2 rounded-lg border-gray-200 dark:border-gray-700 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500"
               >
                 Close
               </Button>
             </div>
           </CardHeader>
 
-          <CardContent ref={scrollContainerRef} className="flex-1 overflow-hidden p-0 bg-gray-50/20 dark:bg-neutral-950/10">
+          <CardContent ref={scrollContainerRef} className="flex-1 overflow-hidden p-0 bg-gray-50/50 dark:bg-gray-900/40">
             <ScrollArea className="h-full px-3 sm:px-4 py-4">
               {loading ? (
                 <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-400 mt-20">
@@ -439,7 +436,7 @@ export const AdminChatManagement: React.FC = () => {
             </ScrollArea>
           </CardContent>
 
-          <div className="shrink-0 p-3 bg-white dark:bg-neutral-900 border-t border-gray-50 dark:border-neutral-850">
+          <div className="shrink-0 p-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
             <div className="flex flex-col gap-2">
               <div className="flex items-end gap-2">
                 <div className="flex items-center h-10">
@@ -447,7 +444,7 @@ export const AdminChatManagement: React.FC = () => {
                     size="icon"
                     variant="ghost"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-9 h-9 rounded-full text-gray-400 hover:text-fintech-orange hover:bg-gray-50 dark:hover:bg-neutral-850 transition-colors"
+                    className="w-9 h-9 rounded-full text-gray-400 hover:text-fintech-orange hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     <Image className="w-4 h-4" />
                   </Button>
@@ -458,7 +455,7 @@ export const AdminChatManagement: React.FC = () => {
                     className={`w-9 h-9 rounded-full transition-colors ${
                       showVoiceRecorder 
                         ? "bg-red-50 text-red-500 dark:bg-red-950/30 dark:text-red-400" 
-                        : "text-gray-400 hover:text-fintech-orange hover:bg-gray-50 dark:hover:bg-neutral-850"
+                        : "text-gray-400 hover:text-fintech-orange hover:bg-gray-100 dark:hover:bg-gray-700"
                     }`}
                   >
                     <Mic className="w-4 h-4" />
@@ -477,7 +474,7 @@ export const AdminChatManagement: React.FC = () => {
                         sendAdminReply();
                       }
                     }}
-                    className="w-full h-10 pl-3 pr-12 rounded-xl bg-gray-50 border-none dark:bg-neutral-950 focus-visible:ring-2 focus-visible:ring-fintech-orange/10 transition-all text-xs"
+                    className="w-full h-10 pl-3 pr-12 rounded-xl bg-gray-50 border-none dark:bg-gray-900 focus-visible:ring-2 focus-visible:ring-fintech-orange/10 transition-all text-xs text-gray-900 dark:text-white placeholder-gray-400"
                   />
                   <div className="absolute right-1 top-1/2 -translate-y-1/2">
                     <Button
@@ -486,7 +483,7 @@ export const AdminChatManagement: React.FC = () => {
                       className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
                         messageText.trim() 
                           ? "bg-fintech-orange scale-100 opacity-100" 
-                          : "bg-gray-200 dark:bg-neutral-800 scale-90 opacity-0 pointer-events-none"
+                          : "bg-gray-200 dark:bg-gray-700 scale-90 opacity-0 pointer-events-none"
                       }`}
                     >
                       <Send className="w-3.5 h-3.5 text-white" />
@@ -496,9 +493,9 @@ export const AdminChatManagement: React.FC = () => {
               </div>
 
               {showVoiceRecorder && (
-                <div className="p-3 bg-gray-50 dark:bg-neutral-950 rounded-xl border border-gray-100 dark:border-neutral-850 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 animate-in fade-in slide-in-from-bottom-2 duration-150">
                   <div className="flex justify-between items-center px-1 mb-2">
-                    <span className="text-[9px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest">Voice Memo Panel</span>
+                    <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Voice Memo Panel</span>
                     <Button 
                       variant="ghost" 
                       size="sm" 
@@ -528,9 +525,9 @@ export const AdminChatManagement: React.FC = () => {
           </div>
         </>
       ) : (
-        <div className="flex items-center justify-center h-full bg-gray-50/10 dark:bg-neutral-950/5 p-8 select-none">
+        <div className="flex items-center justify-center h-full bg-gray-50/10 dark:bg-gray-900/5 p-8 select-none">
           <div className="text-center max-w-xs">
-            <div className="w-12 h-12 bg-gray-50 dark:bg-neutral-850 rounded-full flex items-center justify-center mx-auto mb-3">
+            <div className="w-12 h-12 bg-gray-50 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
               <MessageCircle className="w-5 h-5 text-gray-400" />
             </div>
             <p className="text-xs font-bold text-gray-900 dark:text-white">Select a conversation</p>
@@ -542,7 +539,7 @@ export const AdminChatManagement: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto px-2 sm:px-4 py-2 select-none">
+    <div className="space-y-6 w-full py-2 select-none">
       {/* Stats Cards Header */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {[
@@ -551,25 +548,23 @@ export const AdminChatManagement: React.FC = () => {
           { label: 'Pending Hold', value: stats.pending, icon: <Clock className="w-4 h-4 text-yellow-500" /> },
           { label: 'Closed Cases', value: stats.closed, icon: <CheckCircle className="w-4 h-4 text-gray-500" /> }
         ].map((card, i) => (
-          <Card key={i} className="border-gray-100 dark:border-neutral-900 bg-white dark:bg-neutral-900 shadow-sm">
+          <Card key={i} className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
             <CardContent className="p-3 sm:p-4 flex items-center justify-between">
               <div>
-                <p className="text-lg sm:text-xl font-bold tracking-tight">{card.value}</p>
+                <p className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white">{card.value}</p>
                 <p className="text-[10px] sm:text-xs text-gray-400 font-medium truncate max-w-[100px] sm:max-w-none">{card.label}</p>
               </div>
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-50 dark:bg-neutral-850 flex items-center justify-center shrink-0">{card.icon}</div>
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center shrink-0">{card.icon}</div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* 2. Dynamic Structural Grid Node */}
+      {/* Dynamic Structural Grid Node */}
       <div className="w-full h-[600px] lg:h-[620px]">
         {isMobile ? (
-          // Enforces single-view toggles on mobile screens (No stack possible)
           selectedConversation ? renderChatArea() : renderConversationsList()
         ) : (
-          // Renders the verified side-by-side split layout on desktop screens
           <div className="grid grid-cols-3 gap-4 h-full w-full">
             <div className="col-span-1 h-full">{renderConversationsList()}</div>
             <div className="col-span-2 h-full">{renderChatArea()}</div>
