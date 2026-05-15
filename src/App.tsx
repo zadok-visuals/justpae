@@ -240,17 +240,23 @@ const App = () => (
               } />
               <Route path="/privacy" element={
                 <ProtectedRoute>
-                  <PrivacyPolicy />
+                  <Layout>
+                    <PrivacyPolicy />
+                  </Layout>
                 </ProtectedRoute>
               } />
               <Route path="/terms" element={
                 <ProtectedRoute>
-                  <TermsOfUse />
+                  <Layout>
+                    <TermsOfUse />
+                  </Layout>
                 </ProtectedRoute>
               } />
               <Route path="/data-protection" element={
                 <ProtectedRoute>
-                  <DataProtection />
+                  <Layout>
+                    <DataProtection />
+                  </Layout>
                 </ProtectedRoute>
               } />
               <Route path="/change-password" element={

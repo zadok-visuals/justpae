@@ -8,17 +8,19 @@ import { ArrowLeft, Shield, Eye, Lock, FileText } from 'lucide-react';
 
 const PrivacyPolicy = () => {
   return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="p-4 pb-24 space-y-6">
-          {/* Header */}
+    <div className="w-full bg-gray-50 dark:bg-gray-900 flex flex-col relative">
+      <div className="flex-1 w-full max-w-2xl mx-auto p-4 space-y-6">
+        {/* Sticky Header Section */}
+        <div className="sticky top-0 z-30 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-md -mx-4 px-4 sm:-mx-6 sm:px-6 pt-2 pb-2 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center space-x-4">
             <Link to="/settings">
-              <Button variant="ghost" size="sm" className="p-2">
+              <Button variant="ghost" size="sm" className="p-2 text-gray-600 dark:text-gray-300">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
             </Link>
             <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Privacy Policy</h1>
           </div>
+        </div>
 
           {/* Privacy Overview */}
           <Card className="rounded-2xl shadow-sm bg-white dark:bg-gray-800">
