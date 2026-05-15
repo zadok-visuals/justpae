@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, UserPlus, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { Shield, UserPlus, Trash2, CheckCircle, XCircle, Clock, History } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { format } from 'date-fns';
 
 interface AdminUser {
   id: string;
@@ -20,9 +21,26 @@ interface AdminUser {
   } | null;
 }
 
+interface AdminSessionLog {
+  id: string;
+  admin_user_id: string;
+  ip_address: string;
+  user_agent: string;
+  created_at: string;
+  admin_users: {
+    admin_role: string;
+    profiles: {
+      name: string;
+      email: string;
+    } | null;
+  };
+}
+
 const AdminManagement = () => {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [sessions, setSessions] = useState<AdminSessionLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingSessions, setLoadingSessions] = useState(false);
   const [newAdminId, setNewAdminId] = useState('');
   const [newAdminRole, setNewAdminRole] = useState<'admin' | 'super_admin' | 'moderator'>('admin');
   const [processing, setProcessing] = useState(false);
@@ -80,8 +98,39 @@ const AdminManagement = () => {
     }
   };
 
+  const fetchSessions = async () => {
+    setLoadingSessions(true);
+    try {
+      const { data, error } = await supabase
+        .from('admin_sessions')
+        .select(`
+          id,
+          ip_address,
+          user_agent,
+          created_at,
+          admin_users (
+            admin_role,
+            profiles:user_id (
+              name,
+              email
+            )
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+      setSessions(data as any || []);
+    } catch (error) {
+      console.error('Error fetching admin sessions:', error);
+    } finally {
+      setLoadingSessions(false);
+    }
+  };
+
   useEffect(() => {
     fetchAdmins();
+    fetchSessions();
   }, []);
 
   const handleAddAdmin = async (e: React.FormEvent) => {
@@ -274,6 +323,64 @@ const AdminManagement = () => {
                         >
                           {admin.is_active ? 'Deactivate' : 'Activate'}
                         </Button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardHeader>
+          <CardTitle className="text-gray-900 dark:text-white flex items-center">
+            <History className="w-5 h-5 mr-2 text-fintech-orange" />
+            Recent Administrator Activity (Shift Log)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Administrator</th>
+                  <th className="px-4 py-3 font-semibold">Role</th>
+                  <th className="px-4 py-3 font-semibold">Login Time</th>
+                  <th className="px-4 py-3 font-semibold">IP Address</th>
+                  <th className="px-4 py-3 font-semibold">Device</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                {loadingSessions ? (
+                  <tr>
+                    <td colSpan={5} className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-fintech-orange mx-auto"></div>
+                    </td>
+                  </tr>
+                ) : sessions.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center py-8 text-gray-500">No recent activity logs found</td>
+                  </tr>
+                ) : (
+                  sessions.map((session) => (
+                    <tr key={session.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                      <td className="px-4 py-4 font-medium text-gray-900 dark:text-white">
+                        {session.admin_users?.profiles?.name || 'System Admin'}
+                      </td>
+                      <td className="px-4 py-4">
+                        <Badge variant="secondary" className="text-[10px]">
+                          {session.admin_users?.admin_role?.toUpperCase()}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-4 text-gray-600 dark:text-gray-400">
+                        {format(new Date(session.created_at), 'MMM dd, yyyy HH:mm:ss')}
+                      </td>
+                      <td className="px-4 py-4 font-mono text-xs text-gray-500">
+                        {session.ip_address || 'Internal'}
+                      </td>
+                      <td className="px-4 py-4 text-xs text-gray-500 truncate max-w-[150px]" title={session.user_agent}>
+                        {session.user_agent || 'Unknown'}
                       </td>
                     </tr>
                   ))

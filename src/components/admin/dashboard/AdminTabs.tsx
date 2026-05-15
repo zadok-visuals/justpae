@@ -26,6 +26,8 @@ interface AdminTabsProps {
 const AdminTabs: React.FC<AdminTabsProps> = ({ stats, onStatsUpdate }) => {
   const { role } = useAdminRole();
   const isSuperAdmin = role === 'super_admin';
+  const isAdmin = role === 'admin' || role === 'super_admin';
+  const isModerator = role === 'moderator' || isAdmin;
 
   return (
     <Tabs defaultValue="giftcards" className="space-y-6">
@@ -65,13 +67,17 @@ const AdminTabs: React.FC<AdminTabsProps> = ({ stats, onStatsUpdate }) => {
             )}
           </TabsTrigger>
           <TabsTrigger value="notifications" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Notifications</TabsTrigger>
-          <TabsTrigger value="analytics" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Analytics</TabsTrigger>
+          
+          {isAdmin && (
+            <TabsTrigger value="analytics" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Analytics</TabsTrigger>
+          )}
           
           {isSuperAdmin && (
-            <TabsTrigger value="admins" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Administrators</TabsTrigger>
+            <>
+              <TabsTrigger value="admins" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Administrators</TabsTrigger>
+              <TabsTrigger value="settings" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Settings</TabsTrigger>
+            </>
           )}
-
-          <TabsTrigger value="settings" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Settings</TabsTrigger>
         </TabsList>
       </div>
 
@@ -99,19 +105,22 @@ const AdminTabs: React.FC<AdminTabsProps> = ({ stats, onStatsUpdate }) => {
         <NotificationCenter />
       </TabsContent>
 
-      <TabsContent value="analytics">
-        <AdminAnalytics />
-      </TabsContent>
-
-      {isSuperAdmin && (
-        <TabsContent value="admins">
-          <AdminManagement />
+      {isAdmin && (
+        <TabsContent value="analytics">
+          <AdminAnalytics />
         </TabsContent>
       )}
 
-      <TabsContent value="settings">
-        <SystemSettings />
-      </TabsContent>
+      {isSuperAdmin && (
+        <>
+          <TabsContent value="admins">
+            <AdminManagement />
+          </TabsContent>
+          <TabsContent value="settings">
+            <SystemSettings />
+          </TabsContent>
+        </>
+      )}
     </Tabs>
   );
 };
