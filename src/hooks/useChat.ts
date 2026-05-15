@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
@@ -39,6 +39,12 @@ export const useChat = () => {
   const [currentConversation, setCurrentConversation] = useState<ChatConversation | null>(null);
   const [loading, setLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Keep a mutable reference to track the active conversation ID inside real-time callbacks smoothly
+  const currentConversationIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    currentConversationIdRef.current = currentConversation?.id || null;
+  }, [currentConversation]);
 
   // Fetch conversations
   const fetchConversations = useCallback(async () => {
@@ -97,7 +103,6 @@ export const useChat = () => {
     if (!user) return null;
 
     try {
-      // Check if user already has a conversation
       const { data: existingConversation } = await supabase
         .from('chat_conversations')
         .select('*')
@@ -110,7 +115,6 @@ export const useChat = () => {
         return existingConversation;
       }
 
-      // Create new conversation
       const { data: newConversation, error } = await supabase
         .from('chat_conversations')
         .insert({
@@ -160,7 +164,6 @@ export const useChat = () => {
 
       if (error) throw error;
 
-      // Update conversation last message time
       await supabase
         .from('chat_conversations')
         .update({ last_message_at: new Date().toISOString() })
@@ -194,7 +197,6 @@ export const useChat = () => {
       const bucketName = messageType === 'image' ? 'chat-images' : 'chat-voice';
       const fileName = `${user.id}/${Date.now()}-${file.name}`;
 
-      // Upload file to public storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(bucketName)
         .upload(fileName, file, {
@@ -202,17 +204,12 @@ export const useChat = () => {
           upsert: false
         });
 
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        throw uploadError;
-      }
+      if (uploadError) throw uploadError;
 
-      // Get public URL (much faster than signed URLs)
       const { data: { publicUrl } } = supabase.storage
         .from(bucketName)
         .getPublicUrl(uploadData.path);
 
-      // Insert message
       const { error: messageError } = await supabase
         .from('chat_messages')
         .insert({
@@ -227,7 +224,6 @@ export const useChat = () => {
 
       if (messageError) throw messageError;
 
-      // Update conversation last message time
       await supabase
         .from('chat_conversations')
         .update({ last_message_at: new Date().toISOString() })
@@ -254,7 +250,6 @@ export const useChat = () => {
         .eq('conversation_id', conversationId)
         .neq('sender_id', user.id);
 
-      // Update notifications as read
       await supabase
         .from('chat_notifications')
         .update({ is_read: true })
@@ -266,11 +261,10 @@ export const useChat = () => {
     }
   }, [user]);
 
-  // Real-time subscriptions
+  // Real-time subscriptions managed via clean static pointer hooks
   useEffect(() => {
     if (!user) return;
 
-    // Subscribe to new messages
     const messagesChannel = supabase
       .channel('chat_messages_changes')
       .on(
@@ -282,31 +276,25 @@ export const useChat = () => {
         },
         (payload) => {
           const newMessage = payload.new as ChatMessage;
+          const activeId = currentConversationIdRef.current;
           
-          // Add sender name
           const messageWithName = {
             ...newMessage,
             sender_name: newMessage.sender_type === 'admin' ? 'Support' : 'Client'
           };
           
-          // If it's for current conversation, add to messages
-          if (currentConversation && newMessage.conversation_id === currentConversation.id) {
+          if (activeId && newMessage.conversation_id === activeId) {
             setMessages(prev => {
-              // Avoid duplicates
               if (prev.some(m => m.id === newMessage.id)) return prev;
               return [...prev, messageWithName];
             });
             
-            // Mark as read if user sent it
-            if (newMessage.sender_id === user.id) {
-              markMessagesAsRead(currentConversation.id);
+            // FIXED: Automatically marks incoming support logs as read when the thread is wide open
+            if (newMessage.sender_id !== user.id) {
+              markMessagesAsRead(activeId);
             }
           }
           
-          // Update conversations list
-          fetchConversations();
-          
-          // Show notification for messages from others
           if (newMessage.sender_id !== user.id) {
             const messagePreview = newMessage.message_type === 'text' 
               ? newMessage.content || "New message"
@@ -319,7 +307,6 @@ export const useChat = () => {
               description: messagePreview,
             });
 
-            // Browser notification if supported
             if ('Notification' in window && Notification.permission === 'granted') {
               new Notification('New Message from Support', {
                 body: messagePreview,
@@ -327,11 +314,12 @@ export const useChat = () => {
               });
             }
           }
+
+          fetchConversations();
         }
       )
       .subscribe();
 
-    // Subscribe to conversation changes
     const conversationsChannel = supabase
       .channel('chat_conversations_changes')
       .on(
@@ -351,7 +339,7 @@ export const useChat = () => {
       supabase.removeChannel(messagesChannel);
       supabase.removeChannel(conversationsChannel);
     };
-  }, [user, currentConversation, fetchConversations, markMessagesAsRead, toast]);
+  }, [user, fetchConversations, markMessagesAsRead, toast]);
 
   // Calculate unread count
   useEffect(() => {
