@@ -30,7 +30,7 @@ const Layout: React.FC<LayoutProps> = ({
         {/* STACK 1: TOP SHIELD (Status Bar Protector) */}
         <div 
           className="flex-none bg-white dark:bg-gray-900 z-50 border-b border-gray-100 dark:border-gray-800"
-          style={{ height: 'calc(env(safe-area-inset-top, 20px) + 18px)' }}
+          style={{ height: 'calc(env(safe-area-inset-top, 20px) + 8px)' }}
         />
 
         {/* STACK 2: CONTENT REGION 
