@@ -107,7 +107,8 @@ export const useChat = () => {
         .from('chat_conversations')
         .select('*')
         .eq('user_id', user.id)
-        .eq('status', 'open')
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (existingConversation) {
@@ -166,7 +167,10 @@ export const useChat = () => {
 
       await supabase
         .from('chat_conversations')
-        .update({ last_message_at: new Date().toISOString() })
+        .update({ 
+          last_message_at: new Date().toISOString(),
+          status: 'open'
+        })
         .eq('id', conversation.id);
 
     } catch (error) {
@@ -226,7 +230,10 @@ export const useChat = () => {
 
       await supabase
         .from('chat_conversations')
-        .update({ last_message_at: new Date().toISOString() })
+        .update({ 
+          last_message_at: new Date().toISOString(),
+          status: 'open'
+        })
         .eq('id', conversation.id);
 
     } catch (error) {

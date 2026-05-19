@@ -114,7 +114,9 @@ const Withdraw = () => {
             .from('chat_conversations')
             .select('id')
             .eq('user_id', user.id)
-            .single();
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
             
           if (convData) {
             await supabase.from('chat_messages').insert({
