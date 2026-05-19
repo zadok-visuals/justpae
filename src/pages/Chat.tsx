@@ -43,6 +43,8 @@ const Chat: React.FC = () => {
     }
   };
 
+  const prevMessagesLength = useRef(0);
+
   // Clean up object URLs to prevent system memory leaks when component drops
   useEffect(() => {
     return () => {
@@ -51,7 +53,16 @@ const Chat: React.FC = () => {
   }, [previewUrl]);
 
   useEffect(() => {
-    scrollToBottom('smooth');
+    if (messages.length > 0) {
+      if (prevMessagesLength.current === 0) {
+        // Instant scroll on initial load to prevent glitchy jump
+        scrollToBottom('auto');
+      } else {
+        // Smooth scroll for subsequent incoming messages
+        scrollToBottom('smooth');
+      }
+    }
+    prevMessagesLength.current = messages.length;
   }, [messages]);
 
   useEffect(() => {
@@ -61,7 +72,6 @@ const Chat: React.FC = () => {
         if (conversation) {
           await fetchMessages(conversation.id);
           await markMessagesAsRead(conversation.id);
-          setTimeout(() => scrollToBottom('auto'), 150);
         }
       };
       initChat();
