@@ -43,6 +43,20 @@ export const transactionManagementService = {
       throw new Error(fetchError?.message || 'Transaction not found');
     }
 
+    // 1.5 Convert Auth user.id to admin_users.id if reviewed_by is provided
+    if (updates.reviewed_by) {
+      const { data: adminUser, error: adminError } = await supabase
+        .from('admin_users')
+        .select('id')
+        .eq('user_id', updates.reviewed_by)
+        .maybeSingle();
+        
+      if (adminError || !adminUser) {
+        throw new Error('Admin user record not found for the current user');
+      }
+      updates.reviewed_by = adminUser.id;
+    }
+
     // 2. Perform the update
     const { error } = await supabase
       .from('transactions')
