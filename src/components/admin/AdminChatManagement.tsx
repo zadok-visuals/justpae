@@ -71,17 +71,32 @@ export const AdminChatManagement: React.FC = () => {
     return () => window.removeEventListener('resize', checkViewportWidth);
   }, []);
 
+  const isFirstLoad = useRef(true);
+
   const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({
-        top: scrollContainerRef.current.scrollHeight,
-        behavior
-      });
-    }
+    // Defer until after the browser has painted the new message elements,
+    // otherwise scrollHeight is still the old value and nothing moves.
+    requestAnimationFrame(() => {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTo({
+          top: scrollContainerRef.current.scrollHeight,
+          behavior
+        });
+      }
+    });
   };
 
   useEffect(() => {
-    scrollToBottom('smooth');
+    if (messages.length === 0) return;
+    // On the very first batch of messages (conversation just opened), jump
+    // instantly to the bottom so the user doesn't see an animated scroll
+    // from the top. Subsequent messages use smooth scroll.
+    if (isFirstLoad.current) {
+      isFirstLoad.current = false;
+      scrollToBottom('auto');
+    } else {
+      scrollToBottom('smooth');
+    }
   }, [messages]);
 
   const fetchConversations = async () => {
@@ -114,9 +129,12 @@ export const AdminChatManagement: React.FC = () => {
     }
   };
 
-  const fetchMessages = async (conversationId: string) => {
+  // showSpinner=true only on the very first load of a conversation.
+  // On background refreshes (e.g. from realtime), we silently update messages
+  // to avoid collapsing the list and resetting scroll position.
+  const fetchMessages = async (conversationId: string, showSpinner = false) => {
     try {
-      setLoading(true);
+      if (showSpinner) setLoading(true);
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
@@ -136,12 +154,28 @@ export const AdminChatManagement: React.FC = () => {
     } catch (error) {
       console.error('Error fetching messages:', error);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   };
 
   const sendAdminReply = async () => {
     if (!messageText.trim() || !selectedConversation || !user) return;
+
+    const content = messageText.trim();
+    // Optimistically append the message to local state immediately
+    // so the user sees it right away without waiting for a re-fetch
+    const optimisticMessage: ChatMessage = {
+      id: `optimistic-${Date.now()}`,
+      conversation_id: selectedConversation.id,
+      sender_id: user.id,
+      sender_type: 'admin',
+      message_type: 'text',
+      content,
+      created_at: new Date().toISOString(),
+      is_read: false
+    };
+    setMessages(prev => [...prev, optimisticMessage]);
+    setMessageText('');
 
     try {
       const { error } = await supabase
@@ -151,7 +185,7 @@ export const AdminChatManagement: React.FC = () => {
           sender_id: user.id,
           sender_type: 'admin',
           message_type: 'text',
-          content: messageText.trim()
+          content
         });
 
       if (error) throw error;
@@ -164,11 +198,13 @@ export const AdminChatManagement: React.FC = () => {
         })
         .eq('id', selectedConversation.id);
 
-      setMessageText('');
-      await fetchMessages(selectedConversation.id);
-      await fetchConversations();
+      // The realtime subscription will replace the optimistic message
+      // with the real one from the database — no manual fetchMessages needed
     } catch (error) {
       console.error('Error sending reply:', error);
+      // Roll back the optimistic message on failure
+      setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
+      setMessageText(content);
       toast({ title: "Error", description: "Failed to send reply", variant: "destructive" });
     }
   };
@@ -232,7 +268,8 @@ export const AdminChatManagement: React.FC = () => {
         })
         .eq('id', selectedConversation.id);
 
-      await fetchMessages(selectedConversation.id);
+      // Silent refresh (no spinner) so scroll position is preserved
+      await fetchMessages(selectedConversation.id, false);
       await fetchConversations();
     } catch (error) {
       console.error('Error sending media:', error);
@@ -242,6 +279,13 @@ export const AdminChatManagement: React.FC = () => {
     }
   };
 
+  // Keep a mutable ref to the active conversation ID so the realtime
+  // subscription callback never captures a stale closure value
+  const selectedConversationIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    selectedConversationIdRef.current = selectedConversation?.id ?? null;
+  }, [selectedConversation]);
+
   useEffect(() => {
     fetchConversations();
 
@@ -249,7 +293,10 @@ export const AdminChatManagement: React.FC = () => {
       .channel('admin_chat_messages')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, () => {
         fetchConversations();
-        if (selectedConversation) fetchMessages(selectedConversation.id);
+        // Use the ref so we always have the current conversation ID
+        if (selectedConversationIdRef.current) {
+          fetchMessages(selectedConversationIdRef.current, false);
+        }
       })
       .subscribe();
 
@@ -350,8 +397,9 @@ export const AdminChatManagement: React.FC = () => {
                     : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/30'
                 }`}
                 onClick={() => {
+                  isFirstLoad.current = true; // reset so new conversation jumps instantly to bottom
                   setSelectedConversation(conversation);
-                  fetchMessages(conversation.id);
+                  fetchMessages(conversation.id, true); // showSpinner=true: first load of this conversation
                 }}
               >
                 <div className="flex items-center justify-between mb-1.5">

@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, MessageSquare, ShieldCheck, Zap, RefreshCw } from 'lucide-react';
+import { ArrowLeft, MessageSquare, ShieldCheck, Zap, RefreshCw, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cryptoService, CryptoPrice } from '@/services/cryptoService';
+import { useChat } from '@/hooks/useChat';
 
 const BuyCrypto = () => {
   const navigate = useNavigate();
+  const { sendMessage } = useChat();
   const [selectedCrypto, setSelectedCrypto] = useState('BTC');
   const [nairaAmount, setNairaAmount] = useState('');
   const [cryptoPrices, setCryptoPrices] = useState<CryptoPrice[]>([]);
   const [exchangeRate, setExchangeRate] = useState(1650);
   const [fetching, setFetching] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
 
   const cryptoOptions = [
@@ -87,9 +90,44 @@ const BuyCrypto = () => {
   const usdValue = nairaAmount ? (parseFloat(nairaAmount) / exchangeRate) : 0;
   const cryptoAmount = selectedCryptoData && currentPrice ? (usdValue / currentPrice) : 0;
 
+  const handleConnectToAdmin = async () => {
+    if (!nairaAmount || parseFloat(nairaAmount) <= 0) {
+      toast({
+        title: 'Enter an Amount',
+        description: 'Please enter a Naira amount before connecting with the admin.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const cryptoName = cryptoOptions.find(c => c.symbol === selectedCrypto)?.name || selectedCrypto;
+      const message =
+        `🛒 BUY REQUEST\n` +
+        `Asset: ${cryptoName} (${selectedCrypto})\n` +
+        `Amount to spend: ₦${parseFloat(nairaAmount).toLocaleString('en-US', { minimumFractionDigits: 2 })}\n` +
+        `Est. rate: ₦${exchangeRate.toLocaleString('en-US', { minimumFractionDigits: 2 })} / USD\n` +
+        `Est. crypto to receive: ${cryptoAmount.toFixed(6)} ${selectedCrypto}\n` +
+        `Please confirm the rate and provide wallet transfer details.`;
+
+      await sendMessage(message);
+      navigate('/chat');
+    } catch (err) {
+      console.error('Failed to send buy request to chat:', err);
+      toast({
+        title: 'Failed to send request',
+        description: 'Could not reach the chat. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-900 flex flex-col relative overflow-hidden">
-      <div className="flex-1 w-full max-w-2xl mx-auto p-4 pb-24 space-y-6">
+    <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-900">
+      <div className="w-full max-w-2xl mx-auto p-4 pb-28 space-y-6">
         {/* Header */}
         <div className="flex items-center space-x-4">
           <Link to="/dashboard">
@@ -110,7 +148,7 @@ const BuyCrypto = () => {
 
           <CardContent className="space-y-6 pt-6">
             {/* Quick Estimator */}
-            <div className="bg-gray-50 dark:bg-gray-850 p-5 rounded-2xl border border-gray-150 dark:border-gray-700 space-y-4">
+            <div className="bg-gray-50 dark:bg-gray-700/50 p-5 rounded-2xl border border-gray-200 dark:border-gray-600 space-y-4">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center justify-between">
                 <span>OTC Calculator (Est.)</span>
                 <Button 
@@ -203,11 +241,15 @@ const BuyCrypto = () => {
 
             {/* Call to action */}
             <Button 
-              onClick={() => navigate('/chat')}
-              className="w-full bg-fintech-orange hover:bg-fintech-orange/90 py-4 h-14 rounded-xl text-lg font-bold shadow-lg shadow-fintech-orange/20 transition-all flex items-center justify-center space-x-2"
+              onClick={handleConnectToAdmin}
+              disabled={isSending}
+              className="w-full bg-fintech-orange hover:bg-fintech-orange/90 py-4 h-14 rounded-xl text-lg font-bold shadow-lg shadow-fintech-orange/20 transition-all flex items-center justify-center space-x-2 disabled:opacity-70"
             >
-              <MessageSquare className="w-5 h-5" />
-              <span>Connect with Admin to Buy</span>
+              {isSending ? (
+                <><Loader2 className="w-5 h-5 animate-spin" /><span>Sending to Admin...</span></>
+              ) : (
+                <><MessageSquare className="w-5 h-5" /><span>Connect with Admin to Buy</span></>
+              )}
             </Button>
           </CardContent>
         </Card>
