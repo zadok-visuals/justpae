@@ -68,3 +68,40 @@ BEGIN
   RETURN TRUE;
 END;
 $$;
+
+-- New function for safely requesting a withdrawal from the client side
+CREATE OR REPLACE FUNCTION request_withdrawal(
+  p_user_id UUID,
+  p_amount NUMERIC,
+  p_bank_account TEXT,
+  p_reference TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_wallet_id UUID;
+  v_balance NUMERIC;
+BEGIN
+  -- 1. Find the wallet
+  SELECT id, balance INTO v_wallet_id, v_balance FROM wallets WHERE user_id = p_user_id AND currency = 'NGN';
+  IF v_wallet_id IS NULL THEN
+    RAISE EXCEPTION 'Wallet not found';
+  END IF;
+
+  -- 2. Check balance
+  IF v_balance < p_amount THEN
+    RAISE EXCEPTION 'Insufficient balance';
+  END IF;
+
+  -- 3. Deduct balance
+  UPDATE wallets SET balance = balance - p_amount, updated_at = NOW() WHERE id = v_wallet_id;
+
+  -- 4. Create transaction
+  INSERT INTO transactions (user_id, type, amount, fiat_amount, fiat_currency, status, description, reference)
+  VALUES (p_user_id, 'withdrawal', -p_amount, p_amount, 'NGN', 'pending', 'Withdrawal to ' || p_bank_account, p_reference);
+
+  RETURN TRUE;
+END;
+$$;

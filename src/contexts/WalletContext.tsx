@@ -276,23 +276,20 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       const reference = `WTH_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      // Add transaction record
-      const result = await addTransaction({
-        type: 'withdrawal',
-        amount: -amount,
-        fiat_amount: amount,
-        fiat_currency: 'NGN',
-        status: 'pending',
-        description: `Withdrawal to ${bankAccount}`,
-        reference: reference
+      const { data, error } = await supabase.rpc('request_withdrawal', {
+        p_user_id: user.id,
+        p_amount: amount,
+        p_bank_account: bankAccount,
+        p_reference: reference
       });
 
-      if (!result.success) {
-        return { success: false, error: result.error };
+      if (error) {
+        console.error('Withdrawal RPC error:', error);
+        return { success: false, error: error.message || 'Failed to process withdrawal' };
       }
 
-      // Deduct amount immediately (pending withdrawal)
-      await updateFiatBalance(-amount);
+      // Refresh data completely from the database to ensure UI is completely synced
+      await refreshData();
 
       return { success: true, reference };
     } catch (error) {
