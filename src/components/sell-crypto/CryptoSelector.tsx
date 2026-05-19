@@ -7,7 +7,6 @@ interface CryptoOption {
   symbol: string;
   name: string;
   icon: string;
-  address: string;
   network: string;
 }
 
@@ -16,6 +15,7 @@ interface CryptoSelectorProps {
   onSelectCrypto: (value: string) => void;
   cryptoOptions: CryptoOption[];
   getCurrentPrice: (symbol: string) => number;
+  exchangeRate: number;
   formatCurrency: (amount: number, currency?: string, showDecimals?: boolean) => string;
 }
 
@@ -24,6 +24,7 @@ const CryptoSelector: React.FC<CryptoSelectorProps> = ({
   onSelectCrypto,
   cryptoOptions,
   getCurrentPrice,
+  exchangeRate,
   formatCurrency
 }) => {
   return (
@@ -41,7 +42,9 @@ const CryptoSelector: React.FC<CryptoSelectorProps> = ({
                 <div className="flex items-center space-x-2">
                   <span>{crypto.icon}</span>
                   <span>{crypto.name} ({crypto.symbol})</span>
-                  <span className="text-gray-500 dark:text-gray-400 text-sm">- {formatCurrency(price, 'USD', false)}</span>
+                  <span className="text-gray-500 dark:text-gray-400 text-sm">
+                    - {formatCurrency(price * exchangeRate, 'NGN', false)}
+                  </span>
                 </div>
               </SelectItem>
             );

@@ -11,7 +11,6 @@ interface CryptoOption {
   symbol: string;
   name: string;
   icon: string;
-  address: string;
   network: string;
 }
 
@@ -57,6 +56,7 @@ const SellCryptoForm: React.FC<SellCryptoFormProps> = ({
           onSelectCrypto={setSelectedCrypto}
           cryptoOptions={cryptoOptions}
           getCurrentPrice={getCurrentPrice}
+          exchangeRate={exchangeRate}
           formatCurrency={formatCurrency}
         />
 
