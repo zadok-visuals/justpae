@@ -7,12 +7,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ShieldCheck, Phone, FileText, Upload, CheckCircle2, User, MapPin } from 'lucide-react';
-import { useZeroHash } from '@/hooks/useZeroHash';
 
 const KYCVerification = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
-  const { createParticipant } = useZeroHash();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [dob, setDob] = useState('');
   const [address, setAddress] = useState('');
@@ -37,27 +35,6 @@ const KYCVerification = () => {
 
     setIsLoading(true);
     try {
-      // 1. Create Zero Hash Participant
-      const nameParts = (profile?.full_name || profile?.name || '').split(' ');
-      const firstName = nameParts[0] || 'Unknown';
-      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Unknown';
-
-      const zhResponse = await createParticipant({
-        firstName,
-        lastName,
-        dob,
-        address,
-        city,
-        state,
-        postalCode,
-        country
-      });
-
-      if (!zhResponse || zhResponse.error) {
-        throw new Error(zhResponse?.error || "Failed to register Zero Hash participant");
-      }
-
-      const participantCode = zhResponse.participant_code;
 
       // 2. Upload Document to Supabase Storage
       const fileExt = document.name.split('.').pop();
@@ -79,8 +56,7 @@ const KYCVerification = () => {
           kyc_phone_number: phoneNumber,
           kyc_address_proof_url: publicUrl,
           kyc_submitted_at: new Date().toISOString(),
-          is_kyc_verified: false,
-          zero_hash_participant_code: participantCode
+          is_kyc_verified: false
         })
         .eq('id', user?.id);
 
@@ -89,7 +65,7 @@ const KYCVerification = () => {
       setIsSubmitted(true);
       toast({
         title: "KYC Submitted!",
-        description: "Your Zero Hash wallet has been initiated.",
+        description: "Your verification request is now processing.",
       });
     } catch (error: any) {
       console.error('KYC Error:', error);

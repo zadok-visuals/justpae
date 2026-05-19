@@ -27,7 +27,6 @@ import Wallet from "./pages/Wallet";
 import Profile from "./pages/Profile";
 import Deposit from "./pages/Deposit";
 import Withdraw from "./pages/Withdraw";
-import CryptoDeposit from "./pages/CryptoDeposit";
 import Settings from "./pages/Settings";
 import Security from "./pages/Security";
 import HelpSupport from "./pages/HelpSupport";
@@ -218,13 +217,6 @@ const App = () => (
                 <ProtectedRoute>
                   <Layout>
                     <Withdraw />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-              <Route path="/crypto-deposit" element={
-                <ProtectedRoute>
-                  <Layout>
-                    <CryptoDeposit />
                   </Layout>
                 </ProtectedRoute>
               } />

@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   MessageCircle, 
   Clock, 
@@ -74,13 +73,10 @@ export const AdminChatManagement: React.FC = () => {
 
   const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
     if (scrollContainerRef.current) {
-      const scrollAreaElement = scrollContainerRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollAreaElement) {
-        scrollAreaElement.scrollTo({
-          top: scrollAreaElement.scrollHeight,
-          behavior
-        });
-      }
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior
+      });
     }
   };
 
@@ -343,7 +339,7 @@ export const AdminChatManagement: React.FC = () => {
         <CardTitle className="text-sm font-bold tracking-wide uppercase text-gray-500 dark:text-gray-400">Conversations List</CardTitle>
       </CardHeader>
       <CardContent className="p-0 flex-1 overflow-hidden">
-        <ScrollArea className="h-full">
+        <div className="h-[480px] lg:h-[500px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <div className="p-3 space-y-2">
             {conversations.map((conversation) => (
               <div
@@ -377,7 +373,7 @@ export const AdminChatManagement: React.FC = () => {
               </div>
             ))}
           </div>
-        </ScrollArea>
+        </div>
       </CardContent>
     </Card>
   );
@@ -421,8 +417,11 @@ export const AdminChatManagement: React.FC = () => {
             </div>
           </CardHeader>
 
-          <CardContent ref={scrollContainerRef} className="flex-1 overflow-hidden p-0 bg-gray-50/50 dark:bg-gray-900/40">
-            <ScrollArea className="h-full px-3 sm:px-4 py-4">
+          <CardContent className="flex-1 overflow-hidden p-0 bg-gray-50/50 dark:bg-gray-900/40">
+            <div 
+              ref={scrollContainerRef}
+              className="h-[380px] sm:h-[420px] lg:h-[450px] overflow-y-auto px-3 sm:px-4 py-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-smooth"
+            >
               {loading ? (
                 <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-400 mt-20">
                   <div className="w-5 h-5 border-2 border-fintech-orange border-t-transparent rounded-full animate-spin" />
@@ -433,7 +432,7 @@ export const AdminChatManagement: React.FC = () => {
                   {messages.map(renderMessage)}
                 </div>
               )}
-            </ScrollArea>
+            </div>
           </CardContent>
 
           <div className="shrink-0 p-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">

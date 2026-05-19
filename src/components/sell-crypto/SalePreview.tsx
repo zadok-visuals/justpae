@@ -32,11 +32,7 @@ const SalePreview: React.FC<SalePreviewProps> = ({
       </div>
       <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
         <span>Current rate:</span>
-        <span>{formatCurrency(currentPrice, 'USD')} per {selectedCrypto}</span>
-      </div>
-      <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
-        <span>Processing fee:</span>
-        <span>1%</span>
+        <span>{formatCurrency(exchangeRate, 'NGN')} / USD</span>
       </div>
     </div>
   );
