@@ -17,10 +17,10 @@ const QuickActions: React.FC = () => {
 
   const actions = [
     {
-      to: '/deposit',
-      icon: ArrowDown,
-      label: 'Deposit',
-      gradient: 'from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700',
+      to: '/sell-crypto',
+      icon: Minus,
+      label: 'Sell',
+      gradient: 'from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700',
       requiresAuth: false,
       comingSoon: true
     },
@@ -33,19 +33,19 @@ const QuickActions: React.FC = () => {
       comingSoon: true
     },
     {
+      to: '/deposit',
+      icon: ArrowDown,
+      label: 'Deposit',
+      gradient: 'from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700',
+      requiresAuth: false,
+      comingSoon: true
+    },
+    {
       to: '/buy-crypto',
       icon: Plus,
       label: 'Buy',
       gradient: 'from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700',
       requiresAuth: true,
-      comingSoon: true
-    },
-    {
-      to: '/sell-crypto',
-      icon: Minus,
-      label: 'Sell',
-      gradient: 'from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700',
-      requiresAuth: false,
       comingSoon: true
     }
   ];
