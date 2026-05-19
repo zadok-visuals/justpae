@@ -6,22 +6,30 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ShieldCheck, Phone, FileText, Upload, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Phone, FileText, Upload, CheckCircle2, User, MapPin } from 'lucide-react';
+import { useZeroHash } from '@/hooks/useZeroHash';
 
 const KYCVerification = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const { createParticipant } = useZeroHash();
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [dob, setDob] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [country, setCountry] = useState('US');
   const [document, setDocument] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phoneNumber || !document) {
+    if (!phoneNumber || !document || !dob || !address || !city || !state || !postalCode) {
       toast({
         title: "Missing Information",
-        description: "Please provide both your phone number and proof of address.",
+        description: "Please fill in all required fields.",
         variant: "destructive",
       });
       return;
@@ -29,7 +37,29 @@ const KYCVerification = () => {
 
     setIsLoading(true);
     try {
-      // 1. Upload Document to Supabase Storage
+      // 1. Create Zero Hash Participant
+      const nameParts = (profile?.full_name || profile?.name || '').split(' ');
+      const firstName = nameParts[0] || 'Unknown';
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Unknown';
+
+      const zhResponse = await createParticipant({
+        firstName,
+        lastName,
+        dob,
+        address,
+        city,
+        state,
+        postalCode,
+        country
+      });
+
+      if (!zhResponse || zhResponse.error) {
+        throw new Error(zhResponse?.error || "Failed to register Zero Hash participant");
+      }
+
+      const participantCode = zhResponse.participant_code;
+
+      // 2. Upload Document to Supabase Storage
       const fileExt = document.name.split('.').pop();
       const fileName = `${user?.id}/address_proof_${Date.now()}.${fileExt}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -42,14 +72,15 @@ const KYCVerification = () => {
         .from('kyc-documents')
         .getPublicUrl(uploadData.path);
 
-      // 2. Update User Profile with KYC Data
+      // 3. Update User Profile with KYC Data
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
           kyc_phone_number: phoneNumber,
           kyc_address_proof_url: publicUrl,
           kyc_submitted_at: new Date().toISOString(),
-          is_kyc_verified: false // Reset/Set to false until admin approves
+          is_kyc_verified: false,
+          zero_hash_participant_code: participantCode
         })
         .eq('id', user?.id);
 
@@ -58,7 +89,7 @@ const KYCVerification = () => {
       setIsSubmitted(true);
       toast({
         title: "KYC Submitted!",
-        description: "Our team will review your documents within 24 hours.",
+        description: "Your Zero Hash wallet has been initiated.",
       });
     } catch (error: any) {
       console.error('KYC Error:', error);
@@ -124,6 +155,63 @@ const KYCVerification = () => {
                   required
                 />
                 <p className="text-xs text-gray-500 italic">We'll use this for security alerts and account recovery.</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden border-gray-200 shadow-sm">
+            <CardHeader className="bg-gray-50 border-b border-gray-100 py-4">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <User className="w-4 h-4 text-fintech-blue" />
+                Personal Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="dob">Date of Birth</Label>
+                <Input
+                  id="dob"
+                  type="date"
+                  value={dob}
+                  onChange={(e) => setDob(e.target.value)}
+                  className="h-12"
+                  required
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden border-gray-200 shadow-sm">
+            <CardHeader className="bg-gray-50 border-b border-gray-100 py-4">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-fintech-blue" />
+                Residential Address
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              <div className="space-y-2">
+                <Label>Street Address</Label>
+                <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="123 Main St" required />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>City</Label>
+                  <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="New York" required />
+                </div>
+                <div className="space-y-2">
+                  <Label>State / Province</Label>
+                  <Input value={state} onChange={(e) => setState(e.target.value)} placeholder="NY" required />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Postal Code</Label>
+                  <Input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="10001" required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Country Code</Label>
+                  <Input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="US" maxLength={2} required />
+                </div>
               </div>
             </CardContent>
           </Card>
