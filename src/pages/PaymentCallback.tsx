@@ -12,7 +12,7 @@ const PaymentCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { depositFiat } = useWallet();
+  const { updateFiatBalance, addTransaction } = useWallet();
   const [status, setStatus] = useState<'loading' | 'success' | 'failed'>('loading');
   const [message, setMessage] = useState('Processing your payment...');
 
@@ -39,7 +39,18 @@ const PaymentCallback = () => {
           const amount = storedAmount ? parseFloat(storedAmount) : verification.data.amount / 100;
           
           // Update wallet balance
-          const result = await depositFiat(amount, 'paystack_card');
+          await updateFiatBalance(amount);
+          
+          // Record successful transaction
+          const result = await addTransaction({
+            type: 'deposit',
+            amount: amount,
+            fiat_amount: amount,
+            fiat_currency: 'NGN',
+            status: 'completed',
+            description: 'Paystack Card Deposit',
+            reference: finalReference
+          });
           
           if (result.success) {
             setStatus('success');
@@ -54,7 +65,7 @@ const PaymentCallback = () => {
               description: `₦${amount.toLocaleString()} has been added to your account`
             });
           } else {
-            throw new Error('Failed to update wallet balance');
+            throw new Error('Failed to record transaction');
           }
         } else {
           setStatus('failed');

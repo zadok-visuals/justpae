@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useWallet } from '@/contexts/WalletContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { paystackService } from '@/services/paystackService';
 import CardPaymentForm from '@/components/CardPaymentForm';
 import StableBankAccountDetails from '@/components/StableBankAccountDetails';
 import { ArrowLeft, CreditCard, Building, Smartphone } from 'lucide-react';
@@ -15,12 +17,13 @@ const Deposit = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { depositFiat } = useWallet();
+  const { user } = useAuth();
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!amount || !paymentMethod) {
       toast({
         title: "Error",
@@ -40,37 +43,41 @@ const Deposit = () => {
       return;
     }
 
-    setShowPaymentForm(true);
+    if (paymentMethod === 'debit_card') {
+      await handlePaystackDeposit(depositAmount);
+    } else {
+      setShowPaymentForm(true);
+    }
   };
 
-  const handleCardPayment = async (cardData: any) => {
+  const handlePaystackDeposit = async (depositAmount: number) => {
+    if (!user?.email) {
+      toast({ title: "Error", description: "User email not found", variant: "destructive" });
+      return;
+    }
+    
     setLoading(true);
     try {
-      // Simulate card payment processing
-      await new Promise(resolve => setTimeout(resolve, 3000));
-
-      const result = await depositFiat(cardData.amount, 'debit_card');
+      const result = await paystackService.initializeTransaction({
+        email: user.email,
+        amount: depositAmount * 100, // Convert NGN to kobo
+        metadata: {
+          user_id: user.id,
+          transaction_type: 'deposit'
+        }
+      });
       
-      if (result.success) {
-        toast({
-          title: "Payment Successful!",
-          description: `Your deposit of ₦${cardData.amount.toLocaleString()} has been processed.`,
-        });
-        setAmount('');
-        setPaymentMethod('');
-        setShowPaymentForm(false);
-        navigate('/wallet');
+      if (result && result.status && result.data.authorization_url) {
+        localStorage.setItem('pending_deposit_reference', result.data.reference);
+        localStorage.setItem('pending_deposit_amount', depositAmount.toString());
+        window.location.href = result.data.authorization_url;
       } else {
-        toast({
-          title: "Payment Failed",
-          description: result.error || "Please try again later",
-          variant: "destructive"
-        });
+        throw new Error(result?.message || 'Failed to initialize payment');
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
-        title: "Error",
-        description: "An unexpected error occurred",
+        title: "Payment Initialization Failed",
+        description: error.message || "Could not connect to payment gateway",
         variant: "destructive"
       });
     } finally {

@@ -46,6 +46,42 @@ interface ChatMessage {
   is_read: boolean;
 }
 
+interface ParsedTrade {
+  type: 'buy' | 'sell';
+  fiatAmount: number;
+  cryptoAmount: number;
+  cryptoSymbol: string;
+}
+
+const parseTradeRequest = (content: string): ParsedTrade | null => {
+  if (content.startsWith('🛒 BUY REQUEST')) {
+    const amountToSpendMatch = content.match(/Amount to spend:\s*₦([\d,.]+)/);
+    const estCryptoMatch = content.match(/Est\. crypto to receive:\s*([\d.]+)\s*([A-Z]+)/);
+    
+    if (amountToSpendMatch && estCryptoMatch) {
+      return {
+        type: 'buy',
+        fiatAmount: parseFloat(amountToSpendMatch[1].replace(/,/g, '')),
+        cryptoAmount: parseFloat(estCryptoMatch[1]),
+        cryptoSymbol: estCryptoMatch[2],
+      };
+    }
+  } else if (content.startsWith('🚨 NEW CRYPTO SALE')) {
+    const assetMatch = content.match(/Asset:\s*([\d.]+)\s*([A-Z]+)/);
+    const expectedFiatMatch = content.match(/Expected Fiat:\s*₦([\d,.]+)/);
+    
+    if (assetMatch && expectedFiatMatch) {
+      return {
+        type: 'sell',
+        fiatAmount: parseFloat(expectedFiatMatch[1].replace(/,/g, '')),
+        cryptoAmount: parseFloat(assetMatch[1]),
+        cryptoSymbol: assetMatch[2],
+      };
+    }
+  }
+  return null;
+};
+
 export const AdminChatManagement: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -59,6 +95,7 @@ export const AdminChatManagement: React.FC = () => {
 
   const [isSending, setIsSending] = useState(false);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  const [confirmingTradeId, setConfirmingTradeId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -279,6 +316,38 @@ export const AdminChatManagement: React.FC = () => {
     }
   };
 
+  const confirmTrade = async (message: ChatMessage, trade: ParsedTrade) => {
+    setConfirmingTradeId(message.id);
+    try {
+      const { error } = await supabase.rpc('admin_confirm_trade', {
+        p_user_id: message.sender_id,
+        p_type: trade.type,
+        p_fiat_amount: trade.fiatAmount,
+        p_crypto_amount: trade.cryptoAmount,
+        p_crypto_symbol: trade.cryptoSymbol
+      });
+
+      if (error) throw error;
+
+      await supabase.from('chat_messages').insert({
+        conversation_id: message.conversation_id,
+        sender_id: user!.id,
+        sender_type: 'admin',
+        message_type: 'text',
+        content: `✅ Trade confirmed. Your ledger balance has been updated for ${trade.cryptoAmount} ${trade.cryptoSymbol}.`
+      });
+
+      toast({ title: "Trade Confirmed", description: "Ledger has been updated successfully." });
+      
+      await fetchMessages(message.conversation_id, false);
+    } catch (error) {
+      console.error('Error confirming trade:', error);
+      toast({ title: "Confirmation Failed", description: "Could not update the ledger.", variant: "destructive" });
+    } finally {
+      setConfirmingTradeId(null);
+    }
+  };
+
   // Keep a mutable ref to the active conversation ID so the realtime
   // subscription callback never captures a stale closure value
   const selectedConversationIdRef = useRef<string | null>(null);
@@ -331,7 +400,16 @@ export const AdminChatManagement: React.FC = () => {
     }
   };
 
-  const renderMessage = (message: ChatMessage) => {
+  const isTradeConfirmed = (msgIndex: number) => {
+    for (let i = msgIndex + 1; i < messages.length; i++) {
+      if (messages[i].sender_type === 'admin' && messages[i].content?.includes('✅ Trade confirmed')) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const renderMessage = (message: ChatMessage, index: number) => {
     const isAdmin = message.sender_type === 'admin';
     const messageTime = formatDistanceToNow(new Date(message.created_at), { addSuffix: true });
 
@@ -345,7 +423,33 @@ export const AdminChatManagement: React.FC = () => {
               : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-2xl rounded-tl-none p-3'
         }`}>
           {message.message_type === 'text' && (
-            <p className="text-[14px] leading-relaxed break-words whitespace-pre-wrap">{message.content}</p>
+            <div>
+              <p className="text-[14px] leading-relaxed break-words whitespace-pre-wrap">{message.content}</p>
+              {!isAdmin && message.content && parseTradeRequest(message.content) && (
+                <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm text-gray-900 dark:text-white">
+                  {isTradeConfirmed(index) ? (
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-green-600 dark:text-green-400">
+                      <CheckCircle className="w-4 h-4" /> Trade Confirmed & Settled
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-xs font-semibold mb-2 flex items-center gap-1 text-gray-700 dark:text-gray-300">
+                        <AlertCircle className="w-3.5 h-3.5 text-fintech-orange" />
+                        Action Required
+                      </p>
+                      <Button 
+                        size="sm" 
+                        onClick={() => confirmTrade(message, parseTradeRequest(message.content!)!)}
+                        disabled={confirmingTradeId === message.id}
+                        className="w-full text-xs h-8 bg-fintech-orange hover:bg-fintech-orange/90 text-white"
+                      >
+                        {confirmingTradeId === message.id ? 'Processing...' : 'Confirm Trade & Update Ledger'}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           )}
           
           {message.message_type === 'image' && message.file_url && (
@@ -477,7 +581,7 @@ export const AdminChatManagement: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {messages.map(renderMessage)}
+                  {messages.map((msg, index) => renderMessage(msg, index))}
                 </div>
               )}
             </div>
