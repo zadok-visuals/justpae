@@ -97,14 +97,55 @@ class CryptoService {
         };
       });
     } catch (error) {
-      console.error('Error fetching crypto prices:', error);
-      // Return fallback data if API fails
-      return [
-        { symbol: 'BTC', price: 43000, change24h: 2.5, volume24h: 20000000000, marketCap: 840000000000 },
-        { symbol: 'ETH', price: 2600, change24h: 1.8, volume24h: 12000000000, marketCap: 310000000000 },
-        { symbol: 'ADA', price: 0.38, change24h: -0.5, volume24h: 350000000, marketCap: 13000000000 }
-      ];
+      console.warn('Error fetching crypto prices from CoinGecko, trying CoinCap fallback:', error);
+      try {
+        return await this.fetchFromCoinCap(symbols);
+      } catch (fallbackError) {
+        console.error('Error fetching from CoinCap fallback:', fallbackError);
+        // Return fallback data if all APIs fail
+        return [
+          { symbol: 'BTC', price: 65000, change24h: 2.5, volume24h: 20000000000, marketCap: 840000000000 },
+          { symbol: 'ETH', price: 2500, change24h: 1.8, volume24h: 12000000000, marketCap: 310000000000 },
+          { symbol: 'ADA', price: 0.38, change24h: -0.5, volume24h: 350000000, marketCap: 13000000000 }
+        ];
+      }
     }
+  }
+
+  private async fetchFromCoinCap(symbols: string[]): Promise<CryptoPrice[]> {
+    const symbolsParam = symbols.join(',');
+    const response = await fetch(`https://api.coincap.io/v2/assets?ids=${symbolsParam}`);
+    
+    if (!response.ok) {
+      throw new Error(`CoinCap HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    const symbolMap: Record<string, string> = {
+      'bitcoin': 'BTC',
+      'ethereum': 'ETH',
+      'cardano': 'ADA'
+    };
+    
+    return symbols.map(id => {
+      const coin = data.data?.find((c: any) => c.id === id);
+      if (!coin) {
+        return {
+          symbol: symbolMap[id] || id.toUpperCase(),
+          price: 0,
+          change24h: 0,
+          volume24h: 0,
+          marketCap: 0
+        };
+      }
+      return {
+        symbol: coin.symbol,
+        price: parseFloat(coin.priceUsd) || 0,
+        change24h: parseFloat(coin.changePercent24Hr) || 0,
+        volume24h: parseFloat(coin.volumeUsd24Hr) || 0,
+        marketCap: parseFloat(coin.marketCapUsd) || 0
+      };
+    });
   }
 
   async getCombinedPrices(): Promise<{ prices: CryptoPrice[]; exchangeRate: number }> {

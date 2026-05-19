@@ -170,12 +170,18 @@ const BuyCrypto = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                      {cryptoOptions.map((crypto) => (
-                        <SelectItem key={crypto.symbol} value={crypto.symbol} className="text-gray-900 dark:text-white">
-                          <span className={`${crypto.color} font-bold mr-2`}>{crypto.icon}</span>
-                          {crypto.name}
-                        </SelectItem>
-                      ))}
+                      {cryptoOptions.map((crypto) => {
+                        const price = getCurrentPrice(crypto.symbol);
+                        return (
+                          <SelectItem key={crypto.symbol} value={crypto.symbol} className="text-gray-900 dark:text-white">
+                            <span className={`${crypto.color} font-bold mr-2`}>{crypto.icon}</span>
+                            <span>{crypto.name} ({crypto.symbol})</span>
+                            <span className="text-gray-500 dark:text-gray-400 text-sm ml-2">
+                              ${price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
