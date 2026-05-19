@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { useWallet } from '@/contexts/WalletContext';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { cryptoService, CryptoPrice } from '@/services/cryptoService';
 import SellCryptoForm from '@/components/sell-crypto/SellCryptoForm';
 import SaleInstructions from '@/components/sell-crypto/SaleInstructions';
+import { useChat } from '@/hooks/useChat';
 
 const SellCrypto = () => {
   const [selectedCrypto, setSelectedCrypto] = useState('');
@@ -17,27 +18,26 @@ const SellCrypto = () => {
   const [exchangeRate, setExchangeRate] = useState(1650);
   const { addTransaction } = useWallet();
   const { toast } = useToast();
+  const { sendMessage } = useChat();
+  const navigate = useNavigate();
 
   const cryptoOptions = [
     { 
       symbol: 'BTC', 
       name: 'Bitcoin', 
       icon: '₿',
-      address: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
       network: 'Bitcoin'
     },
     { 
       symbol: 'ETH', 
       name: 'Ethereum', 
       icon: 'Ξ',
-      address: '0x742d35Cc6635C0532925a3b8D3Ac7A194f2a0C57',
       network: 'Ethereum'
     },
     { 
       symbol: 'USDT', 
       name: 'Tether', 
       icon: '₮',
-      address: '0x742d35Cc6635C0532925a3b8D3Ac7A194f2a0C57',
       network: 'Ethereum (ERC-20)'
     }
   ];
@@ -144,10 +144,17 @@ const SellCrypto = () => {
 
       addTransaction(transaction);
 
+      // Send chat message to admin
+      const message = `🚨 NEW CRYPTO SALE\nAsset: ${cryptoAmount} ${selectedCrypto}\nExpected Fiat: ${formatCurrency(nairaEquivalent, 'NGN')}\nStatus: Waiting for Admin Wallet Address`;
+      await sendMessage(message);
+
       toast({
-        title: "Sell Order Created!",
-        description: `Send ${cryptoAmount} ${selectedCrypto} to the provided address. You'll receive ${formatCurrency(nairaEquivalent, 'NGN')} after confirmation.`,
+        title: "Order Created",
+        description: "Redirecting to chat to receive wallet address...",
       });
+      
+      // Redirect to chat
+      navigate('/chat');
     } catch (error) {
       toast({
         title: "Transaction Failed",

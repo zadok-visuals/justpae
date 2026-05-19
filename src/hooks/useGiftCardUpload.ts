@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useChat } from '@/hooks/useChat';
+import { useNavigate } from 'react-router-dom';
 
 export const useGiftCardUpload = (onSubmitSuccess?: () => void) => {
   const [selectedCardType, setSelectedCardType] = useState('');
@@ -11,6 +13,8 @@ export const useGiftCardUpload = (onSubmitSuccess?: () => void) => {
   const [isUploading, setIsUploading] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { sendMessage } = useChat();
+  const navigate = useNavigate();
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -152,9 +156,13 @@ export const useGiftCardUpload = (onSubmitSuccess?: () => void) => {
 
       console.log('Gift card transaction created:', data);
 
+      // Send chat message to admin
+      const message = `🚨 NEW GIFT CARD SALE\nType: ${selectedCardType}\nValue: $${cardValue}\nImage Link: ${imageUrl}`;
+      await sendMessage(message);
+
       toast({
         title: "Success!",
-        description: `Your ${selectedCardType} gift card has been submitted for review. You'll be notified once it's processed.`,
+        description: "Redirecting to chat to complete the process...",
       });
 
       // Reset form
@@ -168,6 +176,9 @@ export const useGiftCardUpload = (onSubmitSuccess?: () => void) => {
       if (onSubmitSuccess) {
         onSubmitSuccess();
       }
+
+      // Redirect to chat
+      navigate('/chat');
 
     } catch (error) {
       console.error('Error submitting gift card:', error);

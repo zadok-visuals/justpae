@@ -21,32 +21,28 @@ const QuickActions: React.FC = () => {
       icon: Minus,
       label: 'Sell',
       gradient: 'from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700',
-      requiresAuth: false,
-      comingSoon: true
+      requiresAuth: false
     },
     {
       to: '/withdraw',
       icon: ArrowUp,
       label: 'Withdraw',
       gradient: 'from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700',
-      requiresAuth: true,
-      comingSoon: true
+      requiresAuth: true
     },
     {
       to: '/deposit',
       icon: ArrowDown,
       label: 'Deposit',
       gradient: 'from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700',
-      requiresAuth: false,
-      comingSoon: true
+      requiresAuth: false
     },
     {
       to: '/buy-crypto',
       icon: Plus,
       label: 'Buy',
       gradient: 'from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700',
-      requiresAuth: true,
-      comingSoon: true
+      requiresAuth: true
     }
   ];
 
@@ -59,19 +55,7 @@ const QuickActions: React.FC = () => {
         {actions.map((action) => {
           const ActionIcon = action.icon;
 
-          if (action.comingSoon) {
-            return (
-              <div key={action.to} className="text-center group relative cursor-not-allowed opacity-80">
-                <div className={`w-14 h-14 bg-gradient-to-br ${action.gradient} text-white rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-sm grayscale-[30%]`}>
-                  <ActionIcon className="w-6 h-6" />
-                </div>
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{action.label}</span>
-                <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
-                  Coming Soon
-                </div>
-              </div>
-            );
-          }
+
 
           if (action.requiresAuth) {
             return (

@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import CryptoSelector from './CryptoSelector';
 import SalePreview from './SalePreview';
-import WalletAddress from './WalletAddress';
 
 interface CryptoOption {
   symbol: string;
@@ -29,7 +28,6 @@ interface SellCryptoFormProps {
   currentPrice: number;
   usdValue: number;
   exchangeRate: number;
-  onCopyAddress: (address: string) => void;
   onSell: () => void;
 }
 
@@ -46,7 +44,6 @@ const SellCryptoForm: React.FC<SellCryptoFormProps> = ({
   currentPrice,
   usdValue,
   exchangeRate,
-  onCopyAddress,
   onSell
 }) => {
   return (
@@ -86,12 +83,7 @@ const SellCryptoForm: React.FC<SellCryptoFormProps> = ({
           />
         )}
 
-        {selectedCryptoData && (
-          <WalletAddress
-            selectedCryptoData={selectedCryptoData}
-            onCopyAddress={onCopyAddress}
-          />
-        )}
+
 
         <Button 
           onClick={onSell}
@@ -102,8 +94,8 @@ const SellCryptoForm: React.FC<SellCryptoFormProps> = ({
         </Button>
 
         <div className="text-center text-sm text-gray-600 dark:text-gray-400 mt-4">
-          <p>⚠️ Only send {selectedCrypto} to this address on {selectedCryptoData?.network} network.</p>
-          <p>Sending other tokens or using wrong network will result in permanent loss.</p>
+          <p>⚠️ Do not send any tokens yet.</p>
+          <p>An Admin will provide the secure wallet address in the chat after you create the order.</p>
         </div>
       </CardContent>
     </Card>
