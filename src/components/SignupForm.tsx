@@ -155,7 +155,7 @@ const SignupForm: React.FC = () => {
   }
 
   return (
-    <form className="space-y-6" onSubmit={handleSubmit}>
+    <form className="space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
       {/* Full Name Input Group */}
       <div className="space-y-2">
         <Label htmlFor="name" className="text-sm font-semibold text-gray-300 ml-1">
