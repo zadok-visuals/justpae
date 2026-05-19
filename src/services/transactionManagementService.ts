@@ -32,6 +32,18 @@ export const transactionManagementService = {
   },
 
   async updateTransaction(transactionId: string, updates: any): Promise<void> {
+    // 1. Fetch current transaction details
+    const { data: tx, error: fetchError } = await supabase
+      .from('transactions')
+      .select('user_id, type, amount, status')
+      .eq('id', transactionId)
+      .single();
+
+    if (fetchError || !tx) {
+      throw new Error(fetchError?.message || 'Transaction not found');
+    }
+
+    // 2. Perform the update
     const { error } = await supabase
       .from('transactions')
       .update(updates)
@@ -39,6 +51,48 @@ export const transactionManagementService = {
 
     if (error) {
       throw error;
+    }
+
+    // 3. Update wallet balance if status changed
+    if (updates.status && updates.status !== tx.status) {
+      // If a deposit was approved (pending -> completed)
+      if (tx.type === 'deposit' && updates.status === 'completed') {
+        const { data: wallet, error: walletError } = await supabase
+          .from('wallets')
+          .select('balance')
+          .eq('user_id', tx.user_id)
+          .eq('currency', 'NGN')
+          .single();
+
+        if (!walletError && wallet) {
+          const newBalance = (wallet.balance || 0) + tx.amount;
+          await supabase
+            .from('wallets')
+            .update({ balance: newBalance })
+            .eq('user_id', tx.user_id)
+            .eq('currency', 'NGN');
+        }
+      }
+      
+      // If a withdrawal was rejected/failed/cancelled (pending -> failed/cancelled)
+      // Note: Withdrawal transaction amount is saved as negative in DB
+      if (tx.type === 'withdrawal' && (updates.status === 'failed' || updates.status === 'cancelled')) {
+        const { data: wallet, error: walletError } = await supabase
+          .from('wallets')
+          .select('balance')
+          .eq('user_id', tx.user_id)
+          .eq('currency', 'NGN')
+          .single();
+
+        if (!walletError && wallet) {
+          const newBalance = (wallet.balance || 0) + Math.abs(tx.amount);
+          await supabase
+            .from('wallets')
+            .update({ balance: newBalance })
+            .eq('user_id', tx.user_id)
+            .eq('currency', 'NGN');
+        }
+      }
     }
   },
 

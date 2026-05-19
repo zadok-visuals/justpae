@@ -6,6 +6,8 @@ import { Copy, Building } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
+import { supabase } from '@/integrations/supabase/client';
+
 interface StableBankAccountDetailsProps {
   amount: string;
   paymentMethod: string;
@@ -37,39 +39,34 @@ const StableBankAccountDetails: React.FC<StableBankAccountDetailsProps> = ({
   });
   const [loading, setLoading] = useState(true);
 
-  // Fetch live Paystack virtual account details
+  // Fetch corporate bank details from system settings database
   useEffect(() => {
-    const fetchVirtualAccount = async () => {
+    const fetchCorporateDetails = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/paystack-payment`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-          },
-          body: JSON.stringify({
-            action: 'get_virtual_account',
-            customer_code: user?.id
-          })
-        });
-
-        const result = await response.json();
+        const { data, error } = await supabase
+          .from('system_settings')
+          .select('setting_key, setting_value')
+          .in('setting_key', ['corporate_bank_name', 'corporate_account_number', 'corporate_account_name']);
         
-        if (result.status && result.data) {
-          setBankDetails({
-            accountName: result.data.account_name,
-            accountNumber: result.data.account_number,
-            bankName: result.data.bank_name,
-            sortCode: result.data.bank_code || ""
-          });
-        }
+        if (error) throw error;
+
+        const settingsMap = (data || []).reduce((acc, curr) => {
+          acc[curr.setting_key] = curr.setting_value;
+          return acc;
+        }, {} as Record<string, string>);
+
+        setBankDetails({
+          accountName: settingsMap.corporate_account_name || "AmazingPay Limited",
+          accountNumber: settingsMap.corporate_account_number || "2109876543",
+          bankName: settingsMap.corporate_bank_name || "AmazingPay Bank",
+          sortCode: ""
+        });
       } catch (error) {
-        console.error('Failed to fetch virtual account:', error);
-        // Fallback to default details if API fails
+        console.error('Failed to fetch corporate bank details:', error);
         setBankDetails({
           accountName: "AmazingPay Limited",
-          accountNumber: "Contact Support",
-          bankName: "Please use card payment",
+          accountNumber: "2109876543",
+          bankName: "AmazingPay Bank",
           sortCode: ""
         });
       } finally {
@@ -77,10 +74,8 @@ const StableBankAccountDetails: React.FC<StableBankAccountDetailsProps> = ({
       }
     };
 
-    if (user) {
-      fetchVirtualAccount();
-    }
-  }, [user]);
+    fetchCorporateDetails();
+  }, []);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);

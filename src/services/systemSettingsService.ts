@@ -11,6 +11,10 @@ export interface SystemSettingsFormData {
   maintenance_mode: boolean;
   max_transaction_amount: string;
   kyc_required_threshold: string;
+  usd_to_ngn_rate: string;
+  corporate_bank_name: string;
+  corporate_account_number: string;
+  corporate_account_name: string;
   notification_templates: string;
 }
 
@@ -56,6 +60,10 @@ export const systemSettingsService = {
       { key: 'maintenance_mode', value: 'false', description: 'When enabled, shows maintenance message to users' },
       { key: 'max_transaction_amount', value: '1000000', description: 'Maximum allowed transaction amount in NGN' },
       { key: 'kyc_required_threshold', value: '100000', description: 'Transaction amount threshold requiring KYC verification' },
+      { key: 'usd_to_ngn_rate', value: '1650', description: 'Manual USD to NGN exchange rate used across the app' },
+      { key: 'corporate_bank_name', value: 'AmazingPay Bank', description: 'Corporate Bank Name for user deposits' },
+      { key: 'corporate_account_number', value: '2109876543', description: 'Corporate Account Number for user deposits' },
+      { key: 'corporate_account_name', value: 'AmazingPay Limited', description: 'Corporate Account Name for user deposits' },
       { key: 'notification_templates', value: '{}', description: 'JSON templates for notifications' }
     ];
 
@@ -98,7 +106,6 @@ export const systemSettingsService = {
         setting_key: key,
         setting_value: value,
         description: description || this.getSettingDescription(key),
-        updated_by: adminUser.id,
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'setting_key'
@@ -138,6 +145,10 @@ export const systemSettingsService = {
       maintenance_mode: 'When enabled, shows maintenance message to users',
       max_transaction_amount: 'Maximum allowed transaction amount in NGN',
       kyc_required_threshold: 'Transaction amount threshold requiring KYC verification',
+      usd_to_ngn_rate: 'Manual USD to NGN exchange rate used across the app',
+      corporate_bank_name: 'Corporate Bank Name for user deposits',
+      corporate_account_number: 'Corporate Account Number for user deposits',
+      corporate_account_name: 'Corporate Account Name for user deposits',
       notification_templates: 'JSON templates for notifications'
     };
     return descriptions[key] || '';
@@ -153,6 +164,10 @@ export const systemSettingsService = {
       maintenance_mode: settingsMap.maintenance_mode === 'true' || settingsMap.maintenance_mode === true,
       max_transaction_amount: settingsMap.max_transaction_amount?.toString() || '1000000',
       kyc_required_threshold: settingsMap.kyc_required_threshold?.toString() || '100000',
+      usd_to_ngn_rate: settingsMap.usd_to_ngn_rate?.toString() || '1650',
+      corporate_bank_name: settingsMap.corporate_bank_name?.toString() || 'AmazingPay Bank',
+      corporate_account_number: settingsMap.corporate_account_number?.toString() || '2109876543',
+      corporate_account_name: settingsMap.corporate_account_name?.toString() || 'AmazingPay Limited',
       notification_templates: typeof settingsMap.notification_templates === 'string' 
         ? settingsMap.notification_templates 
         : JSON.stringify(settingsMap.notification_templates || {}, null, 2)
@@ -176,6 +191,10 @@ export const systemSettingsService = {
       { key: 'maintenance_mode', value: formData.maintenance_mode.toString() },
       { key: 'max_transaction_amount', value: (parseInt(formData.max_transaction_amount) || 1000000).toString() },
       { key: 'kyc_required_threshold', value: (parseInt(formData.kyc_required_threshold) || 100000).toString() },
+      { key: 'usd_to_ngn_rate', value: (parseFloat(formData.usd_to_ngn_rate) || 1650).toString() },
+      { key: 'corporate_bank_name', value: formData.corporate_bank_name || 'AmazingPay Bank' },
+      { key: 'corporate_account_number', value: formData.corporate_account_number || '2109876543' },
+      { key: 'corporate_account_name', value: formData.corporate_account_name || 'AmazingPay Limited' },
       { key: 'notification_templates', value: notificationTemplates }
     ];
   }

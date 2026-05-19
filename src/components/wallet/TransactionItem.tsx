@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowDownLeft, ArrowUpRight, Bitcoin, Gift, CreditCard } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { giftCardTypes } from '@/components/gift-cards/types';
+import { cryptoService } from '@/services/cryptoService';
 
 interface Transaction {
   id: string;
@@ -26,6 +27,20 @@ const TransactionItem: React.FC<TransactionItemProps> = ({
   transaction,
   formatCurrency
 }) => {
+  const [exchangeRate, setExchangeRate] = useState(1650);
+
+  useEffect(() => {
+    const fetchRate = async () => {
+      try {
+        const rateVal = await cryptoService.getExchangeRate();
+        setExchangeRate(rateVal);
+      } catch (err) {
+        console.error('Error fetching exchange rate in TransactionItem:', err);
+      }
+    };
+    fetchRate();
+  }, []);
+
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case 'deposit':
@@ -142,7 +157,7 @@ const TransactionItem: React.FC<TransactionItemProps> = ({
           </p>
           {transaction.type === 'giftcard' && (
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              ₦{(Math.abs(transaction.fiat_amount) * 1650 * ((rate || 80) / 100)).toLocaleString()}
+              ₦{(Math.abs(transaction.fiat_amount) * exchangeRate * ((rate || 80) / 100)).toLocaleString()}
             </p>
           )}
         </div>

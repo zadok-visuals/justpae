@@ -242,7 +242,24 @@ class CryptoDepositService {
       
       // Convert to target fiat currency
       if (fiatCurrency === 'NGN') {
-        return usdRate * 1650; // Mock NGN rate
+        let ngnRate = 1650;
+        try {
+          const { data: settingData, error: settingError } = await supabase
+            .from('system_settings')
+            .select('setting_value')
+            .eq('setting_key', 'usd_to_ngn_rate')
+            .single();
+            
+          if (!settingError && settingData?.setting_value) {
+            const rate = parseFloat(settingData.setting_value);
+            if (!isNaN(rate)) {
+              ngnRate = rate;
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to fetch usd_to_ngn_rate for deposit, using fallback:', err);
+        }
+        return usdRate * ngnRate;
       }
       
       return usdRate;

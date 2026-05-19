@@ -6,6 +6,7 @@ import { Settings, Save } from 'lucide-react';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import MaintenanceModeSection from './settings/MaintenanceModeSection';
 import TransactionLimitsSection from './settings/TransactionLimitsSection';
+import CorporateBankSection from './settings/CorporateBankSection';
 import NotificationTemplatesSection from './settings/NotificationTemplatesSection';
 import CurrentSettingsDisplay from './settings/CurrentSettingsDisplay';
 
@@ -46,8 +47,19 @@ const SystemSettings = () => {
           <TransactionLimitsSection
             maxTransactionAmount={formData.max_transaction_amount}
             kycRequiredThreshold={formData.kyc_required_threshold}
+            usdToNgnRate={formData.usd_to_ngn_rate}
             onMaxAmountChange={(value) => setFormData(prev => ({ ...prev, max_transaction_amount: value }))}
             onKycThresholdChange={(value) => setFormData(prev => ({ ...prev, kyc_required_threshold: value }))}
+            onUsdToNgnRateChange={(value) => setFormData(prev => ({ ...prev, usd_to_ngn_rate: value }))}
+          />
+
+          <CorporateBankSection
+            bankName={formData.corporate_bank_name}
+            accountNumber={formData.corporate_account_number}
+            accountName={formData.corporate_account_name}
+            onBankNameChange={(value) => setFormData(prev => ({ ...prev, corporate_bank_name: value }))}
+            onAccountNumberChange={(value) => setFormData(prev => ({ ...prev, corporate_account_number: value }))}
+            onAccountNameChange={(value) => setFormData(prev => ({ ...prev, corporate_account_name: value }))}
           />
 
           <NotificationTemplatesSection

@@ -1,4 +1,6 @@
 
+import { supabase } from '@/integrations/supabase/client';
+
 interface CryptoPrice {
   symbol: string;
   price: number;
@@ -27,6 +29,23 @@ class CryptoService {
   private exchangeRateUrl = 'https://api.exchangerate-api.com/v4/latest/USD';
 
   async getExchangeRate(): Promise<number> {
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('setting_value')
+        .eq('setting_key', 'usd_to_ngn_rate')
+        .single();
+        
+      if (!error && data?.setting_value) {
+        const rate = parseFloat(data.setting_value);
+        if (!isNaN(rate)) {
+          return rate;
+        }
+      }
+    } catch (dbError) {
+      console.warn('Error reading usd_to_ngn_rate from DB, falling back to API:', dbError);
+    }
+
     try {
       const response = await fetch(this.exchangeRateUrl);
       const data: ExchangeRateResponse = await response.json();

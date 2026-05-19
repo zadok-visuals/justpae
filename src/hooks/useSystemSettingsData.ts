@@ -11,6 +11,10 @@ export const useSystemSettingsData = () => {
     maintenance_mode: false,
     max_transaction_amount: '',
     kyc_required_threshold: '',
+    usd_to_ngn_rate: '',
+    corporate_bank_name: '',
+    corporate_account_number: '',
+    corporate_account_name: '',
     notification_templates: ''
   });
   const { toast } = useToast();
