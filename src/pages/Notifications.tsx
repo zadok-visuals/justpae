@@ -41,10 +41,10 @@ const Notifications = () => {
 
   return (
 
-      <div className="flex flex-col h-[100dvh] w-full bg-white dark:bg-neutral-950 text-gray-900 dark:text-white overflow-hidden relative">
+      <div className="flex flex-col h-[100dvh] w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-white overflow-hidden relative">
         
         {/* Sticky Header Layer */}
-        <div className="shrink-0 border-b border-gray-100 dark:border-neutral-900 px-4 py-3 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-md z-20">
+        <div className="shrink-0 border-b border-gray-100 dark:border-gray-800 px-4 py-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md z-20">
           <div className="max-w-3xl mx-auto w-full">
             <NotificationHeader
               unreadCount={unreadCount}
@@ -54,7 +54,7 @@ const Notifications = () => {
         </div>
 
         {/* Scroll Engine Area */}
-        <div className="flex-1 overflow-y-auto bg-gray-50/30 dark:bg-neutral-900/5 px-4 py-4 pb-safe-bottom scroll-smooth">
+        <div className="flex-1 overflow-y-auto bg-gray-50/30 dark:bg-gray-900/5 px-4 py-4 pb-safe-bottom scroll-smooth">
           <div className="max-w-3xl mx-auto w-full">
             <NotificationList
               notifications={notifications}

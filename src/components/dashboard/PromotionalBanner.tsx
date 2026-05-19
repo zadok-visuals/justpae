@@ -9,7 +9,7 @@ const PromotionalBanner: React.FC = () => {
   const banners = [
     {
       title: "Our Physical Offices",
-      description: "For easy inquiries, complaint resolution or feedback, see if any of our physical offices is located near you.",
+      description: "For easy inquiries, complaint resolution/feedback, see our physical office locations.",
       buttonText: "Learn more",
       buttonLink: "https://www.amazingpay.app/", // added link
       icon: "₿",

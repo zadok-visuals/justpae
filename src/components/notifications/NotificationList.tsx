@@ -37,7 +37,7 @@ const NotificationList: React.FC<NotificationListProps> = ({
 
   if (notifications.length === 0) {
     return (
-      <Card className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border-gray-100 dark:border-neutral-800">
+      <Card className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border-gray-100 dark:border-gray-800">
         <CardContent className="p-8 text-center">
           <Bell className="w-12 h-12 mx-auto text-gray-400 mb-3" />
           <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">
