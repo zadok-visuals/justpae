@@ -47,7 +47,7 @@ interface ChatMessage {
 }
 
 interface ParsedTrade {
-  type: 'buy' | 'sell';
+  type: 'buy' | 'sell' | 'withdrawal';
   fiatAmount: number;
   cryptoAmount: number;
   cryptoSymbol: string;
@@ -76,6 +76,17 @@ const parseTradeRequest = (content: string): ParsedTrade | null => {
         fiatAmount: parseFloat(expectedFiatMatch[1].replace(/,/g, '')),
         cryptoAmount: parseFloat(assetMatch[1]),
         cryptoSymbol: assetMatch[2],
+      };
+    }
+  } else if (content.startsWith('📤 WITHDRAWAL REQUEST')) {
+    const amountMatch = content.match(/Amount:\s*₦([\d,.]+)/);
+    
+    if (amountMatch) {
+      return {
+        type: 'withdrawal',
+        fiatAmount: parseFloat(amountMatch[1].replace(/,/g, '')),
+        cryptoAmount: 0,
+        cryptoSymbol: '',
       };
     }
   }
@@ -334,10 +345,12 @@ export const AdminChatManagement: React.FC = () => {
         sender_id: user!.id,
         sender_type: 'admin',
         message_type: 'text',
-        content: `✅ Trade confirmed. Your ledger balance has been updated for ${trade.cryptoAmount} ${trade.cryptoSymbol}.`
+        content: trade.type === 'withdrawal'
+          ? `✅ Withdrawal confirmed. The funds have been sent to your bank account.`
+          : `✅ Trade confirmed. Your ledger balance has been updated for ${trade.cryptoAmount} ${trade.cryptoSymbol}.`
       });
 
-      toast({ title: "Trade Confirmed", description: "Ledger has been updated successfully." });
+      toast({ title: trade.type === 'withdrawal' ? "Withdrawal Confirmed" : "Trade Confirmed", description: "Ledger has been updated successfully." });
       
       await fetchMessages(message.conversation_id, false);
     } catch (error) {
@@ -402,7 +415,7 @@ export const AdminChatManagement: React.FC = () => {
 
   const isTradeConfirmed = (msgIndex: number) => {
     for (let i = msgIndex + 1; i < messages.length; i++) {
-      if (messages[i].sender_type === 'admin' && messages[i].content?.includes('✅ Trade confirmed')) {
+      if (messages[i].sender_type === 'admin' && (messages[i].content?.includes('✅ Trade confirmed') || messages[i].content?.includes('✅ Withdrawal confirmed'))) {
         return true;
       }
     }
@@ -429,7 +442,7 @@ export const AdminChatManagement: React.FC = () => {
                 <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm text-gray-900 dark:text-white">
                   {isTradeConfirmed(index) ? (
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-green-600 dark:text-green-400">
-                      <CheckCircle className="w-4 h-4" /> Trade Confirmed & Settled
+                      <CheckCircle className="w-4 h-4" /> {parseTradeRequest(message.content)!.type === 'withdrawal' ? 'Withdrawal Completed' : 'Trade Confirmed & Settled'}
                     </div>
                   ) : (
                     <>
@@ -443,7 +456,7 @@ export const AdminChatManagement: React.FC = () => {
                         disabled={confirmingTradeId === message.id}
                         className="w-full text-xs h-8 bg-fintech-orange hover:bg-fintech-orange/90 text-white"
                       >
-                        {confirmingTradeId === message.id ? 'Processing...' : 'Confirm Trade & Update Ledger'}
+                        {confirmingTradeId === message.id ? 'Processing...' : (parseTradeRequest(message.content!)!.type === 'withdrawal' ? 'Confirm Withdrawal Completed' : 'Confirm Trade & Update Ledger')}
                       </Button>
                     </>
                   )}

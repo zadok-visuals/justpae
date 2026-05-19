@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useWallet } from '@/contexts/WalletContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import BankAccountManager from '@/components/BankAccountManager';
 import { ArrowLeft } from 'lucide-react';
 import { cryptoService } from '@/services/cryptoService';
@@ -25,6 +27,7 @@ const Withdraw = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { fiatBalance, withdrawFiat } = useWallet();
+  const { user } = useAuth();
   const [amount, setAmount] = useState('');
   const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
   const [loading, setLoading] = useState(false);
@@ -104,6 +107,26 @@ const Withdraw = () => {
       const result = await withdrawFiat(withdrawAmount, selectedAccount.id);
       
       if (result.success) {
+        // Send a message to admin chat
+        if (user) {
+          // Find or create conversation
+          const { data: convData } = await supabase
+            .from('chat_conversations')
+            .select('id')
+            .eq('user_id', user.id)
+            .single();
+            
+          if (convData) {
+            await supabase.from('chat_messages').insert({
+              conversation_id: convData.id,
+              sender_id: user.id,
+              sender_type: 'user',
+              message_type: 'text',
+              content: `📤 WITHDRAWAL REQUEST\nAmount: ₦${withdrawAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}\nBank: ${selectedAccount.bank_name}\nAccount: ${selectedAccount.account_number}\nName: ${selectedAccount.account_name}\nPlease process this withdrawal to my bank account.`
+            });
+          }
+        }
+
         toast({
           title: "Withdrawal Initiated",
           description: `Your withdrawal of ₦${withdrawAmount.toLocaleString()} is being processed.`,

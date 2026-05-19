@@ -1,8 +1,11 @@
 -- Run this script in your Supabase SQL Editor
 
+-- Ensure the 'asset' column exists on the transactions table
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS asset TEXT;
+
 CREATE OR REPLACE FUNCTION admin_confirm_trade(
   p_user_id UUID,
-  p_type TEXT, -- 'buy', 'sell', or 'deposit'
+  p_type TEXT, -- 'buy', 'sell', 'deposit', or 'withdrawal'
   p_fiat_amount NUMERIC,
   p_crypto_amount NUMERIC DEFAULT 0,
   p_crypto_symbol TEXT DEFAULT NULL
@@ -28,6 +31,9 @@ BEGIN
   ELSIF p_type = 'buy' THEN
     -- User pays Naira
     UPDATE wallets SET balance = balance - p_fiat_amount, updated_at = NOW() WHERE id = v_wallet_id;
+  ELSIF p_type = 'withdrawal' THEN
+    -- DO NOTHING to balance. The balance was already deducted locally when the user requested the withdrawal.
+    NULL;
   END IF;
 
   -- 3. Update crypto holdings (only for buy/sell)

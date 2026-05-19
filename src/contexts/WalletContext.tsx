@@ -294,20 +294,6 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Deduct amount immediately (pending withdrawal)
       await updateFiatBalance(-amount);
 
-      // Simulate processing delay
-      setTimeout(async () => {
-        // Update transaction status to completed
-        await supabase
-          .from('transactions')
-          .update({ status: 'completed' })
-          .eq('reference', reference);
-        
-        // Refresh data
-        await refreshData();
-        
-        console.log(`Withdrawal of ₦${amount.toLocaleString()} to ${bankAccount} completed successfully`);
-      }, 3000);
-
       return { success: true, reference };
     } catch (error) {
       console.error('Withdrawal failed:', error);
