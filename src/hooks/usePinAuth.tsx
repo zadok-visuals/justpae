@@ -106,7 +106,7 @@ export const usePinAuth = () => {
       }
       
       const isValid = data === true;
-      console.log('PIN verification for user:', user.id, 'result:', isValid);
+      // console.log('PIN verification for user:', user.id, 'result:', isValid);
       return isValid;
     } catch (error) {
       console.error('Error verifying PIN:', error);

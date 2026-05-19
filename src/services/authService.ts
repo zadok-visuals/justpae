@@ -6,7 +6,7 @@ export const authService = {
   login: async (email: string, password: string) => {
     try {
       const normalizedEmail = email.trim().toLowerCase();
-      console.log('Attempting login for:', normalizedEmail);
+      // console.log('Attempting login for:', normalizedEmail);
 
       // Removed cleanupAuthState() as it may interfere with Supabase client session handling
       // during the immediate subsequent signInWithPassword call.
@@ -73,7 +73,7 @@ export const authService = {
   signup: async (email: string, password: string, name: string, phone?: string, country?: string) => {
     try {
       const normalizedEmail = email.trim().toLowerCase();
-      console.log('Attempting signup for:', normalizedEmail);
+      // console.log('Attempting signup for:', normalizedEmail);
 
       // Clean up any existing auth state first
       cleanupAuthState();
