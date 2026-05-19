@@ -1,33 +1,46 @@
 name: Build and Deploy
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
-  # 1. SHARED WEB BUILD
-  build:
-    name: Build Web Assets
+  # 1. SHARED WEB BUILD + VERCEL DEPLOY
+  build-and-deploy:
+    name: Build & Deploy to Vercel
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
+
       # FIXED: Force a clean installation architecture mapping in the cloud container
       - run: |
           rm -f package-lock.json
           npm install --legacy-peer-deps
-      - run: npm run build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: web-dist
-          path: dist
+
+      # Inject Supabase env vars so the build uses real values (not hardcoded fallback)
+      - name: Build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      # Deploy the built dist/ folder to Vercel
+      - name: Deploy to Vercel
+        run: npx vercel --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
   # 2. ANDROID BUILD
   # build-android:
   #   name: Build Android
-  #   needs: build
+  #   needs: build-and-deploy
   #   runs-on: ubuntu-latest
   #   steps:
   #     - uses: actions/checkout@v4
@@ -57,7 +70,7 @@ jobs:
   # # 3. iOS APP STORE DEPLOY
   # deploy-ios:
   #   name: Deploy to App Store
-  #   needs: build
+  #   needs: build-and-deploy
   #   runs-on: macos-15
   #   steps:
   #     - uses: actions/checkout@v4
