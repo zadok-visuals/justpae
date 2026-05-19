@@ -43,7 +43,7 @@ const CryptoSelector: React.FC<CryptoSelectorProps> = ({
                   <span>{crypto.icon}</span>
                   <span>{crypto.name} ({crypto.symbol})</span>
                   <span className="text-gray-500 dark:text-gray-400 text-sm">
-                    - {formatCurrency(price * exchangeRate, 'NGN', false)}
+                    - {formatCurrency(price, 'USD', false)}
                   </span>
                 </div>
               </SelectItem>
