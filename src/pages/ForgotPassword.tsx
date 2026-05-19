@@ -49,68 +49,74 @@ const ForgotPassword = () => {
   };
 
   return (
-      <div className="min-h-screen bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-        <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="flex justify-center">
-            <img 
-              src="/lovable-uploads/d8bf89ab-4a7e-4d3a-b1d3-c492661136b6.png" 
-              alt="Amazingpay Logo" 
-              className="w-16 h-16 object-contain"
-            />
+    <div className="h-screen w-full bg-[#0a0c10] flex flex-col justify-start sm:justify-center items-center pt-8 pb-24 px-4 sm:px-6 lg:px-8 text-white relative overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      {/* Decorative Background Glows */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-[10%] left-1/2 -translate-x-1/2 w-[80%] h-[30%] bg-primary/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-0 w-[40%] h-[40%] bg-emerald-500/5 rounded-full blur-[120px]" />
+      </div>
+
+      <div className="w-full max-w-md space-y-5 sm:space-y-8 relative z-10 my-4 sm:my-auto">
+        <div className="flex flex-row items-center gap-4">
+          <div className="relative p-[2px] rounded-2xl bg-gradient-to-b from-white/20 to-transparent shrink-0">
+            <div className="bg-[#14171c] rounded-[14px] p-3 shadow-2xl">
+              <img 
+                src="/lovable-uploads/d8bf89ab-4a7e-4d3a-b1d3-c492661136b6.png" 
+                alt="Amazingpay Logo" 
+                className="w-10 h-10 object-contain"
+              />
+            </div>
           </div>
-          <h2 className="mt-6 text-center text-3xl font-bold text-white">
-            Forgot your password?
-          </h2>
-          <p className="mt-2 text-center text-sm text-white/80">
-            Enter your email address and we'll send you a verification token to reset your password
-          </p>
+          <div className="text-left">
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+              Reset Password
+            </h2>
+            <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-gray-400 font-medium text-white/80">
+              Enter your email to receive a verification token
+            </p>
+          </div>
         </div>
 
-        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-gray-800 py-8 px-4 shadow-xl sm:rounded-lg sm:px-10 border border-gray-700">
-            <form className="space-y-6" onSubmit={handleSubmit}>
-              <div>
-                <Label htmlFor="email" className="block text-sm font-medium text-white">
-                  Email address
-                </Label>
-                <div className="mt-1">
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="appearance-none block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary text-white"
-                    placeholder="Enter your email"
-                  />
-                </div>
-              </div>
+        <div className="bg-[#14171c]/80 backdrop-blur-xl py-6 px-4 sm:py-8 sm:px-10 shadow-2xl rounded-3xl border border-white/5">
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-semibold text-gray-300 ml-1">
+                Email address
+              </Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-12 bg-white/5 border-white/10 rounded-xl focus:ring-primary focus:border-primary text-white placeholder:text-gray-500"
+                placeholder="Enter your email address"
+              />
+            </div>
 
-              <div>
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50"
-                >
-                  {isLoading ? 'Sending...' : 'Send verification token'}
-                </Button>
-              </div>
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12 rounded-xl transition-all shadow-lg shadow-primary/20 active:scale-[0.98] disabled:opacity-50"
+            >
+              {isLoading ? 'Sending...' : 'Send verification token'}
+            </Button>
 
-              <div className="text-center">
-                <Link
-                  to="/login"
-                  className="inline-flex items-center text-sm font-medium text-primary hover:text-primary/80"
-                >
-                  <ArrowLeft className="w-4 h-4 mr-1" />
-                  Back to sign in
-                </Link>
-              </div>
-            </form>
-          </div>
+            <div className="text-center pt-2">
+              <Link
+                to="/login"
+                className="inline-flex items-center text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4 mr-1.5" />
+                Back to sign in
+              </Link>
+            </div>
+          </form>
         </div>
       </div>
+    </div>
   );
 };
 

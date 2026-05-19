@@ -55,12 +55,12 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ value, onValueChange,
 
   return (
     <Select value={value} onValueChange={handleValueChange}>
-      <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+      <SelectTrigger className="h-12 bg-white/5 border-white/10 rounded-xl text-white focus:ring-primary focus:border-primary focus:ring-2 focus:ring-offset-0 focus:ring-offset-transparent">
         <SelectValue placeholder="Select country" />
       </SelectTrigger>
-      <SelectContent className="bg-gray-700 border-gray-600">
+      <SelectContent className="bg-[#14171c] border-white/10 rounded-xl text-white">
         {countries.map((country) => (
-          <SelectItem key={country.id} value={country.country_code} className="text-white hover:bg-gray-600">
+          <SelectItem key={country.id} value={country.country_code} className="text-white hover:bg-white/5 focus:bg-white/5 focus:text-white rounded-lg cursor-pointer my-0.5">
             <div className="flex items-center gap-2">
               <span>{country.flag_emoji}</span>
               <span>{country.country_name}</span>

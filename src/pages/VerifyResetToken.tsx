@@ -119,99 +119,107 @@ const VerifyResetToken = () => {
 
   if (!email) {
     return (
-        <div className="min-h-screen bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-          <div className="sm:mx-auto sm:w-full sm:max-w-md">
-            <div className="bg-gray-800 py-8 px-4 shadow-xl sm:rounded-lg sm:px-10 border border-gray-700">
-              <div className="text-center">
-                <h2 className="text-2xl font-bold text-white mb-4">Invalid Access</h2>
-                <p className="text-white/80 mb-6">This page requires a valid email parameter.</p>
-                <Link to="/forgot-password">
-                  <Button className="w-full bg-primary hover:bg-primary/90">
-                    Go to Forgot Password
-                  </Button>
-                </Link>
-              </div>
-            </div>
+      <div className="h-screen w-full bg-[#0a0c10] flex flex-col justify-start sm:justify-center items-center pt-8 pb-24 px-4 sm:px-6 lg:px-8 text-white relative overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        {/* Decorative Background Glows */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-[10%] left-1/2 -translate-x-1/2 w-[80%] h-[30%] bg-primary/10 rounded-full blur-[120px]" />
+          <div className="absolute bottom-0 right-0 w-[40%] h-[40%] bg-emerald-500/5 rounded-full blur-[120px]" />
+        </div>
+
+        <div className="w-full max-w-md space-y-5 relative z-10 my-4 sm:my-auto">
+          <div className="bg-[#14171c]/80 backdrop-blur-xl py-8 px-6 sm:px-10 shadow-2xl rounded-3xl border border-white/5 text-center">
+            <h2 className="text-2xl font-bold text-white mb-4">Invalid Access</h2>
+            <p className="text-gray-400 mb-6 text-sm font-medium">This page requires a valid email parameter.</p>
+            <Link to="/forgot-password">
+              <Button className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12 rounded-xl transition-all shadow-lg shadow-primary/20 active:scale-[0.98]">
+                Go to Forgot Password
+              </Button>
+            </Link>
           </div>
         </div>
+      </div>
     );
   }
 
   return (
-      <div className="min-h-screen bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-        <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="flex justify-center">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-              <Key className="w-8 h-8 text-primary" />
+    <div className="h-screen w-full bg-[#0a0c10] flex flex-col justify-start sm:justify-center items-center pt-8 pb-24 px-4 sm:px-6 lg:px-8 text-white relative overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      {/* Decorative Background Glows */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-[10%] left-1/2 -translate-x-1/2 w-[80%] h-[30%] bg-primary/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-0 w-[40%] h-[40%] bg-emerald-500/5 rounded-full blur-[120px]" />
+      </div>
+
+      <div className="w-full max-w-md space-y-5 sm:space-y-8 relative z-10 my-4 sm:my-auto">
+        <div className="flex flex-row items-center gap-4">
+          <div className="relative p-[2px] rounded-2xl bg-gradient-to-b from-white/20 to-transparent shrink-0">
+            <div className="bg-[#14171c] rounded-[14px] p-3 shadow-2xl">
+              <Key className="w-10 h-10 text-primary" />
             </div>
           </div>
-          <h2 className="mt-6 text-center text-3xl font-bold text-white">
-            Enter verification token
-          </h2>
-          <p className="mt-2 text-center text-sm text-white/80">
-            We've sent a verification token to <span className="font-medium text-primary">{email}</span>
-          </p>
-        </div>
-
-        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-gray-800 py-8 px-4 shadow-xl sm:rounded-lg sm:px-10 border border-gray-700">
-            <form className="space-y-6" onSubmit={handleSubmit}>
-              <div>
-                <Label htmlFor="token" className="block text-sm font-medium text-white">
-                  Verification Token
-                </Label>
-                <div className="mt-1">
-                  <Input
-                    id="token"
-                    name="token"
-                    type="text"
-                    required
-                    value={token}
-                    onChange={(e) => setToken(e.target.value)}
-                    className="appearance-none block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary text-white"
-                    placeholder="Enter the 6-digit token from your email"
-                    maxLength={6}
-                  />
-                </div>
-                <p className="mt-1 text-xs text-white/60">
-                  Check your email for a 6-digit verification code
-                </p>
-              </div>
-
-              <div>
-                <Button
-                  type="submit"
-                  disabled={isLoading || !token.trim()}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50"
-                >
-                  {isLoading ? 'Verifying...' : 'Verify Token'}
-                </Button>
-              </div>
-
-              <div className="text-center space-y-3">
-                <button
-                  type="button"
-                  onClick={resendToken}
-                  disabled={isLoading}
-                  className="text-sm font-medium text-primary hover:text-primary/80 disabled:opacity-50"
-                >
-                  Didn't receive the token? Resend it
-                </button>
-                
-                <div>
-                  <Link
-                    to="/forgot-password"
-                    className="inline-flex items-center text-sm font-medium text-primary hover:text-primary/80"
-                  >
-                    <ArrowLeft className="w-4 h-4 mr-1" />
-                    Back to forgot password
-                  </Link>
-                </div>
-              </div>
-            </form>
+          <div className="text-left">
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+              Verify Token
+            </h2>
+            <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-gray-400 font-medium text-white/80">
+              We sent a verification token to <span className="font-semibold text-primary">{email}</span>
+            </p>
           </div>
         </div>
+
+        <div className="bg-[#14171c]/80 backdrop-blur-xl py-6 px-4 sm:py-8 sm:px-10 shadow-2xl rounded-3xl border border-white/5">
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <div className="space-y-2">
+              <Label htmlFor="token" className="text-sm font-semibold text-gray-300 ml-1">
+                Verification Token
+              </Label>
+              <Input
+                id="token"
+                name="token"
+                type="text"
+                required
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                className="h-12 bg-white/5 border-white/10 rounded-xl focus:ring-primary focus:border-primary text-white placeholder:text-gray-500 text-center tracking-widest text-lg font-bold"
+                placeholder="000000"
+                maxLength={6}
+              />
+              <p className="mt-1.5 text-xs text-gray-400 font-medium ml-1">
+                Check your email for the 6-digit verification code
+              </p>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isLoading || !token.trim()}
+              className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12 rounded-xl transition-all shadow-lg shadow-primary/20 active:scale-[0.98] disabled:opacity-50"
+            >
+              {isLoading ? 'Verifying...' : 'Verify Token'}
+            </Button>
+
+            <div className="text-center space-y-4 pt-2">
+              <button
+                type="button"
+                onClick={resendToken}
+                disabled={isLoading}
+                className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+              >
+                Didn't receive the token? Resend it
+              </button>
+              
+              <div>
+                <Link
+                  to="/forgot-password"
+                  className="inline-flex items-center text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-1.5" />
+                  Back to forgot password
+                </Link>
+              </div>
+            </div>
+          </form>
+        </div>
       </div>
+    </div>
   );
 };
 
