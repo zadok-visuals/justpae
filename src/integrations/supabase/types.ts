@@ -1080,6 +1080,25 @@ export type Database = {
         Args: { pin_input: string }
         Returns: boolean
       }
+      request_withdrawal: {
+        Args: {
+          p_user_id: string
+          p_amount: number
+          p_bank_account: string
+          p_reference: string
+        }
+        Returns: boolean
+      }
+      admin_confirm_trade: {
+        Args: {
+          p_user_id: string
+          p_type: string
+          p_fiat_amount: number
+          p_crypto_amount?: number
+          p_crypto_symbol?: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       admin_role: "super_admin" | "admin" | "moderator"
