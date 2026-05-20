@@ -1,7 +1,19 @@
 name: Build and Deploy
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
+    inputs:
+      build_android:
+        description: 'Run Android build'
+        type: boolean
+        default: false
+      build_ios:
+        description: 'Run iOS build'
+        type: boolean
+        default: false
 
 jobs:
   # 1. SHARED WEB BUILD
@@ -28,6 +40,7 @@ jobs:
   android:
     name: Build Android App
     needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.build_android
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,6 +48,10 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: dist
       # FIXED: Force a clean installation architecture mapping in the cloud container
       - run: |
           rm -f package-lock.json
@@ -48,6 +65,7 @@ jobs:
   ios:
     name: Build & Deploy iOS App
     needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.build_ios
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
