@@ -9,6 +9,9 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
     historyApiFallback: true,
+    watch: {
+      usePolling: true,
+    },
   },
   // Add this block to bypass bundling the native .node file
   optimizeDeps: {
