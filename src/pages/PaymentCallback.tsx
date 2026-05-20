@@ -85,7 +85,7 @@ const PaymentCallback = () => {
     };
 
     verifyPayment();
-  }, [searchParams, depositFiat, toast]);
+  }, [searchParams, updateFiatBalance, addTransaction, toast]);
 
   const handleContinue = () => {
     if (status === 'success') {

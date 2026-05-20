@@ -108,6 +108,10 @@ const Deposit = () => {
     }
   };
 
+  const handleCardPayment = async (cardData: any) => {
+    await handlePaystackDeposit(cardData.amount);
+  };
+
   if (showPaymentForm && paymentMethod === 'debit_card') {
     return (
 
