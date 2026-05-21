@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useWallet } from '@/contexts/WalletContext';
@@ -9,6 +8,8 @@ import { cryptoService, CryptoPrice } from '@/services/cryptoService';
 import SellCryptoForm from '@/components/sell-crypto/SellCryptoForm';
 import SaleInstructions from '@/components/sell-crypto/SaleInstructions';
 import { useChat } from '@/hooks/useChat';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTransactionLimits } from '@/hooks/useTransactionLimits';
 
 const SellCrypto = () => {
   const [selectedCrypto, setSelectedCrypto] = useState('');
@@ -20,6 +21,8 @@ const SellCrypto = () => {
   const { toast } = useToast();
   const { sendMessage } = useChat();
   const navigate = useNavigate();
+  const { profile } = useAuth();
+  const { maxTransactionAmount, kycRequiredThreshold } = useTransactionLimits();
 
   const cryptoOptions = [
     { 
@@ -122,6 +125,29 @@ const SellCrypto = () => {
         description: "Please select a cryptocurrency and enter a valid amount.",
         variant: "destructive",
       });
+      return;
+    }
+
+    const nairaEquivalentCheck = usdValue * exchangeRate;
+
+    // Enforce maximum transaction amount
+    if (nairaEquivalentCheck > maxTransactionAmount) {
+      toast({
+        title: "Amount Exceeds Limit",
+        description: `The maximum per transaction is ₦${maxTransactionAmount.toLocaleString('en-NG')}. Your order is ₦${nairaEquivalentCheck.toLocaleString('en-NG', { maximumFractionDigits: 0 })}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Enforce KYC threshold
+    if (nairaEquivalentCheck >= kycRequiredThreshold && !profile?.is_kyc_verified) {
+      toast({
+        title: "KYC Verification Required",
+        description: `Orders of ₦${kycRequiredThreshold.toLocaleString('en-NG')} or more require identity verification.`,
+        variant: "destructive",
+      });
+      navigate('/kyc');
       return;
     }
 

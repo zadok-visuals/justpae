@@ -7,14 +7,16 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { paystackService } from '@/services/paystackService';
-import { ArrowLeft, CreditCard, ShieldCheck } from 'lucide-react';
+import { useTransactionLimits } from '@/hooks/useTransactionLimits';
+import { ArrowLeft, CreditCard, ShieldCheck, AlertTriangle } from 'lucide-react';
 
 const Deposit = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
+  const { maxTransactionAmount, kycRequiredThreshold, isLoaded } = useTransactionLimits();
 
   const handleContinue = async () => {
     if (!amount) {
@@ -42,6 +44,27 @@ const Deposit = () => {
         description: "Minimum deposit amount is ₦100",
         variant: "destructive"
       });
+      return;
+    }
+
+    // Enforce admin-configured maximum transaction amount
+    if (depositAmount > maxTransactionAmount) {
+      toast({
+        title: "Amount Exceeds Limit",
+        description: `The maximum deposit per transaction is ₦${maxTransactionAmount.toLocaleString('en-NG')}. Please reduce your amount.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Enforce KYC threshold — block transaction if user isn't verified
+    if (depositAmount >= kycRequiredThreshold && !profile?.is_kyc_verified) {
+      toast({
+        title: "KYC Verification Required",
+        description: `Transactions of ₦${kycRequiredThreshold.toLocaleString('en-NG')} or more require identity verification. Please complete KYC first.`,
+        variant: "destructive"
+      });
+      navigate('/kyc');
       return;
     }
 
@@ -194,8 +217,14 @@ const Deposit = () => {
             </li>
             <li className="flex items-start">
               <span className="text-fintech-orange mr-2 mt-0.5">•</span>
-              <span>Maximum deposit: ₦5,000,000 per transaction</span>
+              <span>Maximum deposit: ₦{maxTransactionAmount.toLocaleString('en-NG')} per transaction</span>
             </li>
+            {!profile?.is_kyc_verified && (
+              <li className="flex items-start text-amber-600 dark:text-amber-500">
+                <AlertTriangle className="w-4 h-4 mr-2 mt-0.5 shrink-0" />
+                <span>Transactions of ₦{kycRequiredThreshold.toLocaleString('en-NG')} or more require KYC verification.</span>
+              </li>
+            )}
             <li className="flex items-start">
               <span className="text-fintech-orange mr-2 mt-0.5">•</span>
               <span>Card payments are instant</span>

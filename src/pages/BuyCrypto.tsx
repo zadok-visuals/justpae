@@ -9,10 +9,14 @@ import { ArrowLeft, MessageSquare, ShieldCheck, Zap, RefreshCw, Loader2 } from '
 import { Link, useNavigate } from 'react-router-dom';
 import { cryptoService, CryptoPrice } from '@/services/cryptoService';
 import { useChat } from '@/hooks/useChat';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTransactionLimits } from '@/hooks/useTransactionLimits';
 
 const BuyCrypto = () => {
   const navigate = useNavigate();
   const { sendMessage } = useChat();
+  const { profile } = useAuth();
+  const { maxTransactionAmount, kycRequiredThreshold } = useTransactionLimits();
   const [selectedCrypto, setSelectedCrypto] = useState('BTC');
   const [usdAmount, setUsdAmount] = useState('');
   const [cryptoPrices, setCryptoPrices] = useState<CryptoPrice[]>([]);
@@ -98,6 +102,27 @@ const BuyCrypto = () => {
         description: 'Please enter a USD amount before connecting with the admin.',
         variant: 'destructive',
       });
+      return;
+    }
+
+    // Enforce maximum transaction amount (compare naira equivalent)
+    if (nairaEquivalent > maxTransactionAmount) {
+      toast({
+        title: 'Amount Exceeds Limit',
+        description: `The maximum per transaction is ₦${maxTransactionAmount.toLocaleString('en-NG')}. Your order is ₦${nairaEquivalent.toLocaleString('en-NG', { maximumFractionDigits: 0 })}.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Enforce KYC threshold
+    if (nairaEquivalent >= kycRequiredThreshold && !profile?.is_kyc_verified) {
+      toast({
+        title: 'KYC Verification Required',
+        description: `Orders of ₦${kycRequiredThreshold.toLocaleString('en-NG')} or more require identity verification.`,
+        variant: 'destructive',
+      });
+      navigate('/kyc');
       return;
     }
 
