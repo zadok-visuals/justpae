@@ -14,7 +14,7 @@ const BuyCrypto = () => {
   const navigate = useNavigate();
   const { sendMessage } = useChat();
   const [selectedCrypto, setSelectedCrypto] = useState('BTC');
-  const [nairaAmount, setNairaAmount] = useState('');
+  const [usdAmount, setUsdAmount] = useState('');
   const [cryptoPrices, setCryptoPrices] = useState<CryptoPrice[]>([]);
   const [exchangeRate, setExchangeRate] = useState(1650);
   const [fetching, setFetching] = useState(false);
@@ -87,14 +87,15 @@ const BuyCrypto = () => {
 
   const selectedCryptoData = cryptoOptions.find(crypto => crypto.symbol === selectedCrypto);
   const currentPrice = getCurrentPrice(selectedCrypto);
-  const usdValue = nairaAmount ? (parseFloat(nairaAmount) / exchangeRate) : 0;
+  const usdValue = usdAmount ? parseFloat(usdAmount) : 0;
+  const nairaEquivalent = usdValue * exchangeRate;
   const cryptoAmount = selectedCryptoData && currentPrice ? (usdValue / currentPrice) : 0;
 
   const handleConnectToAdmin = async () => {
-    if (!nairaAmount || parseFloat(nairaAmount) <= 0) {
+    if (!usdAmount || parseFloat(usdAmount) <= 0) {
       toast({
         title: 'Enter an Amount',
-        description: 'Please enter a Naira amount before connecting with the admin.',
+        description: 'Please enter a USD amount before connecting with the admin.',
         variant: 'destructive',
       });
       return;
@@ -106,7 +107,7 @@ const BuyCrypto = () => {
       const message =
         `🛒 BUY REQUEST\n` +
         `Asset: ${cryptoName} (${selectedCrypto})\n` +
-        `Amount to spend: ₦${parseFloat(nairaAmount).toLocaleString('en-US', { minimumFractionDigits: 2 })}\n` +
+        `Amount to spend: ₦${nairaEquivalent.toLocaleString('en-US', { minimumFractionDigits: 2 })}\n` +
         `Est. rate: ₦${exchangeRate.toLocaleString('en-US', { minimumFractionDigits: 2 })} / USD\n` +
         `Est. crypto to receive: ${cryptoAmount.toFixed(6)} ${selectedCrypto}\n` +
         `Please confirm the rate and provide wallet transfer details.`;
@@ -187,23 +188,29 @@ const BuyCrypto = () => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-600 dark:text-gray-400">Amount (Naira)</Label>
+                  <Label className="text-xs text-gray-600 dark:text-gray-400">Amount (USD)</Label>
                   <Input
                     type="number"
-                    placeholder="Enter ₦ amount"
-                    value={nairaAmount}
-                    onChange={(e) => setNairaAmount(e.target.value)}
+                    placeholder="Enter $ amount"
+                    value={usdAmount}
+                    onChange={(e) => setUsdAmount(e.target.value)}
                     className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
               </div>
 
-              {nairaAmount && (
+              {usdAmount && (
                 <div className="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-2 text-sm text-gray-700 dark:text-gray-300">
                   <div className="flex justify-between">
                     <span>Current Rate:</span>
                     <span className="font-medium text-gray-900 dark:text-white">
                       ₦{exchangeRate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / USD
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>You will send (NGN):</span>
+                    <span className="font-semibold text-green-600 dark:text-green-400">
+                      ₦{nairaEquivalent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="flex justify-between">

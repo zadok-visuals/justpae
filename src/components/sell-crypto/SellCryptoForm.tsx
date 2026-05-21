@@ -17,8 +17,8 @@ interface CryptoOption {
 interface SellCryptoFormProps {
   selectedCrypto: string;
   setSelectedCrypto: (value: string) => void;
-  cryptoAmount: string;
-  setCryptoAmount: (value: string) => void;
+  usdAmount: string;
+  setUsdAmount: (value: string) => void;
   isLoading: boolean;
   cryptoOptions: CryptoOption[];
   getCurrentPrice: (symbol: string) => number;
@@ -26,6 +26,7 @@ interface SellCryptoFormProps {
   selectedCryptoData: CryptoOption | undefined;
   currentPrice: number;
   usdValue: number;
+  calculatedCryptoAmount: number;
   exchangeRate: number;
   onSell: () => void;
 }
@@ -33,8 +34,8 @@ interface SellCryptoFormProps {
 const SellCryptoForm: React.FC<SellCryptoFormProps> = ({
   selectedCrypto,
   setSelectedCrypto,
-  cryptoAmount,
-  setCryptoAmount,
+  usdAmount,
+  setUsdAmount,
   isLoading,
   cryptoOptions,
   getCurrentPrice,
@@ -42,6 +43,7 @@ const SellCryptoForm: React.FC<SellCryptoFormProps> = ({
   selectedCryptoData,
   currentPrice,
   usdValue,
+  calculatedCryptoAmount,
   exchangeRate,
   onSell
 }) => {
@@ -61,24 +63,25 @@ const SellCryptoForm: React.FC<SellCryptoFormProps> = ({
         />
 
         <div className="space-y-2">
-          <Label className="text-gray-900 dark:text-white">Amount to Sell</Label>
+          <Label className="text-gray-900 dark:text-white">Amount to Sell (USD)</Label>
           <Input
             type="number"
-            placeholder={`Enter ${selectedCrypto || 'crypto'} amount`}
-            value={cryptoAmount}
-            onChange={(e) => setCryptoAmount(e.target.value)}
+            placeholder="Enter $ amount"
+            value={usdAmount}
+            onChange={(e) => setUsdAmount(e.target.value)}
             min="0"
-            step="0.000001"
+            step="0.01"
             className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
           />
         </div>
 
-        {selectedCryptoData && cryptoAmount && (
+        {selectedCryptoData && usdAmount && (
           <SalePreview
             usdValue={usdValue}
             exchangeRate={exchangeRate}
             currentPrice={currentPrice}
             selectedCrypto={selectedCrypto}
+            calculatedCryptoAmount={calculatedCryptoAmount}
             formatCurrency={formatCurrency}
           />
         )}
@@ -87,7 +90,7 @@ const SellCryptoForm: React.FC<SellCryptoFormProps> = ({
 
         <Button 
           onClick={onSell}
-          disabled={!selectedCrypto || !cryptoAmount || isLoading}
+          disabled={!selectedCrypto || !usdAmount || isLoading}
           className="w-full bg-fintech-orange hover:bg-fintech-orange/90 py-3"
         >
           {isLoading ? 'Creating Sell Order...' : `Create Sell Order`}

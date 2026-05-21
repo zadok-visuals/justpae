@@ -12,7 +12,7 @@ import { useChat } from '@/hooks/useChat';
 
 const SellCrypto = () => {
   const [selectedCrypto, setSelectedCrypto] = useState('');
-  const [cryptoAmount, setCryptoAmount] = useState('');
+  const [usdAmount, setUsdAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [cryptoPrices, setCryptoPrices] = useState<CryptoPrice[]>([]);
   const [exchangeRate, setExchangeRate] = useState(1650);
@@ -104,8 +104,8 @@ const SellCrypto = () => {
 
   const selectedCryptoData = cryptoOptions.find(crypto => crypto.symbol === selectedCrypto);
   const currentPrice = getCurrentPrice(selectedCrypto);
-  const usdValue = selectedCryptoData && cryptoAmount ? 
-    (parseFloat(cryptoAmount) * currentPrice) : 0;
+  const usdValue = usdAmount ? parseFloat(usdAmount) : 0;
+  const calculatedCryptoAmount = selectedCryptoData && currentPrice ? (usdValue / currentPrice) : 0;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -116,7 +116,7 @@ const SellCrypto = () => {
   };
 
   const handleSell = async () => {
-    if (!selectedCrypto || !cryptoAmount || parseFloat(cryptoAmount) <= 0) {
+    if (!selectedCrypto || !usdAmount || parseFloat(usdAmount) <= 0) {
       toast({
         title: "Error",
         description: "Please select a cryptocurrency and enter a valid amount.",
@@ -135,17 +135,17 @@ const SellCrypto = () => {
       const transaction = {
         type: 'sell' as const,
         asset: selectedCrypto,
-        amount: parseFloat(cryptoAmount),
+        amount: calculatedCryptoAmount,
         fiat_amount: nairaEquivalent,
         fiat_currency: 'NGN',
         status: 'pending' as const,
-        description: `Sold ${cryptoAmount} ${selectedCrypto} - pending confirmation`
+        description: `Sold ${calculatedCryptoAmount.toFixed(6)} ${selectedCrypto} - pending confirmation`
       };
 
       addTransaction(transaction);
 
       // Send chat message to admin
-      const message = `🚨 NEW CRYPTO SALE\nAsset: ${cryptoAmount} ${selectedCrypto}\nExpected Fiat: ${formatCurrency(nairaEquivalent, 'NGN')}\nStatus: Waiting for Admin Wallet Address`;
+      const message = `🚨 NEW CRYPTO SALE\nAsset: ${calculatedCryptoAmount.toFixed(6)} ${selectedCrypto}\nExpected Fiat: ${formatCurrency(nairaEquivalent, 'NGN')}\nStatus: Waiting for Admin Wallet Address`;
       await sendMessage(message);
 
       toast({
@@ -182,8 +182,8 @@ const SellCrypto = () => {
           <SellCryptoForm
             selectedCrypto={selectedCrypto}
             setSelectedCrypto={setSelectedCrypto}
-            cryptoAmount={cryptoAmount}
-            setCryptoAmount={setCryptoAmount}
+            usdAmount={usdAmount}
+            setUsdAmount={setUsdAmount}
             isLoading={isLoading}
             cryptoOptions={cryptoOptions}
             getCurrentPrice={getCurrentPrice}
@@ -191,8 +191,8 @@ const SellCrypto = () => {
             selectedCryptoData={selectedCryptoData}
             currentPrice={currentPrice}
             usdValue={usdValue}
+            calculatedCryptoAmount={calculatedCryptoAmount}
             exchangeRate={exchangeRate}
-            onCopyAddress={copyToClipboard}
             onSell={handleSell}
           />
 
