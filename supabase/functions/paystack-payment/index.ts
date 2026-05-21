@@ -14,7 +14,9 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const paystackSecretKey = Deno.env.get('Paystack live secret')!
+    const paystackSecretKey = Deno.env.get('Paystack live secret') || Deno.env.get('Paystack test secret')
+    
+    if (!paystackSecretKey) throw new Error('Paystack secret key is not configured in Supabase secrets')
 
     const supabase = createClient(supabaseUrl, supabaseKey)
 
@@ -33,7 +35,8 @@ serve(async (req) => {
           currency: data.currency || 'NGN',
           reference: data.reference,
           callback_url: data.callback_url,
-          metadata: data.metadata
+          metadata: data.metadata,
+          ...(data.channels ? { channels: data.channels } : {})
         })
       })
 

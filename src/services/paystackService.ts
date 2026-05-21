@@ -1,10 +1,11 @@
 
 interface PaystackTransactionData {
   email: string;
-  amount: number; // in kobo (multiply naira by 100)
+  amount: number; // in Naira (backend converts to kobo)
   currency?: string;
   reference?: string;
   callback_url?: string;
+  channels?: string[];
   metadata?: {
     user_id: string;
     transaction_type: string;
@@ -63,7 +64,8 @@ class PaystackService {
         currency: data.currency || 'NGN',
         reference,
         callback_url: data.callback_url || `${window.location.origin}/payment-callback`,
-        metadata: data.metadata
+        metadata: data.metadata,
+        channels: data.channels
       };
 
       console.log('Initializing Paystack transaction:', payload);

@@ -347,7 +347,7 @@ export const AdminChatManagement: React.FC = () => {
         message_type: 'text',
         content: trade.type === 'withdrawal'
           ? `✅ Withdrawal confirmed. The funds have been sent to your bank account.`
-          : `✅ Trade confirmed. Your ledger balance has been updated for ${trade.cryptoAmount} ${trade.cryptoSymbol}.`
+          : `✅ Trade confirmed. Your wallet balance has been updated for ${trade.cryptoAmount} ${trade.cryptoSymbol}.`
       });
 
       toast({ title: trade.type === 'withdrawal' ? "Withdrawal Confirmed" : "Trade Confirmed", description: "Ledger has been updated successfully." });
