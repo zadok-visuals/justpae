@@ -30,6 +30,17 @@ class CryptoService {
 
   async getExchangeRate(): Promise<number> {
     try {
+      const response = await fetch(this.exchangeRateUrl);
+      const data: ExchangeRateResponse = await response.json();
+      if (data?.rates?.NGN) {
+        return data.rates.NGN;
+      }
+    } catch (error) {
+      console.error('Error fetching exchange rate from API:', error);
+    }
+
+    // Fallback to database setting if API fails
+    try {
       const { data, error } = await supabase
         .from('system_settings')
         .select('setting_value')
@@ -43,17 +54,36 @@ class CryptoService {
         }
       }
     } catch (dbError) {
-      console.warn('Error reading usd_to_ngn_rate from DB, falling back to API:', dbError);
+      console.warn('Error reading usd_to_ngn_rate from DB:', dbError);
     }
+    
+    return 1650; // Ultimate fallback rate
+  }
 
+  async getCustomRates(): Promise<{ buyRate: number; sellRate: number }> {
+    let buyRate = 1680;
+    let sellRate = 1620;
+    
     try {
-      const response = await fetch(this.exchangeRateUrl);
-      const data: ExchangeRateResponse = await response.json();
-      return data.rates.NGN || 1650; // Fallback to 1650 if API fails
-    } catch (error) {
-      console.error('Error fetching exchange rate:', error);
-      return 1650; // Fallback rate
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('setting_key, setting_value')
+        .in('setting_key', ['crypto_buy_rate', 'crypto_sell_rate']);
+        
+      if (!error && data) {
+        data.forEach(setting => {
+          const val = parseFloat(setting.setting_value);
+          if (!isNaN(val)) {
+            if (setting.setting_key === 'crypto_buy_rate') buyRate = val;
+            if (setting.setting_key === 'crypto_sell_rate') sellRate = val;
+          }
+        });
+      }
+    } catch (dbError) {
+      console.warn('Error reading custom crypto rates from DB:', dbError);
     }
+    
+    return { buyRate, sellRate };
   }
 
   async getCryptoPrices(symbols: string[] = ['bitcoin', 'ethereum', 'cardano']): Promise<CryptoPrice[]> {
@@ -148,16 +178,22 @@ class CryptoService {
     });
   }
 
-  async getCombinedPrices(): Promise<{ prices: CryptoPrice[]; exchangeRate: number }> {
+  async getCombinedPrices(): Promise<{ prices: CryptoPrice[]; exchangeRate: number; buyRate: number; sellRate: number }> {
     try {
-      const [prices, exchangeRate] = await Promise.all([
+      const [prices, exchangeRate, customRates] = await Promise.all([
         this.getCryptoPrices(),
-        this.getExchangeRate()
+        this.getExchangeRate(),
+        this.getCustomRates()
       ]);
 
-      console.log(`Current USD to NGN rate: ${exchangeRate}`);
+      console.log(`Current USD to NGN rate: ${exchangeRate}, Buy: ${customRates.buyRate}, Sell: ${customRates.sellRate}`);
       
-      return { prices, exchangeRate };
+      return { 
+        prices, 
+        exchangeRate, 
+        buyRate: customRates.buyRate, 
+        sellRate: customRates.sellRate 
+      };
     } catch (error) {
       console.error('Error getting combined data:', error);
       return { 
@@ -166,7 +202,9 @@ class CryptoService {
           { symbol: 'ETH', price: 2600, change24h: 1.8, volume24h: 12000000000, marketCap: 310000000000 },
           { symbol: 'ADA', price: 0.38, change24h: -0.5, volume24h: 350000000, marketCap: 13000000000 }
         ], 
-        exchangeRate: 1650 
+        exchangeRate: 1650,
+        buyRate: 1680,
+        sellRate: 1620
       };
     }
   }

@@ -13,7 +13,7 @@ export const useGiftCardUpload = (onSubmitSuccess?: () => void) => {
   const [isUploading, setIsUploading] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
-  const { sendMessage } = useChat();
+  const { sendMessage, sendFileMessage } = useChat();
   const navigate = useNavigate();
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -157,8 +157,16 @@ export const useGiftCardUpload = (onSubmitSuccess?: () => void) => {
       console.log('Gift card transaction created:', data);
 
       // Send chat message to admin
-      const message = `🚨 NEW GIFT CARD SALE\nType: ${selectedCardType}\nValue: $${cardValue}\nImage Link: ${imageUrl}`;
+      const message = `🎁 NEW GIFT CARD SALE\nType: ${selectedCardType}\nValue: $${cardValue}\nPlease provide an exchange rate quote.`;
       await sendMessage(message);
+      
+      if (uploadedImage) {
+        try {
+          await sendFileMessage(uploadedImage, 'image');
+        } catch (err) {
+          console.error('Failed to send image to chat:', err);
+        }
+      }
 
       toast({
         title: "Success!",

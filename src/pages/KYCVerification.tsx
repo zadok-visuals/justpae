@@ -103,17 +103,17 @@ const KYCVerification = () => {
   return (
       <div className="max-w-2xl mx-auto pt-8 pb-24 px-4">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-fintech-blue/10 rounded-full mb-4">
-            <ShieldCheck className="w-8 h-8 text-fintech-blue" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-fintech-blue/10 dark:bg-fintech-blue/20 rounded-full mb-4">
+            <ShieldCheck className="w-8 h-8 text-fintech-blue dark:text-fintech-blue" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Identity Verification</h1>
-          <p className="text-gray-600 mt-2">Complete this quick step to secure your account and unlock higher limits.</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Identity Verification</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Complete this quick step to secure your account and unlock higher limits.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Card className="overflow-hidden border-gray-200 shadow-sm">
-            <CardHeader className="bg-gray-50 border-b border-gray-100 py-4">
-              <CardTitle className="text-lg flex items-center gap-2">
+          <Card className="overflow-hidden border-gray-200 dark:border-gray-700 dark:bg-gray-800 shadow-sm">
+            <CardHeader className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700 py-4">
+              <CardTitle className="text-lg flex items-center gap-2 text-gray-900 dark:text-white">
                 <Phone className="w-4 h-4 text-fintech-blue" />
                 Contact Information
               </CardTitle>
@@ -127,17 +127,17 @@ const KYCVerification = () => {
                   placeholder="+234 800 000 0000"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  className="h-12 text-lg"
+                  className="h-12 text-lg bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
                   required
                 />
-                <p className="text-xs text-gray-500 italic">We'll use this for security alerts and account recovery.</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 italic">We'll use this for security alerts and account recovery.</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden border-gray-200 shadow-sm">
-            <CardHeader className="bg-gray-50 border-b border-gray-100 py-4">
-              <CardTitle className="text-lg flex items-center gap-2">
+          <Card className="overflow-hidden border-gray-200 dark:border-gray-700 dark:bg-gray-800 shadow-sm">
+            <CardHeader className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700 py-4">
+              <CardTitle className="text-lg flex items-center gap-2 text-gray-900 dark:text-white">
                 <User className="w-4 h-4 text-fintech-blue" />
                 Personal Details
               </CardTitle>
@@ -150,16 +150,16 @@ const KYCVerification = () => {
                   type="date"
                   value={dob}
                   onChange={(e) => setDob(e.target.value)}
-                  className="h-12"
+                  className="h-12 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
                   required
                 />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden border-gray-200 shadow-sm">
-            <CardHeader className="bg-gray-50 border-b border-gray-100 py-4">
-              <CardTitle className="text-lg flex items-center gap-2">
+          <Card className="overflow-hidden border-gray-200 dark:border-gray-700 dark:bg-gray-800 shadow-sm">
+            <CardHeader className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700 py-4">
+              <CardTitle className="text-lg flex items-center gap-2 text-gray-900 dark:text-white">
                 <MapPin className="w-4 h-4 text-fintech-blue" />
                 Residential Address
               </CardTitle>
@@ -167,34 +167,34 @@ const KYCVerification = () => {
             <CardContent className="pt-6 space-y-4">
               <div className="space-y-2">
                 <Label>Street Address</Label>
-                <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="123 Main St" required />
+                <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="123 Main St" required className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>City</Label>
-                  <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="New York" required />
+                  <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="New York" required className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" />
                 </div>
                 <div className="space-y-2">
                   <Label>State / Province</Label>
-                  <Input value={state} onChange={(e) => setState(e.target.value)} placeholder="NY" required />
+                  <Input value={state} onChange={(e) => setState(e.target.value)} placeholder="NY" required className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Postal Code</Label>
-                  <Input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="10001" required />
+                  <Input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="10001" required className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" />
                 </div>
                 <div className="space-y-2">
                   <Label>Country Code</Label>
-                  <Input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="US" maxLength={2} required />
+                  <Input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="US" maxLength={2} required className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden border-gray-200 shadow-sm">
-            <CardHeader className="bg-gray-50 border-b border-gray-100 py-4">
-              <CardTitle className="text-lg flex items-center gap-2">
+          <Card className="overflow-hidden border-gray-200 dark:border-gray-700 dark:bg-gray-800 shadow-sm">
+            <CardHeader className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700 py-4">
+              <CardTitle className="text-lg flex items-center gap-2 text-gray-900 dark:text-white">
                 <FileText className="w-4 h-4 text-fintech-blue" />
                 Proof of Address
               </CardTitle>
@@ -203,20 +203,20 @@ const KYCVerification = () => {
               <div className="space-y-4">
                 <div className="flex items-center justify-center w-full">
                   <label className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
-                    document ? 'border-green-400 bg-green-50/50' : 'border-gray-200 bg-gray-50/50 hover:border-fintech-blue/40'
+                    document ? 'border-green-400 bg-green-50/50 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 hover:border-fintech-blue/40 dark:hover:border-fintech-blue/40'
                   }`}>
                     <div className="flex flex-col items-center justify-center pt-5 pb-6 px-4 text-center">
                       {document ? (
                         <>
                           <CheckCircle2 className="w-10 h-10 text-green-500 mb-3" />
-                          <p className="text-sm font-medium text-green-700">{document.name}</p>
-                          <p className="text-xs text-green-600 mt-1">File ready for upload</p>
+                          <p className="text-sm font-medium text-green-700 dark:text-green-400">{document.name}</p>
+                          <p className="text-xs text-green-600 dark:text-green-500 mt-1">File ready for upload</p>
                         </>
                       ) : (
                         <>
                           <Upload className="w-10 h-10 text-gray-400 mb-3" />
-                          <p className="text-sm font-medium text-gray-700">Click to upload or drag and drop</p>
-                          <p className="text-xs text-gray-500 mt-1">Bank Statement or Utility Bill (PDF, JPG, PNG)</p>
+                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Click to upload or drag and drop</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Bank Statement or Utility Bill (PDF, JPG, PNG)</p>
                         </>
                       )}
                     </div>
@@ -229,11 +229,11 @@ const KYCVerification = () => {
                     />
                   </label>
                 </div>
-                <div className="bg-blue-50 p-3 rounded-lg flex gap-3">
-                  <div className="shrink-0 w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center mt-0.5">
-                    <span className="text-blue-700 text-[10px] font-bold">i</span>
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg flex gap-3">
+                  <div className="shrink-0 w-5 h-5 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center mt-0.5">
+                    <span className="text-blue-700 dark:text-blue-400 text-[10px] font-bold">i</span>
                   </div>
-                  <p className="text-xs text-blue-700 leading-relaxed">
+                  <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
                     Document must be issued within the last 3 months and clearly show your full name and current residential address.
                   </p>
                 </div>

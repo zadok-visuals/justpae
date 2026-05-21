@@ -7,7 +7,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import GiftCardTypeSelector from './GiftCardTypeSelector';
 import GiftCardValueInput from './GiftCardValueInput';
 import GiftCardImageUpload from './GiftCardImageUpload';
-import PaymentCalculator from './PaymentCalculator';
 import UploadGuidelines from './UploadGuidelines';
 import { useGiftCardUpload } from '@/hooks/useGiftCardUpload';
 
@@ -60,11 +59,6 @@ const GiftCardUploadForm: React.FC<GiftCardUploadFormProps> = ({
           <GiftCardValueInput 
             value={cardValue} 
             onChange={setCardValue} 
-          />
-
-          <PaymentCalculator 
-            selectedCardType={selectedCardType}
-            cardValue={cardValue}
           />
           
           <GiftCardImageUpload 

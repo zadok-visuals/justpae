@@ -45,7 +45,7 @@ const BuyCrypto = () => {
   const fetchPrices = async () => {
     try {
       setFetching(true);
-      const { prices, exchangeRate: currentRate } = await cryptoService.getCombinedPrices();
+      const { prices, buyRate } = await cryptoService.getCombinedPrices();
       
       const mappedPrices = prices.map(price => {
         if (price.symbol === 'BTC') return { ...price, symbol: 'BTC' };
@@ -61,7 +61,7 @@ const BuyCrypto = () => {
       });
       
       setCryptoPrices(mappedPrices);
-      setExchangeRate(currentRate);
+      setExchangeRate(buyRate);
     } catch (error) {
       console.error('Error fetching prices:', error);
       setCryptoPrices([

@@ -62,7 +62,7 @@ const SellCrypto = () => {
     const fetchPrices = async () => {
       try {
         const symbols = ['bitcoin', 'ethereum', 'tether'];
-        const { prices, exchangeRate: currentRate } = await cryptoService.getCombinedPrices();
+        const { prices, sellRate } = await cryptoService.getCombinedPrices();
         
         // Map the prices to match our crypto options
         const mappedPrices = prices.map(price => {
@@ -80,7 +80,7 @@ const SellCrypto = () => {
         });
         
         setCryptoPrices(mappedPrices);
-        setExchangeRate(currentRate);
+        setExchangeRate(sellRate);
       } catch (error) {
         console.error('Error fetching prices:', error);
         // Fallback prices

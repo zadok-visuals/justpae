@@ -193,9 +193,13 @@ const SystemSettings = () => {
                       maxTransactionAmount={formData.max_transaction_amount}
                       kycRequiredThreshold={formData.kyc_required_threshold}
                       usdToNgnRate={formData.usd_to_ngn_rate}
+                      cryptoBuyRate={formData.crypto_buy_rate}
+                      cryptoSellRate={formData.crypto_sell_rate}
                       onMaxAmountChange={(value) => setFormData(prev => ({ ...prev, max_transaction_amount: value }))}
                       onKycThresholdChange={(value) => setFormData(prev => ({ ...prev, kyc_required_threshold: value }))}
                       onUsdToNgnRateChange={(value) => setFormData(prev => ({ ...prev, usd_to_ngn_rate: value }))}
+                      onCryptoBuyRateChange={(value) => setFormData(prev => ({ ...prev, crypto_buy_rate: value }))}
+                      onCryptoSellRateChange={(value) => setFormData(prev => ({ ...prev, crypto_sell_rate: value }))}
                     />
                   </div>
                 </>

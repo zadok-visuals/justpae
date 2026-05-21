@@ -40,6 +40,7 @@ import Notifications from "@/pages/Notifications";
 import Chat from "@/pages/Chat";
 import TermsOfUse from "./pages/TermsOfUse";
 import DataProtection from "./pages/DataProtection";
+import PaymentCallback from "./pages/PaymentCallback";
 
 const queryClient = new QueryClient();
 
@@ -51,11 +52,11 @@ const DeepLinkHandler = () => {
     const initDeepLinks = async () => {
       await CapacitorApp.addListener("appUrlOpen", async (event: URLOpenListenerEvent) => {
         const urlString = event.url;
-        
+
         // Handle variations in how iOS formats deep links
         const hashSplit = urlString.split("#");
         const cleanUrl = hashSplit[0]; // This is 'amazingpay://oauth2redirect'
-        
+
         if (hashSplit.length > 1) {
           const hashParams = new URLSearchParams(hashSplit[1]);
           const accessToken = hashParams.get("access_token");
@@ -131,7 +132,7 @@ const App = () => (
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/verify-reset-token" element={<VerifyResetToken />} />
               <Route path="/reset-password" element={<ResetPassword />} />
-              
+
               {/* Admin Routes */}
               <Route path="/admin-login" element={<AdminLogin />} />
               <Route path="/admin" element={
@@ -141,7 +142,7 @@ const App = () => (
                   </AdminRouteGuard>
                 </ProtectedRoute>
               } />
-              
+
               {/* Protected Routes with Layout */}
               <Route path="/dashboard" element={
                 <ProtectedRoute>
@@ -276,6 +277,12 @@ const App = () => (
                   </Layout>
                 </ProtectedRoute>
               } />
+              <Route path="/payment-callback" element={
+                <ProtectedRoute>
+                  <PaymentCallback />
+                </ProtectedRoute>
+              }
+              />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

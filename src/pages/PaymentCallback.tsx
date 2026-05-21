@@ -13,10 +13,14 @@ const PaymentCallback = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { updateFiatBalance, addTransaction } = useWallet();
-  const [status, setStatus] = useState<'loading' | 'success' | 'failed'>('loading');
+  const [status, setStatus] = useState<'loading' | 'success' | 'completed' | 'failed'>('loading');
   const [message, setMessage] = useState('Processing your payment...');
+  const hasRun = React.useRef(false);
 
   useEffect(() => {
+    if (hasRun.current) return;
+    hasRun.current = true;
+
     const verifyPayment = async () => {
       const reference = searchParams.get('reference');
       const paystackReference = searchParams.get('trxref');
