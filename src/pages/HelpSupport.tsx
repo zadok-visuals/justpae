@@ -11,7 +11,7 @@ const HelpSupport = () => {
   };
 
   const handleInstagramChat = () => {
-    window.open('https://www.instagram.com/direct/t/103812587680622', '_blank');
+    window.open('https://www.instagram.com/amazingexchange_/?hl=en', '_blank');
   };
 
   return (

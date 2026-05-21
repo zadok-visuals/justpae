@@ -169,7 +169,7 @@ const PrivacyPolicy = () => {
                   If you have questions about this Privacy Policy or how we handle your data, please contact us:
                 </p>
                 <div className="space-y-2">
-                  <p>Email: privacy@amazingpay.amazingpay</p>
+                  <p>Email: admin@amazingpay.app</p>
                   <p>Phone: +234 903 266 8298</p>
                   <p>Address: Lagos, Nigeria</p>
                 </div>
