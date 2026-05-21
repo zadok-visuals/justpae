@@ -141,13 +141,13 @@ const Profile = () => {
                   {getInitials(profile.full_name)}
                 </AvatarFallback>
               </Avatar>
-              <Button
+              {/* <Button
                 size="sm"
                 variant="outline"
                 className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full p-0 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
               >
                 <Camera className="w-4 h-4" />
-              </Button>
+              </Button> */}
             </div>
             <CardTitle className="mt-4 text-gray-900 dark:text-white">{profile.full_name}</CardTitle>
             <p className="text-gray-600 dark:text-gray-400">{profile.email}</p>
