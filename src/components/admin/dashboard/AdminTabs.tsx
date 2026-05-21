@@ -33,6 +33,14 @@ const AdminTabs: React.FC<AdminTabsProps> = ({ stats, onStatsUpdate }) => {
     <Tabs defaultValue="giftcards" className="space-y-6">
       <div className="w-full overflow-x-auto pb-2 scrollbar-hide">
         <TabsList className="flex w-max min-w-full h-auto p-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl">
+          <TabsTrigger value="chat" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white relative whitespace-nowrap">
+            Chat Support
+            {stats.unreadChatCount > 0 && (
+              <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 text-xs flex items-center justify-center rounded-full animate-pulse">
+                {stats.unreadChatCount}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="giftcards" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white relative whitespace-nowrap">
             Gift Cards
             {stats.pendingGiftCards > 0 && (
@@ -58,14 +66,6 @@ const AdminTabs: React.FC<AdminTabsProps> = ({ stats, onStatsUpdate }) => {
             )}
           </TabsTrigger>
           <TabsTrigger value="feedback" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Feedback</TabsTrigger>
-          <TabsTrigger value="chat" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white relative whitespace-nowrap">
-            Chat Support
-            {stats.unreadChatCount > 0 && (
-              <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 text-xs flex items-center justify-center rounded-full animate-pulse">
-                {stats.unreadChatCount}
-              </Badge>
-            )}
-          </TabsTrigger>
           <TabsTrigger value="notifications" className="px-4 py-2 rounded-lg data-[state=active]:bg-fintech-orange data-[state=active]:text-white whitespace-nowrap">Notifications</TabsTrigger>
           
           {isAdmin && (
