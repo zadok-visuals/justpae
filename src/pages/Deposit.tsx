@@ -90,11 +90,9 @@ const Deposit = () => {
 
         const handler = (window as any).PaystackPop.setup({
           key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
-          email: user.email,
-          amount: depositAmount * 100, // Popup config requires kobo
-          ref: result.data.reference,
           access_code: result.data.access_code,
           callback: (response: any) => {
+            // Paystack returns response.reference
             navigate(`/payment-callback?reference=${response.reference}`);
           },
           onClose: () => {
