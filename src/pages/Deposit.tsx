@@ -88,8 +88,19 @@ const Deposit = () => {
         localStorage.setItem('pending_deposit_reference', result.data.reference);
         localStorage.setItem('pending_deposit_amount', depositAmount.toString());
 
+        console.log('Setting up Paystack popup with:', {
+          key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
+          email: user.email,
+          amount: depositAmount * 100,
+          ref: result.data.reference,
+          access_code: result.data.access_code
+        });
+
         const handler = (window as any).PaystackPop.setup({
           key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
+          email: user.email,
+          amount: depositAmount * 100, // Popup config requires kobo
+          ref: result.data.reference,
           access_code: result.data.access_code,
           callback: (response: any) => {
             // Paystack returns response.reference

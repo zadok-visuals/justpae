@@ -74,12 +74,14 @@ class PaystackService {
         body: payload
       });
 
+      console.log('Result from edge function:', result);
+
       if (error) {
         throw new Error(error.message || 'Failed to initialize transaction');
       }
       
-      if (!result.status) {
-        throw new Error(result.message || 'Transaction initialization failed');
+      if (!result?.status) {
+        throw new Error(result?.message || 'Transaction initialization failed');
       }
 
       return result;
