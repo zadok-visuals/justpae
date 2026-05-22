@@ -101,26 +101,53 @@ const AdminManagement = () => {
   const fetchSessions = async () => {
     setLoadingSessions(true);
     try {
-      const { data, error } = await supabase
+      // Step 1: Fetch sessions with basic admin_users data only
+      const { data: sessionData, error } = await supabase
         .from('admin_sessions')
         .select(`
           id,
           ip_address,
           user_agent,
           created_at,
+          admin_user_id,
           admin_users (
             admin_role,
-            profiles:user_id (
-              name,
-              email
-            )
+            user_id
           )
         `)
         .order('created_at', { ascending: false })
         .limit(20);
 
       if (error) throw error;
-      setSessions(data as any || []);
+      if (!sessionData || sessionData.length === 0) {
+        setSessions([]);
+        return;
+      }
+
+      // Step 2: Gather unique user_ids and fetch their profiles
+      const userIds = [...new Set(sessionData.map((s: any) => s.admin_users?.user_id).filter(Boolean))];
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('id, name, email')
+        .in('id', userIds);
+
+      const profileMap = (profileData || []).reduce((acc, p) => {
+        acc[p.id] = p;
+        return acc;
+      }, {} as Record<string, any>);
+
+      // Step 3: Merge profile data into sessions
+      const merged = sessionData.map((s: any) => ({
+        ...s,
+        admin_users: s.admin_users
+          ? {
+              admin_role: s.admin_users.admin_role,
+              profiles: profileMap[s.admin_users.user_id] || null
+            }
+          : null
+      }));
+
+      setSessions(merged as any);
     } catch (error) {
       console.error('Error fetching admin sessions:', error);
     } finally {
