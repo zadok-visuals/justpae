@@ -32,32 +32,31 @@ export const transactionManagementService = {
   },
 
   async updateTransaction(transactionId: string, updates: any): Promise<void> {
-    // 1. Fetch current transaction details
-    const { data: tx, error: fetchError } = await supabase
-      .from('transactions')
-      .select('user_id, type, amount, status')
-      .eq('id', transactionId)
-      .single();
+    // If we're updating the status (approve/reject action), we MUST use the secure edge function 
+    // because Admins do not have direct RLS permissions to update user wallets from the client.
+    if (updates.status && (updates.status === 'completed' || updates.status === 'failed' || updates.status === 'cancelled')) {
+      const action = updates.status === 'completed' ? 'approve' : 'reject';
+      
+      const { data, error } = await supabase.functions.invoke('admin-transaction-action', {
+        body: {
+          transactionId,
+          action,
+          adminNotes: updates.admin_notes || ''
+        }
+      });
 
-    if (fetchError || !tx) {
-      throw new Error(fetchError?.message || 'Transaction not found');
-    }
-
-    // 1.5 Convert Auth user.id to admin_users.id if reviewed_by is provided
-    if (updates.reviewed_by) {
-      const { data: adminUser, error: adminError } = await supabase
-        .from('admin_users')
-        .select('id')
-        .eq('user_id', updates.reviewed_by)
-        .maybeSingle();
-        
-      if (adminError || !adminUser) {
-        throw new Error('Admin user record not found for the current user');
+      if (error) {
+        throw new Error(error.message || 'Failed to process transaction securely');
       }
-      updates.reviewed_by = adminUser.id;
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+      
+      return;
     }
 
-    // 2. Perform the update
+    // Fallback for any other basic updates (that don't affect wallets)
     const { error } = await supabase
       .from('transactions')
       .update(updates)
@@ -65,48 +64,6 @@ export const transactionManagementService = {
 
     if (error) {
       throw error;
-    }
-
-    // 3. Update wallet balance if status changed
-    if (updates.status && updates.status !== tx.status) {
-      // If a deposit was approved (pending -> completed)
-      if (tx.type === 'deposit' && updates.status === 'completed') {
-        const { data: wallet, error: walletError } = await supabase
-          .from('wallets')
-          .select('balance')
-          .eq('user_id', tx.user_id)
-          .eq('currency', 'NGN')
-          .single();
-
-        if (!walletError && wallet) {
-          const newBalance = (wallet.balance || 0) + tx.amount;
-          await supabase
-            .from('wallets')
-            .update({ balance: newBalance })
-            .eq('user_id', tx.user_id)
-            .eq('currency', 'NGN');
-        }
-      }
-      
-      // If a withdrawal was rejected/failed/cancelled (pending -> failed/cancelled)
-      // Note: Withdrawal transaction amount is saved as negative in DB
-      if (tx.type === 'withdrawal' && (updates.status === 'failed' || updates.status === 'cancelled')) {
-        const { data: wallet, error: walletError } = await supabase
-          .from('wallets')
-          .select('balance')
-          .eq('user_id', tx.user_id)
-          .eq('currency', 'NGN')
-          .single();
-
-        if (!walletError && wallet) {
-          const newBalance = (wallet.balance || 0) + Math.abs(tx.amount);
-          await supabase
-            .from('wallets')
-            .update({ balance: newBalance })
-            .eq('user_id', tx.user_id)
-            .eq('currency', 'NGN');
-        }
-      }
     }
   },
 

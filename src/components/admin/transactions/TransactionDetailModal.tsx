@@ -39,7 +39,7 @@ const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
             </div>
             <div>
               <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Amount</label>
-              <p className="text-gray-900 dark:text-white">₦{transaction.fiat_amount.toLocaleString()}</p>
+              <p className="text-gray-900 dark:text-white">₦{(transaction.fiat_amount ?? transaction.amount ?? 0).toLocaleString()}</p>
             </div>
           </div>
 

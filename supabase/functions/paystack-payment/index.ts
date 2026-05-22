@@ -48,6 +48,8 @@ serve(async (req) => {
           user_id: data.metadata.user_id,
           type: 'deposit',
           amount: data.amount,
+          fiat_amount: data.amount,
+          fiat_currency: data.currency || 'NGN',
           currency: data.currency || 'NGN',
           status: 'pending',
           reference: data.reference,

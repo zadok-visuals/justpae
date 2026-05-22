@@ -51,7 +51,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                 </div>
               </TableCell>
               <TableCell className="text-gray-900 dark:text-white capitalize">{transaction.type}</TableCell>
-              <TableCell className="text-gray-900 dark:text-white">₦{transaction.fiat_amount.toLocaleString()}</TableCell>
+              <TableCell className="text-gray-900 dark:text-white">₦{(transaction.fiat_amount ?? transaction.amount ?? 0).toLocaleString()}</TableCell>
               <TableCell>
                 <Badge className={getStatusBadge(transaction.status)}>
                   {transaction.status}

@@ -151,13 +151,13 @@ const TransactionItem: React.FC<TransactionItemProps> = ({
           <p className={`font-semibold ${getTransactionColor(transaction.type)}`}>
             {transaction.type === 'withdrawal' || transaction.type === 'buy' ? '-' : ''}
             {transaction.type === 'giftcard' 
-              ? formatCurrency(Math.abs(transaction.fiat_amount), 'USD')
-              : formatCurrency(Math.abs(transaction.fiat_amount), 'NGN')
+              ? formatCurrency(Math.abs(transaction.fiat_amount ?? transaction.amount), 'USD')
+              : formatCurrency(Math.abs(transaction.fiat_amount ?? transaction.amount), 'NGN')
             }
           </p>
           {transaction.type === 'giftcard' && (
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              ₦{(Math.abs(transaction.fiat_amount) * exchangeRate * ((rate || 80) / 100)).toLocaleString()}
+              ₦{(Math.abs(transaction.fiat_amount ?? transaction.amount) * exchangeRate * ((rate || 80) / 100)).toLocaleString()}
             </p>
           )}
         </div>
