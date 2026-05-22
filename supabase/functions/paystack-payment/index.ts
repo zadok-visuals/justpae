@@ -44,19 +44,22 @@ serve(async (req) => {
       
       if (result.status) {
         // Log transaction initialization
-        await supabase.from('transactions').insert({
+        const { error } = await supabase.from('transactions').insert({
           user_id: data.metadata.user_id,
           type: 'deposit',
           amount: data.amount,
           currency: data.currency || 'NGN',
           status: 'pending',
           reference: data.reference,
-          payment_method: 'paystack',
           metadata: {
+            payment_method: 'paystack',
             paystack_reference: result.data.reference,
             access_code: result.data.access_code
           }
         })
+        if (error) {
+          console.error("Failed to insert transaction:", error)
+        }
       }
 
       return new Response(JSON.stringify(result), {
@@ -214,32 +217,44 @@ serve(async (req) => {
       const event = JSON.parse(body)
       
       if (event.event === 'charge.success') {
-        // Update wallet balance
-        const { data: wallet } = await supabase
-          .from('wallets')
-          .select('balance')
-          .eq('user_id', event.data.metadata?.user_id)
-          .eq('currency', event.data.currency)
-          .single()
-
-        if (wallet) {
-          await supabase
-            .from('wallets')
-            .update({ 
-              balance: wallet.balance + (event.data.amount / 100)
-            })
-            .eq('user_id', event.data.metadata?.user_id)
-            .eq('currency', event.data.currency)
-        }
-
-        // Update transaction
-        await supabase
+        // Atomically update transaction status to prevent race conditions
+        const { data: updatedTx } = await supabase
           .from('transactions')
           .update({ 
             status: 'completed',
             completed_at: new Date().toISOString()
           })
           .eq('reference', event.data.reference)
+          .eq('status', 'pending')
+          .select()
+
+        if (updatedTx && updatedTx.length > 0) {
+          // Update wallet balance only if this request successfully marked it as completed
+          const { data: wallet } = await supabase
+            .from('wallets')
+            .select('balance')
+            .eq('user_id', event.data.metadata?.user_id)
+            .eq('currency', event.data.currency)
+            .maybeSingle()
+
+          if (wallet) {
+            await supabase
+              .from('wallets')
+              .update({ 
+                balance: wallet.balance + (event.data.amount / 100)
+              })
+              .eq('user_id', event.data.metadata?.user_id)
+              .eq('currency', event.data.currency)
+          } else {
+            await supabase
+              .from('wallets')
+              .insert({ 
+                user_id: event.data.metadata?.user_id,
+                currency: event.data.currency || 'NGN',
+                balance: (event.data.amount / 100)
+              })
+          }
+        }
       }
 
       if (event.event === 'transfer.success') {
@@ -268,8 +283,8 @@ serve(async (req) => {
       const result = await response.json()
 
       if (result.status && result.data.status === 'success') {
-        // Update transaction status
-        await supabase
+        // Atomically update transaction status to prevent race conditions
+        const { data: updatedTx } = await supabase
           .from('transactions')
           .update({ 
             status: 'completed',
@@ -280,31 +295,35 @@ serve(async (req) => {
             }
           })
           .eq('reference', data.reference)
+          .eq('status', 'pending')
+          .select()
 
-        // Update user wallet balance
-        const { data: wallet } = await supabase
-          .from('wallets')
-          .select('balance')
-          .eq('user_id', result.data.metadata.user_id)
-          .eq('currency', result.data.currency)
-          .maybeSingle()
-
-        if (wallet) {
-          await supabase
+        if (updatedTx && updatedTx.length > 0) {
+          // Update user wallet balance only if this request successfully marked it as completed
+          const { data: wallet } = await supabase
             .from('wallets')
-            .update({ 
-              balance: wallet.balance + (result.data.amount / 100) // Convert from kobo
-            })
+            .select('balance')
             .eq('user_id', result.data.metadata.user_id)
             .eq('currency', result.data.currency)
-        } else {
-          await supabase
-            .from('wallets')
-            .insert({ 
-              user_id: result.data.metadata.user_id,
-              currency: result.data.currency || 'NGN',
-              balance: (result.data.amount / 100)
-            })
+            .maybeSingle()
+
+          if (wallet) {
+            await supabase
+              .from('wallets')
+              .update({ 
+                balance: wallet.balance + (result.data.amount / 100) // Convert from kobo
+              })
+              .eq('user_id', result.data.metadata.user_id)
+              .eq('currency', result.data.currency)
+          } else {
+            await supabase
+              .from('wallets')
+              .insert({ 
+                user_id: result.data.metadata.user_id,
+                currency: result.data.currency || 'NGN',
+                balance: (result.data.amount / 100)
+              })
+          }
         }
       }
 
