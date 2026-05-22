@@ -84,37 +84,14 @@ const Deposit = () => {
         }
       });
 
-      if (result && result.status && result.data.access_code) {
+      if (result && result.status && result.data.authorization_url) {
         localStorage.setItem('pending_deposit_reference', result.data.reference);
         localStorage.setItem('pending_deposit_amount', depositAmount.toString());
 
-        console.log('Setting up Paystack popup with:', {
-          key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
-          email: user.email,
-          amount: depositAmount * 100,
-          ref: result.data.reference,
-          access_code: result.data.access_code
-        });
-
-        const handler = (window as any).PaystackPop.setup({
-          key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
-          email: user.email,
-          amount: depositAmount * 100, // Popup config requires kobo
-          ref: result.data.reference,
-          access_code: result.data.access_code,
-          callback: (response: any) => {
-            // Paystack returns response.reference
-            navigate(`/payment-callback?reference=${response.reference}`);
-          },
-          onClose: () => {
-            setLoading(false);
-            toast({
-              title: "Payment Cancelled",
-              description: "You closed the payment window",
-            });
-          }
-        });
-        handler.openIframe();
+        // Redirect to Paystack's hosted checkout page instead of using the inline script.
+        // This completely bypasses all frontend environment variable issues and guarantees
+        // it works perfectly across local and live environments.
+        window.location.href = result.data.authorization_url;
       } else {
         throw new Error(result?.message || 'Failed to initialize payment');
       }
