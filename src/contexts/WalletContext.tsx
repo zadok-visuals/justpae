@@ -151,25 +151,50 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const updateFiatBalance = async (amount: number) => {
     if (!user) return;
 
-    const newBalance = fiatBalance + amount;
-    setFiatBalance(newBalance);
-
-    // Update in database
     try {
-      const { error } = await supabase
+      // 1. Get the current balance directly from the DB to avoid stale React state
+      const { data: currentWallet, error: fetchError } = await supabase
         .from('wallets')
-        .update({ balance: newBalance })
+        .select('balance')
         .eq('user_id', user.id)
-        .eq('currency', 'NGN');
+        .eq('currency', 'NGN')
+        .maybeSingle();
 
-      if (error) {
-        console.error('Error updating balance:', error);
-        // Revert local state if database update fails
-        setFiatBalance(fiatBalance);
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Error fetching current wallet balance:', fetchError);
+        return;
       }
+
+      const currentBalance = currentWallet?.balance || 0;
+      const newBalance = currentBalance + amount;
+
+      // 2. Insert if it doesn't exist, otherwise update
+      if (!currentWallet) {
+        const { error: insertError } = await supabase
+          .from('wallets')
+          .insert({ user_id: user.id, currency: 'NGN', balance: newBalance });
+
+        if (insertError) {
+          console.error('Error inserting new wallet:', insertError);
+          return;
+        }
+      } else {
+        const { error: updateError } = await supabase
+          .from('wallets')
+          .update({ balance: newBalance })
+          .eq('user_id', user.id)
+          .eq('currency', 'NGN');
+
+        if (updateError) {
+          console.error('Error updating wallet balance:', updateError);
+          return;
+        }
+      }
+
+      // 3. Update local state only if DB succeeds
+      setFiatBalance(newBalance);
     } catch (error) {
-      console.error('Error updating balance:', error);
-      setFiatBalance(fiatBalance);
+      console.error('Unexpected error updating balance:', error);
     }
   };
 
