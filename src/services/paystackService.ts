@@ -46,9 +46,9 @@ interface PaystackVerificationResponse {
   };
 }
 
-class PaystackService {
-  private supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+import { supabase } from '@/integrations/supabase/client';
 
+class PaystackService {
   generateReference(): string {
     return `amazingpay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
@@ -70,20 +70,13 @@ class PaystackService {
 
       console.log('Initializing Paystack transaction:', payload);
 
-      const response = await fetch(`${this.supabaseUrl}/functions/v1/paystack-payment`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify(payload)
+      const { data: result, error } = await supabase.functions.invoke('paystack-payment', {
+        body: payload
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to initialize transaction');
+      if (error) {
+        throw new Error(error.message || 'Failed to initialize transaction');
       }
-
-      const result = await response.json();
       
       if (!result.status) {
         throw new Error(result.message || 'Transaction initialization failed');
@@ -92,7 +85,7 @@ class PaystackService {
       return result;
     } catch (error) {
       console.error('Error initializing Paystack transaction:', error);
-      return null;
+      throw error;
     }
   }
 
@@ -100,23 +93,16 @@ class PaystackService {
     try {
       console.log('Verifying Paystack transaction:', reference);
       
-      const response = await fetch(`${this.supabaseUrl}/functions/v1/paystack-payment`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({
+      const { data: result, error } = await supabase.functions.invoke('paystack-payment', {
+        body: {
           action: 'verify',
           reference
-        })
+        }
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to verify transaction');
+      if (error) {
+        throw new Error(error.message || 'Failed to verify transaction');
       }
-
-      const result = await response.json();
       
       if (!result.status) {
         throw new Error(result.message || 'Transaction verification failed');
@@ -125,7 +111,7 @@ class PaystackService {
       return result;
     } catch (error) {
       console.error('Error verifying Paystack transaction:', error);
-      return null;
+      throw error;
     }
   }
 
