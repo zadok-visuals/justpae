@@ -287,7 +287,7 @@ serve(async (req) => {
           .select('balance')
           .eq('user_id', result.data.metadata.user_id)
           .eq('currency', result.data.currency)
-          .single()
+          .maybeSingle()
 
         if (wallet) {
           await supabase
@@ -297,6 +297,14 @@ serve(async (req) => {
             })
             .eq('user_id', result.data.metadata.user_id)
             .eq('currency', result.data.currency)
+        } else {
+          await supabase
+            .from('wallets')
+            .insert({ 
+              user_id: result.data.metadata.user_id,
+              currency: result.data.currency || 'NGN',
+              balance: (result.data.amount / 100)
+            })
         }
       }
 

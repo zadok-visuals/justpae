@@ -12,7 +12,7 @@ const PaymentCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { updateFiatBalance, addTransaction } = useWallet();
+  const { refreshData } = useWallet();
   const [status, setStatus] = useState<'loading' | 'success' | 'completed' | 'failed'>('loading');
   const [message, setMessage] = useState('Processing your payment...');
   const hasRun = React.useRef(false);
@@ -38,42 +38,27 @@ const PaymentCallback = () => {
         const verification = await paystackService.verifyTransaction(finalReference);
         
         if (verification && verification.status && verification.data.status === 'success') {
-          // Get stored amount
-          const storedAmount = localStorage.getItem('pending_deposit_amount');
-          const amount = storedAmount ? parseFloat(storedAmount) : verification.data.amount / 100;
+          // The edge function already credited the wallet using the service role key.
+          // We just need to refresh the local state from the database.
+          const amount = verification.data.amount / 100; // Convert from kobo to NGN
+
+          // Pull the newly updated balance from Supabase into the context
+          await refreshData();
           
-          // Update wallet balance
-          await updateFiatBalance(amount);
+          // Clear stored data
+          localStorage.removeItem('pending_deposit_reference');
+          localStorage.removeItem('pending_deposit_amount');
+
+          setStatus('success');
+          setMessage(`Successfully deposited ₦${amount.toLocaleString()}`);
           
-          // Record successful transaction
-          const result = await addTransaction({
-            type: 'deposit',
-            amount: amount,
-            fiat_amount: amount,
-            fiat_currency: 'NGN',
-            status: 'completed',
-            description: 'Paystack Card Deposit',
-            reference: finalReference
+          toast({
+            title: "Payment Successful",
+            description: `₦${amount.toLocaleString()} has been added to your account`
           });
-          
-          if (result.success) {
-            setStatus('success');
-            setMessage(`Successfully deposited ₦${amount.toLocaleString()}`);
-            
-            // Clear stored data
-            localStorage.removeItem('pending_deposit_reference');
-            localStorage.removeItem('pending_deposit_amount');
-            
-            toast({
-              title: "Payment Successful",
-              description: `₦${amount.toLocaleString()} has been added to your account`
-            });
-          } else {
-            throw new Error('Failed to record transaction');
-          }
         } else {
           setStatus('failed');
-          setMessage('Payment verification failed');
+          setMessage('Payment verification failed or transaction was not successful.');
         }
       } catch (error) {
         console.error('Payment verification error:', error);
@@ -89,7 +74,7 @@ const PaymentCallback = () => {
     };
 
     verifyPayment();
-  }, [searchParams, updateFiatBalance, addTransaction, toast]);
+  }, [searchParams, refreshData, toast]);
 
   const handleContinue = () => {
     if (status === 'success') {
