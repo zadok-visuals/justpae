@@ -85,45 +85,52 @@ serve(async (req) => {
       throw new Error('Failed to update transaction status')
     }
 
-    // 2. Safely Update Wallet Balance using Upsert pattern
-    if (action === 'approve' && tx.type === 'deposit') {
-      const { data: wallet } = await supabase
-        .from('wallets')
-        .select('balance')
-        .eq('user_id', tx.user_id)
-        .eq('currency', 'NGN')
-        .maybeSingle()
+    // 2. Safely Update Ledger Entries
+    const { data: escrow } = await supabase
+      .from('system_accounts')
+      .select('id')
+      .eq('name', 'Company Escrow')
+      .single()
 
-      if (wallet) {
-        await supabase
-          .from('wallets')
-          .update({ balance: wallet.balance + tx.amount })
-          .eq('user_id', tx.user_id)
-          .eq('currency', 'NGN')
-      } else {
-        await supabase
-          .from('wallets')
-          .insert({
+    if (escrow) {
+      if (action === 'approve' && tx.type === 'deposit') {
+        // Approve Deposit: Credit User, Debit Escrow
+        await supabase.from('ledger_entries').insert([
+          {
+            transaction_id: transactionId,
+            account_type: 'system',
+            system_account_id: escrow.id,
+            amount: Math.abs(tx.amount),
+            entry_type: 'debit'
+          },
+          {
+            transaction_id: transactionId,
+            account_type: 'user',
             user_id: tx.user_id,
-            currency: 'NGN',
-            balance: tx.amount
-          })
-      }
-    } else if (action === 'reject' && tx.type === 'withdrawal') {
-      // Refund the withdrawal amount
-      const { data: wallet } = await supabase
-        .from('wallets')
-        .select('balance')
-        .eq('user_id', tx.user_id)
-        .eq('currency', 'NGN')
-        .maybeSingle()
-
-      if (wallet) {
-        await supabase
-          .from('wallets')
-          .update({ balance: wallet.balance + Math.abs(tx.amount) })
-          .eq('user_id', tx.user_id)
-          .eq('currency', 'NGN')
+            amount: Math.abs(tx.amount),
+            entry_type: 'credit'
+          }
+        ])
+      } else if (action === 'reject' && tx.type === 'withdrawal') {
+        // Reject Withdrawal: Refund the user (Credit User, Debit Escrow)
+        // Note: A requested withdrawal was already debited from the user by request_withdrawal.
+        // Rejecting it puts the money back.
+        await supabase.from('ledger_entries').insert([
+          {
+            transaction_id: transactionId,
+            account_type: 'system',
+            system_account_id: escrow.id,
+            amount: Math.abs(tx.amount),
+            entry_type: 'debit'
+          },
+          {
+            transaction_id: transactionId,
+            account_type: 'user',
+            user_id: tx.user_id,
+            amount: Math.abs(tx.amount),
+            entry_type: 'credit'
+          }
+        ])
       }
     }
 

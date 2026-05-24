@@ -231,30 +231,34 @@ serve(async (req) => {
           .select()
 
         if (updatedTx && updatedTx.length > 0) {
-          // Update wallet balance only if this request successfully marked it as completed
-          const { data: wallet } = await supabase
-            .from('wallets')
-            .select('balance')
-            .eq('user_id', event.data.metadata?.user_id)
-            .eq('currency', event.data.currency)
-            .maybeSingle()
+          // Update ledger entries only if this request successfully marked it as completed
+          const txAmount = event.data.amount / 100;
+          
+          // Fetch Escrow account ID
+          const { data: escrow } = await supabase
+            .from('system_accounts')
+            .select('id')
+            .eq('name', 'Company Escrow')
+            .single()
 
-          if (wallet) {
-            await supabase
-              .from('wallets')
-              .update({ 
-                balance: wallet.balance + (event.data.amount / 100)
-              })
-              .eq('user_id', event.data.metadata?.user_id)
-              .eq('currency', event.data.currency)
-          } else {
-            await supabase
-              .from('wallets')
-              .insert({ 
+          if (escrow) {
+            // Debit Escrow, Credit User
+            await supabase.from('ledger_entries').insert([
+              {
+                transaction_id: updatedTx[0].id,
+                account_type: 'system',
+                system_account_id: escrow.id,
+                amount: txAmount,
+                entry_type: 'debit'
+              },
+              {
+                transaction_id: updatedTx[0].id,
+                account_type: 'user',
                 user_id: event.data.metadata?.user_id,
-                currency: event.data.currency || 'NGN',
-                balance: (event.data.amount / 100)
-              })
+                amount: txAmount,
+                entry_type: 'credit'
+              }
+            ])
           }
         }
       }
@@ -301,30 +305,31 @@ serve(async (req) => {
           .select()
 
         if (updatedTx && updatedTx.length > 0) {
-          // Update user wallet balance only if this request successfully marked it as completed
-          const { data: wallet } = await supabase
-            .from('wallets')
-            .select('balance')
-            .eq('user_id', result.data.metadata.user_id)
-            .eq('currency', result.data.currency)
-            .maybeSingle()
+          const txAmount = result.data.amount / 100;
+          
+          const { data: escrow } = await supabase
+            .from('system_accounts')
+            .select('id')
+            .eq('name', 'Company Escrow')
+            .single()
 
-          if (wallet) {
-            await supabase
-              .from('wallets')
-              .update({ 
-                balance: wallet.balance + (result.data.amount / 100) // Convert from kobo
-              })
-              .eq('user_id', result.data.metadata.user_id)
-              .eq('currency', result.data.currency)
-          } else {
-            await supabase
-              .from('wallets')
-              .insert({ 
+          if (escrow) {
+            await supabase.from('ledger_entries').insert([
+              {
+                transaction_id: updatedTx[0].id,
+                account_type: 'system',
+                system_account_id: escrow.id,
+                amount: txAmount,
+                entry_type: 'debit'
+              },
+              {
+                transaction_id: updatedTx[0].id,
+                account_type: 'user',
                 user_id: result.data.metadata.user_id,
-                currency: result.data.currency || 'NGN',
-                balance: (result.data.amount / 100)
-              })
+                amount: txAmount,
+                entry_type: 'credit'
+              }
+            ])
           }
         }
       }

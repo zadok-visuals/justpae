@@ -170,37 +170,8 @@ async function checkBlockchainTransaction(address: string, symbol: string, netwo
 
 async function creditUserWallet(supabaseClient: any, deposit: CryptoDeposit) {
   try {
-    // Get user's fiat wallet
-    const { data: wallet, error: walletError } = await supabaseClient
-      .from('wallets')
-      .select('*')
-      .eq('user_id', deposit.user_id)
-      .eq('currency', deposit.fiat_currency)
-      .single()
-
-    if (walletError) {
-      console.error('Error fetching user wallet:', walletError)
-      throw walletError
-    }
-
-    // Update wallet balance
-    const newBalance = parseFloat(wallet.balance) + deposit.net_fiat_amount
-    
-    const { error: updateError } = await supabaseClient
-      .from('wallets')
-      .update({
-        balance: newBalance,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', wallet.id)
-
-    if (updateError) {
-      console.error('Error updating wallet balance:', updateError)
-      throw updateError
-    }
-
-    // Create transaction record
-    const { error: transactionError } = await supabaseClient
+    // 1. Create transaction record first to get the ID
+    const { data: txRecord, error: transactionError } = await supabaseClient
       .from('transactions')
       .insert({
         user_id: deposit.user_id,
@@ -219,13 +190,52 @@ async function creditUserWallet(supabaseClient: any, deposit: CryptoDeposit) {
           fee_amount: deposit.fee_amount
         }
       })
+      .select()
+      .single()
 
-    if (transactionError) {
+    if (transactionError || !txRecord) {
       console.error('Error creating transaction record:', transactionError)
-      throw transactionError
+      throw transactionError || new Error('Failed to create transaction')
     }
 
-    console.log(`Successfully credited ${deposit.net_fiat_amount} ${deposit.fiat_currency} to user ${deposit.user_id}`)
+    // 2. Fetch Escrow system account
+    const { data: escrow, error: escrowError } = await supabaseClient
+      .from('system_accounts')
+      .select('id')
+      .eq('name', 'Company Escrow')
+      .single()
+
+    if (escrowError || !escrow) {
+      console.error('Error fetching Company Escrow:', escrowError)
+      throw escrowError || new Error('Company Escrow not found')
+    }
+
+    // 3. Create Ledger Entries (Debit Escrow, Credit User)
+    const { error: ledgerError } = await supabaseClient
+      .from('ledger_entries')
+      .insert([
+        {
+          transaction_id: txRecord.id,
+          account_type: 'system',
+          system_account_id: escrow.id,
+          amount: deposit.net_fiat_amount,
+          entry_type: 'debit'
+        },
+        {
+          transaction_id: txRecord.id,
+          account_type: 'user',
+          user_id: deposit.user_id,
+          amount: deposit.net_fiat_amount,
+          entry_type: 'credit'
+        }
+      ])
+
+    if (ledgerError) {
+      console.error('Error creating ledger entries:', ledgerError)
+      throw ledgerError
+    }
+
+    console.log(`Successfully credited ${deposit.net_fiat_amount} ${deposit.fiat_currency} to user ${deposit.user_id} via ledger`)
     
   } catch (error) {
     console.error('Error crediting user wallet:', error)
