@@ -73,16 +73,18 @@ const ChangePassword = () => {
 
   return (
     
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
-        <div className="max-w-md mx-auto pt-8">
+      <div className="w-full min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col relative">
+        <div className="flex-1 w-full max-w-md mx-auto p-4 pb-24">
           {/* Header */}
-          <div className="flex items-center space-x-4 mb-6">
-            <Link to="/settings">
-              <Button variant="ghost" size="sm" className="p-2">
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-            </Link>
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Change Password</h1>
+          <div className="sticky top-0 z-30 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-md -mx-4 px-4 sm:-mx-6 sm:px-6 pt-2 pb-2 mb-6 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex items-center space-x-4">
+              <Link to="/settings">
+                <Button variant="ghost" size="sm" className="p-2">
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+              </Link>
+              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Change Password</h1>
+            </div>
           </div>
 
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">

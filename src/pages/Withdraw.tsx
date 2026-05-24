@@ -155,8 +155,9 @@ const Withdraw = () => {
   };
 
   return (
-      <div className="p-4 pb-24 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        {/* Header */}
+      <div className="w-full bg-gray-50 dark:bg-gray-900 flex flex-col relative min-h-screen">
+        <div className="flex-1 w-full max-w-2xl mx-auto p-4 pb-24 space-y-6">
+          {/* Header */}
         <div className="flex items-center space-x-4 mb-6">
           <Button 
             variant="ghost" 
@@ -289,6 +290,7 @@ const Withdraw = () => {
             </div>
           </CardContent>
         </Card>
+      </div>
       </div>
   );
 };

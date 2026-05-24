@@ -41,28 +41,22 @@ const Notifications = () => {
 
   return (
 
-      <div className="flex flex-col h-[100dvh] w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-white overflow-hidden relative">
-        
-        {/* Sticky Header Layer */}
-        <div className="shrink-0 border-b border-gray-100 dark:border-gray-800 px-4 py-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md z-20">
-          <div className="max-w-3xl mx-auto w-full">
+      <div className="flex flex-col min-h-screen w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white relative">
+        <div className="flex-1 w-full max-w-3xl mx-auto p-4 pb-24">
+          {/* Sticky Header Layer */}
+          <div className="sticky top-0 z-30 border-b border-gray-100 dark:border-gray-800 -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-md mb-4">
             <NotificationHeader
               unreadCount={unreadCount}
               onMarkAllAsRead={markAllAsRead}
             />
           </div>
-        </div>
 
-        {/* Scroll Engine Area */}
-        <div className="flex-1 overflow-y-auto bg-gray-50/30 dark:bg-gray-900/5 px-4 py-4 pb-safe-bottom scroll-smooth">
-          <div className="max-w-3xl mx-auto w-full">
-            <NotificationList
-              notifications={notifications}
-              loading={loading}
-              onMarkAsRead={markAsRead}
-              onNotificationClick={handleNotificationClick}
-            />
-          </div>
+          <NotificationList
+            notifications={notifications}
+            loading={loading}
+            onMarkAsRead={markAsRead}
+            onNotificationClick={handleNotificationClick}
+          />
         </div>
       </div>
   );

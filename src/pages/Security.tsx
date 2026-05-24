@@ -94,8 +94,8 @@ const Security = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="p-4 pb-24 space-y-6">
+      <div className="w-full bg-gray-50 dark:bg-gray-900 flex flex-col relative min-h-screen">
+        <div className="flex-1 w-full max-w-2xl mx-auto p-4 pb-24 space-y-6">
           {/* Header */}
           <div className="flex items-center space-x-4">
             <Link to="/settings">

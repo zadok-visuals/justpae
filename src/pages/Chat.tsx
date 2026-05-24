@@ -219,20 +219,22 @@ const Chat: React.FC = () => {
     <div className="flex-1 flex flex-col min-h-0 w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-white relative">
 
       {/* Sticky Header Node */}
-      <div className="flex-none border-b border-gray-100 dark:border-gray-800 px-4 py-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md z-20 flex items-center gap-2">
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={handleBackNavigation}
-          className="rounded-full w-9 h-9 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-        >
-          <ChevronLeft className="w-6 h-6 stroke-[2.5]" />
-        </Button>
-        <div className="flex-1 min-w-0 ml-1">
-          <h1 className="text-base font-bold text-gray-900 dark:text-white truncate">Support Chat</h1>
-          <p className="text-xs text-gray-400 dark:text-gray-400">
-            Typical response time: <span className="text-fintech-orange font-semibold">Under 5 mins</span>
-          </p>
+      <div className="flex-none border-b border-gray-100 dark:border-gray-800 px-4 py-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md z-20 flex justify-center">
+        <div className="max-w-3xl w-full flex items-center gap-2">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={handleBackNavigation}
+            className="rounded-full w-9 h-9 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            <ChevronLeft className="w-6 h-6 stroke-[2.5]" />
+          </Button>
+          <div className="flex-1 min-w-0 ml-1">
+            <h1 className="text-base font-bold text-gray-900 dark:text-white truncate">Support Chat</h1>
+            <p className="text-xs text-gray-400 dark:text-gray-400">
+              Typical response time: <span className="text-fintech-orange font-semibold">Under 5 mins</span>
+            </p>
+          </div>
         </div>
       </div>
 
