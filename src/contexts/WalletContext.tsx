@@ -26,6 +26,7 @@ interface Transaction {
 
 interface WalletContextType {
   fiatBalance: number;
+  pendingFiatBalance: number;
   cryptoBalances: CryptoBalance[];
   totalPortfolioValue: number;
   updateFiatBalance: (amount: number) => void;
@@ -53,12 +54,13 @@ export const useWallet = () => {
 export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
   const [fiatBalance, setFiatBalance] = useState(0);
+  const [pendingFiatBalance, setPendingFiatBalance] = useState(0);
   const [hideBalance, setHideBalance] = useState(false);
   const [loading, setLoading] = useState(false);
   const [cryptoBalances, setCryptoBalances] = useState<CryptoBalance[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
-  const totalPortfolioValue = fiatBalance + cryptoBalances.reduce((sum, crypto) => sum + crypto.usdValue, 0);
+  const totalPortfolioValue = fiatBalance + pendingFiatBalance + cryptoBalances.reduce((sum, crypto) => sum + crypto.usdValue, 0);
 
   // Fetch wallet data from Supabase
   const fetchWalletData = async () => {
@@ -67,18 +69,18 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       setLoading(true);
 
-      // Fetch fiat balance
+      // Fetch fiat balance from the double-entry ledger view
       const { data: walletData, error: walletError } = await supabase
-        .from('wallets')
-        .select('balance, currency')
+        .from('wallet_balances_view')
+        .select('available_balance, pending_balance')
         .eq('user_id', user.id)
-        .eq('currency', 'NGN')
         .maybeSingle();
 
       if (walletError && walletError.code !== 'PGRST116') {
-        console.error('Error fetching wallet:', walletError);
+        console.error('Error fetching wallet balance:', walletError);
       } else if (walletData) {
-        setFiatBalance(walletData.balance || 0);
+        setFiatBalance(walletData.available_balance || 0);
+        setPendingFiatBalance(walletData.pending_balance || 0);
       }
 
       // Fetch crypto holdings
@@ -139,6 +141,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } else {
       // Reset data when user logs out
       setFiatBalance(0);
+      setPendingFiatBalance(0);
       setCryptoBalances([]);
       setTransactions([]);
     }
@@ -149,53 +152,8 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const updateFiatBalance = async (amount: number) => {
-    if (!user) return;
-
-    try {
-      // 1. Get the current balance directly from the DB to avoid stale React state
-      const { data: currentWallet, error: fetchError } = await supabase
-        .from('wallets')
-        .select('balance')
-        .eq('user_id', user.id)
-        .eq('currency', 'NGN')
-        .maybeSingle();
-
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        console.error('Error fetching current wallet balance:', fetchError);
-        return;
-      }
-
-      const currentBalance = currentWallet?.balance || 0;
-      const newBalance = currentBalance + amount;
-
-      // 2. Insert if it doesn't exist, otherwise update
-      if (!currentWallet) {
-        const { error: insertError } = await supabase
-          .from('wallets')
-          .insert({ user_id: user.id, currency: 'NGN', balance: newBalance });
-
-        if (insertError) {
-          console.error('Error inserting new wallet:', insertError);
-          return;
-        }
-      } else {
-        const { error: updateError } = await supabase
-          .from('wallets')
-          .update({ balance: newBalance })
-          .eq('user_id', user.id)
-          .eq('currency', 'NGN');
-
-        if (updateError) {
-          console.error('Error updating wallet balance:', updateError);
-          return;
-        }
-      }
-
-      // 3. Update local state only if DB succeeds
-      setFiatBalance(newBalance);
-    } catch (error) {
-      console.error('Unexpected error updating balance:', error);
-    }
+    // Deprecated for direct manual use in ledger protocol
+    console.warn("Manual balance update is disabled under the double-entry ledger. Use transactions.");
   };
 
   const updateCryptoBalance = (symbol: string, amount: number) => {
@@ -326,6 +284,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   return (
     <WalletContext.Provider value={{
       fiatBalance,
+      pendingFiatBalance,
       cryptoBalances,
       totalPortfolioValue,
       updateFiatBalance,

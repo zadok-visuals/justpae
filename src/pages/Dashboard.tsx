@@ -20,7 +20,8 @@ const Dashboard = () => {
     calculateTotalPortfolioValue = () => 0,
     fetchCryptoPrices = () => {},
     toggleBalanceVisibility = () => {},
-    hideBalance = false
+    hideBalance = false,
+    pendingFiatBalance = 0
   } = useDashboardData() || {};
 
   const displayName = (profile?.full_name || '').split(' ')[0] || 'User';
@@ -45,6 +46,7 @@ const Dashboard = () => {
           <div className="lg:col-span-2 space-y-6">
             <PortfolioCard
               totalValue={calculateTotalPortfolioValue()}
+              pendingFiatBalance={pendingFiatBalance}
               hideBalance={hideBalance}
               onToggleBalanceVisibility={toggleBalanceVisibility}
               formatBalance={formatBalance}

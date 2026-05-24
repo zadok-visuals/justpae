@@ -8,14 +8,14 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, MessageSquare, ShieldCheck, Zap, RefreshCw, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cryptoService, CryptoPrice } from '@/services/cryptoService';
-import { useChat } from '@/hooks/useChat';
+import { vaspService } from '@/services/vaspService';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { useTransactionLimits } from '@/hooks/useTransactionLimits';
 
 const BuyCrypto = () => {
   const navigate = useNavigate();
-  const { sendMessage } = useChat();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const { maxTransactionAmount, kycRequiredThreshold } = useTransactionLimits();
   const [selectedCrypto, setSelectedCrypto] = useState('BTC');
   const [usdAmount, setUsdAmount] = useState('');
@@ -95,27 +95,25 @@ const BuyCrypto = () => {
   const nairaEquivalent = usdValue * exchangeRate;
   const cryptoAmount = selectedCryptoData && currentPrice ? (usdValue / currentPrice) : 0;
 
-  const handleConnectToAdmin = async () => {
+  const handleExecuteTrade = async () => {
     if (!usdAmount || parseFloat(usdAmount) <= 0) {
       toast({
         title: 'Enter an Amount',
-        description: 'Please enter a USD amount before connecting with the admin.',
+        description: 'Please enter a USD amount.',
         variant: 'destructive',
       });
       return;
     }
 
-    // Enforce maximum transaction amount (compare naira equivalent)
     if (nairaEquivalent > maxTransactionAmount) {
       toast({
         title: 'Amount Exceeds Limit',
-        description: `The maximum per transaction is ₦${maxTransactionAmount.toLocaleString('en-NG')}. Your order is ₦${nairaEquivalent.toLocaleString('en-NG', { maximumFractionDigits: 0 })}.`,
+        description: `The maximum per transaction is ₦${maxTransactionAmount.toLocaleString('en-NG')}.`,
         variant: 'destructive',
       });
       return;
     }
 
-    // Enforce KYC threshold
     if (nairaEquivalent >= kycRequiredThreshold && !profile?.is_kyc_verified) {
       toast({
         title: 'KYC Verification Required',
@@ -128,22 +126,36 @@ const BuyCrypto = () => {
 
     setIsSending(true);
     try {
-      const cryptoName = cryptoOptions.find(c => c.symbol === selectedCrypto)?.name || selectedCrypto;
-      const message =
-        `🛒 BUY REQUEST\n` +
-        `Asset: ${cryptoName} (${selectedCrypto})\n` +
-        `Amount to spend: ₦${nairaEquivalent.toLocaleString('en-US', { minimumFractionDigits: 2 })}\n` +
-        `Est. rate: ₦${exchangeRate.toLocaleString('en-US', { minimumFractionDigits: 2 })} / USD\n` +
-        `Est. crypto to receive: ${cryptoAmount.toFixed(6)} ${selectedCrypto}\n` +
-        `Please confirm the rate and provide wallet transfer details.`;
+      // 1. Get VASP Quote
+      const quote = await vaspService.quoteBuy(selectedCrypto, usdValue);
+      
+      // 2. Execute VASP Order
+      const tx = await vaspService.executeBuy(quote.id);
+      
+      // 3. Update internal double-entry ledger via RPC
+      const { error } = await supabase.rpc('admin_confirm_trade', {
+        p_user_id: user?.id,
+        p_type: 'buy',
+        p_fiat_amount: nairaEquivalent,
+        p_crypto_amount: cryptoAmount,
+        p_crypto_symbol: selectedCrypto
+      });
 
-      await sendMessage(message);
-      navigate('/chat');
-    } catch (err) {
-      console.error('Failed to send buy request to chat:', err);
+      if (error) throw error;
+
       toast({
-        title: 'Failed to send request',
-        description: 'Could not reach the chat. Please try again.',
+        title: 'Trade Executed',
+        description: `Successfully purchased ${cryptoAmount.toFixed(6)} ${selectedCrypto} via VASP routing.`,
+      });
+      
+      setUsdAmount('');
+      // Navigate to dashboard to see updated balance
+      setTimeout(() => navigate('/dashboard'), 1500);
+    } catch (err) {
+      console.error('Failed to execute VASP trade:', err);
+      toast({
+        title: 'Trade Failed',
+        description: 'Could not complete the transaction with the liquidity provider.',
         variant: 'destructive',
       });
     } finally {
@@ -166,10 +178,10 @@ const BuyCrypto = () => {
 
         {/* OTC Instruction Card */}
         <Card className="rounded-2xl shadow-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-6 text-white text-center space-y-2">
-            <Zap className="w-10 h-10 mx-auto animate-bounce" />
-            <h2 className="text-2xl font-bold">OTC Trade Portal</h2>
-            <p className="text-sm opacity-90">Instant personalized trades & best execution rates via Admin Chat.</p>
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white text-center space-y-2">
+            <ShieldCheck className="w-10 h-10 mx-auto" />
+            <h2 className="text-2xl font-bold">VASP Liquidity Network</h2>
+            <p className="text-sm opacity-90">Automated compliant routing via licensed third-party exchanges.</p>
           </div>
 
           <CardContent className="space-y-6 pt-6">
@@ -248,45 +260,44 @@ const BuyCrypto = () => {
               )}
             </div>
 
-            {/* Steps to complete */}
             <div className="space-y-4">
-              <h3 className="font-semibold text-gray-900 dark:text-white">Steps to Complete Purchase:</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-white">Compliant Trade Process:</h3>
               
               <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-amber-500 text-white rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</div>
+                <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</div>
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Start Chat Session</h4>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">Click the button below to connect directly with the Admin on chat.</p>
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Request Quote</h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Our system fetches a live execution price from our partner VASP.</p>
                 </div>
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-amber-500 text-white rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</div>
+                <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</div>
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Confirm Rate and Payment</h4>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">Negotiate and lock your purchase rate, then complete the Naira bank transfer.</p>
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Execute via API</h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">The trade is settled instantly on external liquidity rails.</p>
                 </div>
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-amber-500 text-white rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</div>
+                <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</div>
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Receive Asset</h4>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">Provide your destination wallet address, and the admin will instantly transfer your crypto.</p>
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Ledger Settlement</h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Your digital wallet is credited automatically.</p>
                 </div>
               </div>
             </div>
 
             {/* Call to action */}
             <Button 
-              onClick={handleConnectToAdmin}
+              onClick={handleExecuteTrade}
               disabled={isSending}
-              className="w-full bg-fintech-orange hover:bg-fintech-orange/90 py-4 h-14 rounded-xl text-lg font-bold shadow-lg shadow-fintech-orange/20 transition-all flex items-center justify-center space-x-2 disabled:opacity-70"
+              className="w-full bg-blue-600 hover:bg-blue-700 py-4 h-14 rounded-xl text-lg font-bold shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center space-x-2 disabled:opacity-70"
             >
               {isSending ? (
-                <><Loader2 className="w-5 h-5 animate-spin" /><span>Sending to Admin...</span></>
+                <><Loader2 className="w-5 h-5 animate-spin" /><span>Processing Trade...</span></>
               ) : (
-                <><MessageSquare className="w-5 h-5" /><span>Connect with Admin to Buy</span></>
+                <><Zap className="w-5 h-5" /><span>Request Quote & Execute</span></>
               )}
             </Button>
           </CardContent>
@@ -294,10 +305,10 @@ const BuyCrypto = () => {
 
         {/* Security badge */}
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex items-center space-x-3">
-          <ShieldCheck className="w-8 h-8 text-green-500 shrink-0" />
+          <ShieldCheck className="w-8 h-8 text-blue-500 shrink-0" />
           <div>
-            <h4 className="text-xs font-semibold text-gray-900 dark:text-white">Secure OTC Escrow</h4>
-            <p className="text-[11px] text-gray-600 dark:text-gray-400">All trades are secured internally under our manual ledger system. Never transact outside of the official chat portal.</p>
+            <h4 className="text-xs font-semibold text-gray-900 dark:text-white">Regulatory Separation</h4>
+            <p className="text-[11px] text-gray-600 dark:text-gray-400">Fiat custody is handled by our MFB partner. Digital assets are processed by licensed VASP partners.</p>
           </div>
         </div>
       </div>

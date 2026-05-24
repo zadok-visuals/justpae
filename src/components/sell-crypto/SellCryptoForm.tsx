@@ -91,14 +91,14 @@ const SellCryptoForm: React.FC<SellCryptoFormProps> = ({
         <Button 
           onClick={onSell}
           disabled={!selectedCrypto || !usdAmount || isLoading}
-          className="w-full bg-fintech-orange hover:bg-fintech-orange/90 py-3"
+          className="w-full bg-blue-600 hover:bg-blue-700 py-3 text-white font-semibold"
         >
-          {isLoading ? 'Creating Sell Order...' : `Create Sell Order`}
+          {isLoading ? 'Processing Trade...' : `Execute Trade`}
         </Button>
 
         <div className="text-center text-sm text-gray-600 dark:text-gray-400 mt-4">
-          <p>⚠️ Do not send any tokens yet.</p>
-          <p>An Admin will provide the secure wallet address in the chat after you create the order.</p>
+          <p>Instant liquidation via licensed liquidity provider.</p>
+          <p>Fiat funds will be credited to your virtual wallet automatically.</p>
         </div>
       </CardContent>
     </Card>

@@ -5,10 +5,11 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cryptoService, CryptoPrice } from '@/services/cryptoService';
+import { vaspService } from '@/services/vaspService';
 import SellCryptoForm from '@/components/sell-crypto/SellCryptoForm';
 import SaleInstructions from '@/components/sell-crypto/SaleInstructions';
-import { useChat } from '@/hooks/useChat';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { useTransactionLimits } from '@/hooks/useTransactionLimits';
 
 const SellCrypto = () => {
@@ -19,9 +20,8 @@ const SellCrypto = () => {
   const [exchangeRate, setExchangeRate] = useState(1650);
   const { addTransaction } = useWallet();
   const { toast } = useToast();
-  const { sendMessage } = useChat();
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const { maxTransactionAmount, kycRequiredThreshold } = useTransactionLimits();
 
   const cryptoOptions = [
@@ -154,37 +154,37 @@ const SellCrypto = () => {
     setIsLoading(true);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
       const nairaEquivalent = usdValue * exchangeRate;
 
-      const transaction = {
-        type: 'sell' as const,
-        asset: selectedCrypto,
-        amount: calculatedCryptoAmount,
-        fiat_amount: nairaEquivalent,
-        fiat_currency: 'NGN',
-        status: 'pending' as const,
-        description: `Sold ${calculatedCryptoAmount.toFixed(6)} ${selectedCrypto} - pending confirmation`
-      };
+      // 1. Get VASP Quote
+      const quote = await vaspService.quoteSell(selectedCrypto, calculatedCryptoAmount);
+      
+      // 2. Execute VASP Order
+      const tx = await vaspService.executeSell(quote.id);
+      
+      // 3. Update internal double-entry ledger via RPC
+      const { error } = await supabase.rpc('admin_confirm_trade', {
+        p_user_id: user?.id,
+        p_type: 'sell',
+        p_fiat_amount: nairaEquivalent,
+        p_crypto_amount: calculatedCryptoAmount,
+        p_crypto_symbol: selectedCrypto
+      });
 
-      addTransaction(transaction);
-
-      // Send chat message to admin
-      const message = `🚨 NEW CRYPTO SALE\nAsset: ${calculatedCryptoAmount.toFixed(6)} ${selectedCrypto}\nExpected Fiat: ${formatCurrency(nairaEquivalent, 'NGN')}\nStatus: Waiting for Admin Wallet Address`;
-      await sendMessage(message);
+      if (error) throw error;
 
       toast({
-        title: "Order Created",
-        description: "Redirecting to chat to receive wallet address...",
+        title: "Trade Executed",
+        description: `Successfully sold ${calculatedCryptoAmount.toFixed(6)} ${selectedCrypto} via VASP routing.`,
       });
       
-      // Redirect to chat
-      navigate('/chat');
+      // Navigate to dashboard
+      setTimeout(() => navigate('/dashboard'), 1500);
     } catch (error) {
+      console.error('Failed to execute VASP trade:', error);
       toast({
         title: "Transaction Failed",
-        description: "Please try again later.",
+        description: "Could not complete the transaction with the liquidity provider.",
         variant: "destructive",
       });
     } finally {

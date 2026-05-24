@@ -6,6 +6,7 @@ import { Eye, EyeOff } from 'lucide-react';
 
 interface PortfolioCardProps {
   totalValue: number;
+  pendingFiatBalance: number;
   hideBalance: boolean;
   onToggleBalanceVisibility: () => void;
   formatBalance: (amount: number) => string;
@@ -14,6 +15,7 @@ interface PortfolioCardProps {
 
 const PortfolioCard: React.FC<PortfolioCardProps> = ({
   totalValue,
+  pendingFiatBalance,
   hideBalance,
   onToggleBalanceVisibility,
   formatBalance,
@@ -50,6 +52,15 @@ const PortfolioCard: React.FC<PortfolioCardProps> = ({
           <div className="text-lg opacity-80">
             {formatEquivalentUSD(totalValue)}
           </div>
+          {pendingFiatBalance > 0 && (
+            <div className="mt-4 pt-4 border-t border-white/20">
+              <p className="text-xs opacity-80 mb-1 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
+                Pending Clearance
+              </p>
+              <p className="text-sm font-semibold">{formatBalance(pendingFiatBalance)}</p>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

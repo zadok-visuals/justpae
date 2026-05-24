@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export const useDashboardData = () => {
   const { profile, user } = useAuth();
-  const { fiatBalance, cryptoBalances, hideBalance, toggleBalanceVisibility } = useWallet();
+  const { fiatBalance, pendingFiatBalance, cryptoBalances, hideBalance, toggleBalanceVisibility } = useWallet();
   const [marketData, setMarketData] = useState<CryptoPrice[]>([]);
   const [isLoadingPrices, setIsLoadingPrices] = useState(false);
   const [exchangeRate, setExchangeRate] = useState(1650);
@@ -85,6 +85,7 @@ export const useDashboardData = () => {
     formatEquivalentUSD,
     calculateTotalPortfolioValue,
     fetchCryptoPrices,
-    toggleBalanceVisibility
+    toggleBalanceVisibility,
+    pendingFiatBalance
   };
 };
