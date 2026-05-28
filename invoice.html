@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { 
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+    color: #333; 
+    line-height: 1.6; 
+    padding: 40px; 
+    max-width: 800px; 
+    margin: 0 auto; 
+  }
+  .header { 
+    display: flex; 
+    justify-content: space-between; 
+    margin-bottom: 40px; 
+    border-bottom: 2px solid #2c3e50;
+    padding-bottom: 20px;
+  }
+  .header-left h1 { 
+    margin: 0 0 10px 0; 
+    color: #2c3e50; 
+    font-size: 24px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .header-left p {
+    margin: 5px 0;
+    font-size: 14px;
+  }
+  .header-right { 
+    text-align: right; 
+    font-family: monospace; 
+    color: #555; 
+    font-size: 14px;
+    line-height: 1.8;
+  }
+  .intro {
+    font-size: 14px;
+    margin-bottom: 30px;
+    color: #444;
+  }
+  table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    margin-bottom: 30px; 
+  }
+  th, td { 
+    padding: 15px 10px; 
+    border-bottom: 1px solid #ddd; 
+    text-align: left; 
+  }
+  th { 
+    background-color: #f8f9fa; 
+    color: #2c3e50; 
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+  }
+  td {
+    font-size: 14px;
+  }
+  .amount-col {
+    text-align: right;
+    font-weight: 500;
+  }
+  .total-row { 
+    font-weight: bold; 
+    font-size: 16px; 
+    background-color: #f8f9fa; 
+  }
+  .total-row td { 
+    border-top: 2px solid #2c3e50; 
+    border-bottom: 2px solid #2c3e50; 
+  }
+  .description { 
+    font-size: 13px; 
+    color: #7f8c8d; 
+    margin-top: 5px;
+    font-weight: normal;
+  }
+  .footer { 
+    margin-top: 50px; 
+    font-size: 12px; 
+    color: #7f8c8d; 
+    text-align: justify; 
+    border-top: 1px solid #eee; 
+    padding-top: 20px; 
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>BILL OF QUANTITIES</h1>
+    <p><strong>Project:</strong> Secure Payment Gateway Architecture (Paystack)</p>
+    <p><strong>Client:</strong> AmazingPay</p>
+  </div>
+  <div class="header-right">
+    <strong>Document ID:</strong> PSTK-BE-202605-817K-001<br>
+    <strong>Date:</strong> May 25, 2026<br>
+    <strong>Status:</strong> Finalized
+  </div>
+</div>
+
+<p class="intro">Below is the itemized cost breakdown of the engineering work, security implementation, and infrastructure tooling required to establish a fully automated payment backend.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Description of Services</th>
+      <th class="amount-col">Amount (NGN)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <strong>1. Core Payment API Initialization & Routing</strong>
+        <div class="description">Dynamic session generation, multi-channel configuration, and transaction reference management.</div>
+      </td>
+      <td class="amount-col">150,000</td>
+    </tr>
+    <tr>
+      <td>
+        <strong>2. Webhook & Real-Time Event Listener System</strong>
+        <div class="description">Secure server endpoint construction and asynchronous status event parsing.</div>
+      </td>
+      <td class="amount-col">180,000</td>
+    </tr>
+    <tr>
+      <td>
+        <strong>3. Cryptographic Security & Authentication</strong>
+        <div class="description">HMAC SHA-512 signature validation and strict environment variable security separation.</div>
+      </td>
+      <td class="amount-col">120,000</td>
+    </tr>
+    <tr>
+      <td>
+        <strong>4. Database Integration & Automated Fulfillment</strong>
+        <div class="description">Real-time status sync and automated service provisioning logic.</div>
+      </td>
+      <td class="amount-col">160,000</td>
+    </tr>
+    <tr>
+      <td>
+        <strong>5. Idempotency, Error Handling & Edge-Case Management</strong>
+        <div class="description">Duplicate transaction prevention and graceful API failure handling.</div>
+      </td>
+      <td class="amount-col">95,000</td>
+    </tr>
+    <tr>
+      <td>
+        <strong>6. QA, Sandbox Testing & Live Migration</strong>
+        <div class="description">Comprehensive sandbox simulation and live environment deployment.</div>
+      </td>
+      <td class="amount-col">85,000</td>
+    </tr>
+    <tr>
+      <td>
+        <strong>7. Infrastructure & Advanced Tooling Costs</strong>
+        <div class="description">Antigravity AI compute credits for architecture optimization and code generation.</div>
+      </td>
+      <td class="amount-col">27,000</td>
+    </tr>
+    <tr class="total-row">
+      <td style="text-align: right;">TOTAL INFRASTRUCTURE SETUP:</td>
+      <td class="amount-col">817,000</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="footer">
+  *Note: This cost reflects the creation of a fully automated, highly secure payment engine. Unlike a simple plugin, this custom backend ensures the platform is protected from payment fraud, requires zero manual payment verification by staff, and is built to handle high transaction volumes seamlessly.
+</div>
+
+</body>
+</html>
