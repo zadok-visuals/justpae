@@ -58,7 +58,7 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ value, onValueChange,
       <SelectTrigger className="h-12 bg-white/5 border-white/10 rounded-xl text-white focus:ring-primary focus:border-primary focus:ring-2 focus:ring-offset-0 focus:ring-offset-transparent">
         <SelectValue placeholder="Select country" />
       </SelectTrigger>
-      <SelectContent className="bg-[#14171c] border-white/10 rounded-xl text-white">
+      <SelectContent className="bg-fintech-card border-white/10 rounded-xl text-white">
         {countries.map((country) => (
           <SelectItem key={country.id} value={country.country_code} className="text-white hover:bg-white/5 focus:bg-white/5 focus:text-white rounded-lg cursor-pointer my-0.5">
             <div className="flex items-center gap-2">

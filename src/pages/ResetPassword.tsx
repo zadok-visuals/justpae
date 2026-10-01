@@ -133,7 +133,7 @@ const ResetPassword = () => {
 
   if (isCheckingAuth) {
     return (
-      <div className="h-screen w-full bg-[#0a0c10] flex flex-col justify-center items-center">
+      <div className="h-screen w-full bg-fintech-shell flex flex-col justify-center items-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         <p className="mt-4 text-gray-400 text-sm font-medium">Verifying authorization...</p>
       </div>
@@ -145,7 +145,7 @@ const ResetPassword = () => {
   }
 
   return (
-    <div className="h-screen w-full bg-[#0a0c10] flex flex-col justify-start sm:justify-center items-center pt-8 pb-24 px-4 sm:px-6 lg:px-8 text-white relative overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+    <div className="h-screen w-full bg-fintech-shell flex flex-col justify-start sm:justify-center items-center pt-8 pb-24 px-4 sm:px-6 lg:px-8 text-white relative overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
       {/* Decorative Background Glows */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[10%] left-1/2 -translate-x-1/2 w-[80%] h-[30%] bg-primary/10 rounded-full blur-[120px]" />
@@ -155,7 +155,7 @@ const ResetPassword = () => {
       <div className="w-full max-w-md space-y-5 sm:space-y-8 relative z-10 my-4 sm:my-auto">
         <div className="flex flex-row items-center gap-4">
           <div className="relative p-[2px] rounded-2xl bg-gradient-to-b from-white/20 to-transparent shrink-0">
-            <div className="bg-[#14171c] rounded-[14px] p-3 shadow-2xl">
+            <div className="bg-fintech-card rounded-[14px] p-3 shadow-2xl">
               <img
                 src="/lovable-uploads/d8bf89ab-4a7e-4d3a-b1d3-c492661136b6.png"
                 alt="justpae Logo"
@@ -173,7 +173,7 @@ const ResetPassword = () => {
           </div>
         </div>
 
-        <div className="bg-[#14171c]/80 backdrop-blur-xl py-6 px-4 sm:py-8 sm:px-10 shadow-2xl rounded-3xl border border-white/5">
+        <div className="bg-fintech-card/80 backdrop-blur-xl py-6 px-4 sm:py-8 sm:px-10 shadow-2xl rounded-3xl border border-white/5">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <Label htmlFor="password" className="text-sm font-semibold text-gray-300 ml-1">
@@ -205,7 +205,7 @@ const ResetPassword = () => {
 
               {/* Password Requirements */}
               {password && (
-                <div className="mt-2 space-y-1.5 bg-[#0a0c10]/40 p-3 rounded-xl border border-white/5">
+                <div className="mt-2 space-y-1.5 bg-fintech-shell/40 p-3 rounded-xl border border-white/5">
                   <div className={`flex items-center text-xs ${passwordValidation.minLength ? 'text-emerald-500' : 'text-gray-400'}`}>
                     <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
                     At least 8 characters

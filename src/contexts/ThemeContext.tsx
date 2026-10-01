@@ -17,11 +17,16 @@ export const useTheme = () => {
 };
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  // justpae defaults to dark — the ink/gold/naira identity is the primary
+  // surface. Light is an explicit opt-in, remembered the same way.
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
+    if (savedTheme === 'light') {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove('dark');
+    } else {
       setIsDarkMode(true);
       document.documentElement.classList.add('dark');
     }

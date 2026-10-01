@@ -119,7 +119,7 @@ const VerifyResetToken = () => {
 
   if (!email) {
     return (
-      <div className="h-screen w-full bg-[#0a0c10] flex flex-col justify-start sm:justify-center items-center pt-8 pb-24 px-4 sm:px-6 lg:px-8 text-white relative overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className="h-screen w-full bg-fintech-shell flex flex-col justify-start sm:justify-center items-center pt-8 pb-24 px-4 sm:px-6 lg:px-8 text-white relative overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {/* Decorative Background Glows */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-[10%] left-1/2 -translate-x-1/2 w-[80%] h-[30%] bg-primary/10 rounded-full blur-[120px]" />
@@ -127,7 +127,7 @@ const VerifyResetToken = () => {
         </div>
 
         <div className="w-full max-w-md space-y-5 relative z-10 my-4 sm:my-auto">
-          <div className="bg-[#14171c]/80 backdrop-blur-xl py-8 px-6 sm:px-10 shadow-2xl rounded-3xl border border-white/5 text-center">
+          <div className="bg-fintech-card/80 backdrop-blur-xl py-8 px-6 sm:px-10 shadow-2xl rounded-3xl border border-white/5 text-center">
             <h2 className="text-2xl font-bold text-white mb-4">Invalid Access</h2>
             <p className="text-gray-400 mb-6 text-sm font-medium">This page requires a valid email parameter.</p>
             <Link to="/forgot-password">
@@ -142,7 +142,7 @@ const VerifyResetToken = () => {
   }
 
   return (
-    <div className="h-screen w-full bg-[#0a0c10] flex flex-col justify-start sm:justify-center items-center pt-8 pb-24 px-4 sm:px-6 lg:px-8 text-white relative overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+    <div className="h-screen w-full bg-fintech-shell flex flex-col justify-start sm:justify-center items-center pt-8 pb-24 px-4 sm:px-6 lg:px-8 text-white relative overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
       {/* Decorative Background Glows */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[10%] left-1/2 -translate-x-1/2 w-[80%] h-[30%] bg-primary/10 rounded-full blur-[120px]" />
@@ -152,7 +152,7 @@ const VerifyResetToken = () => {
       <div className="w-full max-w-md space-y-5 sm:space-y-8 relative z-10 my-4 sm:my-auto">
         <div className="flex flex-row items-center gap-4">
           <div className="relative p-[2px] rounded-2xl bg-gradient-to-b from-white/20 to-transparent shrink-0">
-            <div className="bg-[#14171c] rounded-[14px] p-3 shadow-2xl">
+            <div className="bg-fintech-card rounded-[14px] p-3 shadow-2xl">
               <Key className="w-10 h-10 text-primary" />
             </div>
           </div>
@@ -166,7 +166,7 @@ const VerifyResetToken = () => {
           </div>
         </div>
 
-        <div className="bg-[#14171c]/80 backdrop-blur-xl py-6 px-4 sm:py-8 sm:px-10 shadow-2xl rounded-3xl border border-white/5">
+        <div className="bg-fintech-card/80 backdrop-blur-xl py-6 px-4 sm:py-8 sm:px-10 shadow-2xl rounded-3xl border border-white/5">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <Label htmlFor="token" className="text-sm font-semibold text-gray-300 ml-1">

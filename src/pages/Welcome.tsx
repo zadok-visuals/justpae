@@ -8,12 +8,12 @@ const Welcome = () => {
   return (
     <>
       {/* Container limits height to 100vh on desktop to prevent unnecessary scrolling */}
-      <div className="min-h-screen lg:h-screen w-full bg-[#0a0c10] flex flex-col text-white relative overflow-hidden font-sans">
+      <div className="min-h-screen lg:h-screen w-full bg-fintech-shell flex flex-col text-white relative overflow-hidden font-sans">
 
         {/* Decorative Background Glows */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-[10%] lg:top-[-20%] left-1/2 lg:left-[20%] -translate-x-1/2 lg:translate-x-0 w-[80%] lg:w-[40%] h-[30%] lg:h-[60%] bg-primary/10 rounded-full blur-[120px]" />
-          <div className="absolute bottom-0 right-0 w-[50%] h-[40%] bg-emerald-500/5 rounded-full blur-[120px]" />
+          <div className="absolute bottom-0 right-0 w-[50%] h-[40%] bg-fintech-green/5 rounded-full blur-[120px]" />
         </div>
 
         {/* Core Content: Adapts from 1 column on mobile to 2 columns on desktop */}
@@ -24,7 +24,7 @@ const Welcome = () => {
 
             {/* Premium App Icon styling */}
             <div className="inline-block relative p-[2px] rounded-3xl bg-gradient-to-b from-white/20 to-transparent">
-              <div className="bg-[#14171c] rounded-[22px] p-4 shadow-2xl">
+              <div className="bg-fintech-card rounded-[22px] p-4 shadow-2xl">
                 <img
                   src="/lovable-uploads/d8bf89ab-4a7e-4d3a-b1d3-c492661136b6.png"
                   alt="justpae Logo"
@@ -36,7 +36,7 @@ const Welcome = () => {
             <div className="space-y-6">
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1]">
                 Financial <br className="hidden lg:block" />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-orange-400 to-orange-500">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-fintech-orange-light to-primary">
                   Freedom.
                 </span>
               </h1>
@@ -69,7 +69,7 @@ const Welcome = () => {
 
               <div className="relative z-20 flex items-center gap-4">
                 {/* Crypto Asset Node */}
-                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-[0_0_40px_rgba(249,115,22,0.25)] animate-float">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-fintech-orange-light to-fintech-orange-dark rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-[0_0_40px_rgba(217,161,74,0.25)] animate-float">
                   <Bitcoin className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
                 </div>
 
@@ -79,7 +79,7 @@ const Welcome = () => {
                 </div>
 
                 {/* Fiat Currency Node */}
-                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-[0_0_40px_rgba(16,185,129,0.15)] animate-float" style={{ animationDelay: '1s' }}>
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-fintech-green-light to-fintech-green rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-[0_0_40px_rgba(60,154,116,0.2)] animate-float" style={{ animationDelay: '1s' }}>
                   <DollarSign className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
                 </div>
               </div>

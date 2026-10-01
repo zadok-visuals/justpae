@@ -272,7 +272,7 @@ const SignupForm: React.FC = () => {
           <div className="w-full border-t border-white/10"></div>
         </div>
         <div className="relative flex justify-center text-xs uppercase tracking-widest font-bold">
-          <span className="px-4 bg-[#14171c] text-gray-500">Or continue with</span>
+          <span className="px-4 bg-fintech-card text-gray-500">Or continue with</span>
         </div>
       </div>
 

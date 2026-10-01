@@ -67,21 +67,33 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         fintech: {
-          orange: '#FF6B35',
-          'orange-light': '#FF8C69',
-          'orange-dark': '#E55A2B',
-          black: '#1A0B0B',
-          'black-light': '#2D1717',
-          'red-black': '#2D1414',
-          blue: '#4F46E5',
-          'blue-light': '#6366F1',
-          green: '#10B981',
-          'green-light': '#34D399',
+          // Currency gold — the primary action color (was orange).
+          orange: '#D9A14A',
+          'orange-light': '#F2C572',
+          'orange-dark': '#B8803A',
+          // Ink — the app ground (was a warm reddish-black).
+          black: '#0B0D10',
+          'black-light': '#15181C',
+          'red-black': '#1B1F24',
+          // Naira green — the second accent (was indigo blue / generic green).
+          blue: '#3C9A74',
+          'blue-light': '#5FB995',
+          green: '#3C9A74',
+          'green-light': '#5FB995',
           gray: '#6B7280',
           'gray-light': '#9CA3AF',
           dark: '#1F2937',
           'dark-light': '#374151',
+          // Dedicated auth-shell tokens, replacing the raw bg-[#0a0c10]/[#14171c]
+          // hexes duplicated across Welcome/Login/Signup/etc.
+          shell: '#0B0D10',
+          card: '#15181C',
         }
+      },
+      fontFamily: {
+        sans: ['Manrope', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['Fraunces', 'serif'],
+        mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
       },
       borderRadius: {
         lg: "var(--radius)",

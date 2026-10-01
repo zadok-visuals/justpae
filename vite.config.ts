@@ -33,8 +33,8 @@ export default defineConfig(({ mode }) => ({
         name: 'justpae Terminal',
         short_name: 'justpae',
         description: 'Secure Peer-to-Peer Fintech Trading Platform',
-        theme_color: '#FF6B35', // Matches your --fintech-orange color token
-        background_color: '#1A0B0B',
+        theme_color: '#D9A14A', // Matches fintech.orange (currency gold)
+        background_color: '#0B0D10',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
