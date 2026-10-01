@@ -11,7 +11,7 @@ const PromotionalBanner: React.FC = () => {
       title: "Our Physical Offices",
       description: "For easy inquiries, complaint resolution/feedback, see our physical office locations.",
       buttonText: "Learn more",
-      buttonLink: "https://www.justpae.app/", // added link
+      buttonLink: "https://www.justpae.vercel.app/", // added link
       icon: "₿",
       gradient: "from-purple-500 to-pink-500",
       target: "_blank"

@@ -193,7 +193,7 @@ serve(async (req) => {
 
     // Send email via Resend
     const emailPayload = {
-      from: "justpae <admin@trade.justpae.app>",
+      from: "justpae <admin@trade.justpae.vercel.app>",
       to: [email],
       subject: `${otp} is your justpae verification code`,
       html: buildEmailHtml(otp, email),
