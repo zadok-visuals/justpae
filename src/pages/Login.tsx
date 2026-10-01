@@ -77,7 +77,7 @@ const Login = () => {
             <div className="bg-[#14171c] rounded-[14px] p-3 shadow-2xl">
               <img
                 src="/lovable-uploads/d8bf89ab-4a7e-4d3a-b1d3-c492661136b6.png"
-                alt="Amazingpay Logo"
+                alt="justpae Logo"
                 className="w-10 h-10 object-contain"
               />
             </div>
@@ -87,7 +87,7 @@ const Login = () => {
               Welcome Back
             </h2>
             <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-gray-400 font-medium">
-              Sign in to your Amazingpay account
+              Sign in to your justpae account
             </p>
           </div>
         </div>

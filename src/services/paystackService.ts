@@ -50,13 +50,13 @@ import { supabase } from '@/integrations/supabase/client';
 
 class PaystackService {
   generateReference(): string {
-    return `amazingpay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `justpae_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   async initializeTransaction(data: PaystackTransactionData): Promise<PaystackResponse | null> {
     try {
       const reference = data.reference || this.generateReference();
-      
+
       const payload = {
         action: 'initialize',
         email: data.email,
@@ -79,7 +79,7 @@ class PaystackService {
       if (error) {
         throw new Error(error.message || 'Failed to initialize transaction');
       }
-      
+
       if (!result?.status) {
         throw new Error(result?.message || 'Transaction initialization failed');
       }
@@ -94,7 +94,7 @@ class PaystackService {
   async verifyTransaction(reference: string): Promise<PaystackVerificationResponse | null> {
     try {
       console.log('Verifying Paystack transaction:', reference);
-      
+
       const { data: result, error } = await supabase.functions.invoke('paystack-payment', {
         body: {
           action: 'verify',
@@ -105,7 +105,7 @@ class PaystackService {
       if (error) {
         throw new Error(error.message || 'Failed to verify transaction');
       }
-      
+
       if (!result.status) {
         throw new Error(result.message || 'Transaction verification failed');
       }

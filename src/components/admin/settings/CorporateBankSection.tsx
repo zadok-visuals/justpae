@@ -23,7 +23,7 @@ const CorporateBankSection: React.FC<CorporateBankSectionProps> = ({
     <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
       <h3 className="text-lg font-medium text-gray-900 dark:text-white">Corporate Deposit Bank Details</h3>
       <p className="text-sm text-gray-500">Configure the corporate bank details displayed to users when they perform a manual Bank Transfer deposit.</p>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="space-y-2">
           <Label className="text-gray-900 dark:text-white">Bank Name</Label>
@@ -31,7 +31,7 @@ const CorporateBankSection: React.FC<CorporateBankSectionProps> = ({
             type="text"
             value={bankName}
             onChange={(e) => onBankNameChange(e.target.value)}
-            placeholder="AmazingPay Bank"
+            placeholder="justpae Bank"
             className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
           />
         </div>
@@ -53,7 +53,7 @@ const CorporateBankSection: React.FC<CorporateBankSectionProps> = ({
             type="text"
             value={accountName}
             onChange={(e) => onAccountNameChange(e.target.value)}
-            placeholder="AmazingPay Limited"
+            placeholder="justpae Limited"
             className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
           />
         </div>

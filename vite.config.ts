@@ -30,8 +30,8 @@ export default defineConfig(({ mode }) => ({
         clientsClaim: true,
       },
       manifest: {
-        name: 'AmazingPay Terminal',
-        short_name: 'AmazingPay',
+        name: 'justpae Terminal',
+        short_name: 'justpae',
         description: 'Secure Peer-to-Peer Fintech Trading Platform',
         theme_color: '#FF6B35', // Matches your --fintech-orange color token
         background_color: '#1A0B0B',

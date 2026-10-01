@@ -9,7 +9,7 @@ const Welcome = () => {
     <>
       {/* Container limits height to 100vh on desktop to prevent unnecessary scrolling */}
       <div className="min-h-screen lg:h-screen w-full bg-[#0a0c10] flex flex-col text-white relative overflow-hidden font-sans">
-        
+
         {/* Decorative Background Glows */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-[10%] lg:top-[-20%] left-1/2 lg:left-[20%] -translate-x-1/2 lg:translate-x-0 w-[80%] lg:w-[40%] h-[30%] lg:h-[60%] bg-primary/10 rounded-full blur-[120px]" />
@@ -18,21 +18,21 @@ const Welcome = () => {
 
         {/* Core Content: Adapts from 1 column on mobile to 2 columns on desktop */}
         <div className="flex-1 max-w-7xl mx-auto w-full px-6 sm:px-12 py-12 lg:py-0 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center">
-          
+
           {/* Left Column: Copy & Identity (Top on mobile) */}
           <div className="space-y-8 lg:space-y-12 text-center lg:text-left flex flex-col items-center lg:items-start justify-center">
-            
+
             {/* Premium App Icon styling */}
             <div className="inline-block relative p-[2px] rounded-3xl bg-gradient-to-b from-white/20 to-transparent">
               <div className="bg-[#14171c] rounded-[22px] p-4 shadow-2xl">
-                <img 
-                  src="/lovable-uploads/d8bf89ab-4a7e-4d3a-b1d3-c492661136b6.png" 
-                  alt="Amazingpay Logo" 
+                <img
+                  src="/lovable-uploads/d8bf89ab-4a7e-4d3a-b1d3-c492661136b6.png"
+                  alt="justpae Logo"
                   className="w-12 h-12 object-contain"
                 />
               </div>
             </div>
-            
+
             <div className="space-y-6">
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1]">
                 Financial <br className="hidden lg:block" />
@@ -61,12 +61,12 @@ const Welcome = () => {
 
           {/* Right Column: Interaction Card & CTAs */}
           <div className="w-full flex flex-col justify-between lg:justify-center items-center space-y-10 lg:space-y-12 max-w-md mx-auto lg:bg-white/[0.02] lg:border lg:border-white/5 lg:backdrop-blur-md lg:p-10 lg:rounded-[2.5rem]">
-            
+
             {/* Visual Node Bridge Component */}
             <div className="relative flex justify-center items-center w-full py-6 lg:py-4">
               <div className="absolute w-64 h-64 border border-white/5 rounded-full animate-[spin_25s_linear_infinite]" />
               <div className="absolute w-48 h-48 border border-white/10 rounded-full animate-[spin_18s_linear_infinite_reverse]" />
-              
+
               <div className="relative z-20 flex items-center gap-4">
                 {/* Crypto Asset Node */}
                 <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-[0_0_40px_rgba(249,115,22,0.25)] animate-float">

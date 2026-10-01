@@ -47,7 +47,7 @@ const StableBankAccountDetails: React.FC<StableBankAccountDetailsProps> = ({
           .from('system_settings')
           .select('setting_key, setting_value')
           .in('setting_key', ['corporate_bank_name', 'corporate_account_number', 'corporate_account_name']);
-        
+
         if (error) throw error;
 
         const settingsMap = (data || []).reduce((acc, curr) => {
@@ -56,17 +56,17 @@ const StableBankAccountDetails: React.FC<StableBankAccountDetailsProps> = ({
         }, {} as Record<string, string>);
 
         setBankDetails({
-          accountName: settingsMap.corporate_account_name || "AmazingPay Limited",
+          accountName: settingsMap.corporate_account_name || "justpae Limited",
           accountNumber: settingsMap.corporate_account_number || "2109876543",
-          bankName: settingsMap.corporate_bank_name || "AmazingPay Bank",
+          bankName: settingsMap.corporate_bank_name || "justpae Bank",
           sortCode: ""
         });
       } catch (error) {
         console.error('Failed to fetch corporate bank details:', error);
         setBankDetails({
-          accountName: "AmazingPay Limited",
+          accountName: "justpae Limited",
           accountNumber: "2109876543",
-          bankName: "AmazingPay Bank",
+          bankName: "justpae Bank",
           sortCode: ""
         });
       } finally {
@@ -91,7 +91,7 @@ Account Name: ${bankDetails.accountName}
 Account Number: ${bankDetails.accountNumber}
 Amount: ₦${parseFloat(amount).toLocaleString()}
 Reference: ${referenceNumber}`;
-    
+
     navigator.clipboard.writeText(details);
     toast({
       title: "Copied",

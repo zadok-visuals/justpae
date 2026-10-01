@@ -60,7 +60,7 @@ const AdminLogin = () => {
         title: "Welcome Admin",
         description: "Login successful!",
       });
-      
+
       navigate('/admin');
     } catch (error) {
       console.error('Admin login error:', error);
@@ -86,7 +86,7 @@ const AdminLogin = () => {
             </div>
             <CardTitle className="text-2xl font-bold">Admin Access</CardTitle>
             <p className="text-gray-600 dark:text-gray-400">
-              Amazingpay Administration Panel
+              justpae Administration Panel
             </p>
           </CardHeader>
           <CardContent>
@@ -98,12 +98,12 @@ const AdminLogin = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@amazingpay.app"
+                  placeholder="admin@justpae.vercel.app"
                   required
                   className="mt-1"
                 />
               </div>
-              
+
               <PasswordInput
                 id="password"
                 label="Password"
@@ -123,7 +123,7 @@ const AdminLogin = () => {
                 required
                 autoComplete="off"
               />
-              
+
               <Button
                 type="submit"
                 disabled={isLoading}
@@ -132,7 +132,7 @@ const AdminLogin = () => {
                 {isLoading ? 'Signing in...' : 'Sign In as Admin'}
               </Button>
             </form>
-            
+
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-500">
                 Admin access only • Sessions expire after 10 minutes

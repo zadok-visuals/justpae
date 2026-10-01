@@ -13,12 +13,12 @@ interface BankAccountDetailsProps {
 const BankAccountDetails: React.FC<BankAccountDetailsProps> = ({ amount, paymentMethod }) => {
   const { toast } = useToast();
 
-  
+
   // Virtual bank account details for user
   const bankAccount = {
-    bankName: "AmazingPay Bank",
+    bankName: "justpae Bank",
     accountNumber: "2109876543",
-    accountName: "AmazingPay Wallet",
+    accountName: "justpae Wallet",
     sortCode: "058",
     reference: `AP${Date.now().toString().slice(-6)}`
   };
@@ -43,7 +43,7 @@ const BankAccountDetails: React.FC<BankAccountDetailsProps> = ({ amount, payment
         ]
       };
     }
-    
+
     return {
       title: "Bank Transfer Instructions",
       steps: [
@@ -68,7 +68,7 @@ const BankAccountDetails: React.FC<BankAccountDetailsProps> = ({ amount, payment
       <CardContent className="space-y-4">
         <div className="bg-green-50 dark:bg-green-950/30 p-4 rounded-lg space-y-3 border border-green-200 dark:border-green-800">
           <h3 className="font-semibold text-green-800 dark:text-green-200 mb-3">Transfer Details</h3>
-          
+
           <div className="flex justify-between items-center">
             <span className="text-gray-600 dark:text-gray-400">Bank Name:</span>
             <div className="flex items-center space-x-2">
@@ -156,7 +156,7 @@ const BankAccountDetails: React.FC<BankAccountDetailsProps> = ({ amount, payment
 
         <div className="bg-orange-50 dark:bg-orange-950/30 p-3 rounded-lg border border-orange-200 dark:border-orange-800">
           <p className="text-sm text-orange-800 dark:text-orange-200">
-            <strong>Important:</strong> Make sure to include the reference number when making your transfer. 
+            <strong>Important:</strong> Make sure to include the reference number when making your transfer.
             This helps us identify your payment and credit your wallet automatically.
           </p>
         </div>

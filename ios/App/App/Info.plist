@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>AmazingPay</string>
+	<string>justpae</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -51,10 +51,10 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>app.amazingpay.amazingpay</string>
+			<string>app.justpae.justpae</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>amazingpay</string>
+				<string>justpae</string>
 			</array>
 		</dict>
 	</array>

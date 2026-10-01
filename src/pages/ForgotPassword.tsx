@@ -60,9 +60,9 @@ const ForgotPassword = () => {
         <div className="flex flex-row items-center gap-4">
           <div className="relative p-[2px] rounded-2xl bg-gradient-to-b from-white/20 to-transparent shrink-0">
             <div className="bg-[#14171c] rounded-[14px] p-3 shadow-2xl">
-              <img 
-                src="/lovable-uploads/d8bf89ab-4a7e-4d3a-b1d3-c492661136b6.png" 
-                alt="Amazingpay Logo" 
+              <img
+                src="/lovable-uploads/d8bf89ab-4a7e-4d3a-b1d3-c492661136b6.png"
+                alt="justpae Logo"
                 className="w-10 h-10 object-contain"
               />
             </div>

@@ -17,7 +17,7 @@ const ResetPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  
+
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -25,12 +25,12 @@ const ResetPassword = () => {
   useEffect(() => {
     const checkAuthorization = async () => {
       const verified = searchParams.get('verified');
-      
+
       // Check if user came from token verification
       if (verified === 'true') {
         // Also check if user has a valid session from the token verification
         const { data: { session } } = await supabase.auth.getSession();
-        
+
         if (session) {
           setIsAuthorized(true);
         } else {
@@ -49,7 +49,7 @@ const ResetPassword = () => {
         });
         navigate('/forgot-password');
       }
-      
+
       setIsCheckingAuth(false);
     };
 
@@ -62,7 +62,7 @@ const ResetPassword = () => {
     const hasLowerCase = /[a-z]/.test(password);
     const hasNumbers = /\d/.test(password);
     const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-    
+
     return {
       minLength,
       hasUpperCase,
@@ -77,7 +77,7 @@ const ResetPassword = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!passwordValidation.isValid) {
       toast({
         title: "Invalid Password",
@@ -114,7 +114,7 @@ const ResetPassword = () => {
           title: "Success",
           description: "Your password has been updated successfully!",
         });
-        
+
         // Sign out the user to ensure they use the new password
         await supabase.auth.signOut();
         navigate('/login');
@@ -156,9 +156,9 @@ const ResetPassword = () => {
         <div className="flex flex-row items-center gap-4">
           <div className="relative p-[2px] rounded-2xl bg-gradient-to-b from-white/20 to-transparent shrink-0">
             <div className="bg-[#14171c] rounded-[14px] p-3 shadow-2xl">
-              <img 
-                src="/lovable-uploads/d8bf89ab-4a7e-4d3a-b1d3-c492661136b6.png" 
-                alt="Amazingpay Logo" 
+              <img
+                src="/lovable-uploads/d8bf89ab-4a7e-4d3a-b1d3-c492661136b6.png"
+                alt="justpae Logo"
                 className="w-10 h-10 object-contain"
               />
             </div>
@@ -257,7 +257,7 @@ const ResetPassword = () => {
                   )}
                 </button>
               </div>
-              
+
               {/* Password Match Indicator */}
               {confirmPassword && (
                 <div className={`mt-1.5 text-xs font-semibold ml-1 ${password === confirmPassword ? 'text-emerald-500' : 'text-red-400'}`}>

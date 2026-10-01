@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">AmazingPay</string>
-    <string name="title_activity_main">AmazingPay</string>
-    <string name="package_name">app.vercel.amazingpayment</string>
-    <string name="custom_url_scheme">app.vercel.amazingpayment</string>
+    <string name="app_name">justpae</string>
+    <string name="title_activity_main">justpae</string>
+    <string name="package_name">app.vercel.justpaement</string>
+    <string name="custom_url_scheme">app.vercel.justpaement</string>
 </resources>

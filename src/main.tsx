@@ -7,7 +7,7 @@ import { registerSW } from 'virtual:pwa-register';
 
 
 // FIXED: Clean mobile-app update handling without heavy window reloads
-registerSW({ 
+registerSW({
   immediate: true, // Tells the service worker to skip-waiting and install immediately
   onNeedRefresh() {
     // Let the worker update in the background. 
@@ -15,7 +15,7 @@ registerSW({
     console.log('New app bundle loaded in background.');
   },
   onOfflineReady() {
-    console.log('AmazingPay cached for offline mobile use.');
+    console.log('justpae cached for offline mobile use.');
   }
 });
 

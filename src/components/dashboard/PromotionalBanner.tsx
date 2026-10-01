@@ -11,7 +11,7 @@ const PromotionalBanner: React.FC = () => {
       title: "Our Physical Offices",
       description: "For easy inquiries, complaint resolution/feedback, see our physical office locations.",
       buttonText: "Learn more",
-      buttonLink: "https://www.amazingpay.app/", // added link
+      buttonLink: "https://www.justpae.app/", // added link
       icon: "₿",
       gradient: "from-purple-500 to-pink-500",
       target: "_blank"
@@ -48,7 +48,7 @@ const PromotionalBanner: React.FC = () => {
             <p className="text-xs opacity-90 mb-3">
               {banners[currentBannerIndex].description}
             </p>
-            
+
             <Button
               onClick={handleButtonClick}
               className="bg-black text-white hover:bg-gray-800 text-xs px-3 py-1 h-6"
@@ -65,9 +65,8 @@ const PromotionalBanner: React.FC = () => {
           {banners.map((_, index) => (
             <div
               key={index}
-              className={`w-1.5 h-1.5 rounded-full ${
-                index === currentBannerIndex ? 'bg-white' : 'bg-white/50'
-              }`}
+              className={`w-1.5 h-1.5 rounded-full ${index === currentBannerIndex ? 'bg-white' : 'bg-white/50'
+                }`}
             />
           ))}
         </div>

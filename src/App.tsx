@@ -55,7 +55,7 @@ const DeepLinkHandler = () => {
 
         // Handle variations in how iOS formats deep links
         const hashSplit = urlString.split("#");
-        const cleanUrl = hashSplit[0]; // This is 'amazingpay://oauth2redirect'
+        const cleanUrl = hashSplit[0]; // This is 'justpae://oauth2redirect'
 
         if (hashSplit.length > 1) {
           const hashParams = new URLSearchParams(hashSplit[1]);

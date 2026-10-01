@@ -1,14 +1,14 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.amazingpay.amazingpay',
-  appName: 'AmazingPay',
+  appId: 'app.justpae.justpae',
+  appName: 'justpae',
   webDir: 'dist',
 
   // ADD THIS BLOCK START
   server: {
-    iosScheme: 'amazingpay',
-    androidScheme: 'amazingpay'
+    iosScheme: 'justpae',
+    androidScheme: 'justpae'
   },
   // ADD THIS BLOCK END
 

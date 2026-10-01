@@ -18,7 +18,7 @@ const Navbar = () => {
       .select('id', { count: 'exact', head: true })
       .eq('is_read', false)
       .eq('sender_type', 'admin');
-    
+
     if (!error) setUnreadCount(count || 0);
   };
 
@@ -44,7 +44,7 @@ const Navbar = () => {
       supabase.removeChannel(channel);
     };
   }, [user]);
-  
+
   const navItems = [
     { path: '/dashboard', label: 'Home', icon: Home },
     { path: '/wallet', label: 'History', icon: History },
@@ -58,27 +58,27 @@ const Navbar = () => {
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex justify-around md:justify-between items-center h-16">
           <div className="hidden md:flex items-center space-x-2">
-            <img 
-              src="/lovable-uploads/d8bf89ab-4a7e-4d3a-b1d3-c492661136b6.png" 
-              alt="Logo" 
+            <img
+              src="/lovable-uploads/d8bf89ab-4a7e-4d3a-b1d3-c492661136b6.png"
+              alt="Logo"
               className="w-8 h-8"
             />
-            <span className="font-bold text-xl text-primary">Amazingpay</span>
+            <span className="font-bold text-xl text-primary">justpae</span>
           </div>
 
           <div className="flex justify-around md:justify-end items-center w-full md:w-auto md:space-x-8">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path;
               const IconComponent = item.icon;
-              
+
               return (
                 <Link
                   key={item.path}
                   to={item.path}
                   className={cn(
                     "flex flex-col md:flex-row items-center py-2 px-3 transition-all duration-200 group relative",
-                    isActive 
-                      ? "text-primary" 
+                    isActive
+                      ? "text-primary"
                       : "text-gray-500 hover:text-primary"
                   )}
                 >

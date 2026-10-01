@@ -23,13 +23,13 @@ export const authService = {
           name: error.name,
           email: normalizedEmail
         });
-        
+
         // If it's a 400 with 'Invalid login credentials', it could also mean unconfirmed
         // depending on project configuration, though usually it returns 'Email not confirmed'.
         if (error.message.includes('Email not confirmed')) {
           return { error: 'Please verify your email before logging in.' };
         }
-        
+
         return { error: error.message };
       }
 
@@ -54,7 +54,7 @@ export const authService = {
         options: {
           // redirectTo: `${window.location.origin}/dashboard`,
           // Redirects back into your native app bundle
-          redirectTo: 'amazingpay://oauth2redirect', 
+          redirectTo: 'justpae://oauth2redirect',
         }
       });
 
@@ -89,7 +89,7 @@ export const authService = {
           },
           // emailRedirectTo: `${window.location.origin}/login`
           // Tells Supabase to point the email confirmation button to your app
-          emailRedirectTo: 'amazingpay://oauth2redirect',
+          emailRedirectTo: 'justpae://oauth2redirect',
         }
       });
 

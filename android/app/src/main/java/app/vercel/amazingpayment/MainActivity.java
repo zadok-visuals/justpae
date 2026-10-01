@@ -1,4 +1,4 @@
-package app.vercel.amazingpayment;
+package app.vercel.justpaement;
 
 import com.getcapacitor.BridgeActivity;
 

@@ -20,7 +20,7 @@ function buildEmailHtml(otp: string, email: string): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Verify your Amazingpay account</title>
+  <title>Verify your justpae account</title>
 </head>
 <body style="margin:0;padding:0;font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;background-color:#020617;color:#f8fafc;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#020617;padding:40px 20px;">
@@ -48,7 +48,7 @@ function buildEmailHtml(otp: string, email: string): string {
 
               <h1 style="margin:0;font-size:28px;font-weight:800;text-align:center;letter-spacing:-0.025em;color:#ffffff;">Verify your account</h1>
               <p style="margin:16px 0 0;font-size:16px;line-height:1.6;text-align:center;color:#94a3b8;">
-                To finish creating your Amazingpay account, please enter the following verification code:
+                To finish creating your justpae account, please enter the following verification code:
               </p>
 
               <!-- OTP Display -->
@@ -71,7 +71,7 @@ function buildEmailHtml(otp: string, email: string): string {
               <div style="padding:20px;background:rgba(255,255,255,0.02);border-radius:16px;margin-bottom:32px;">
                 <h4 style="margin:0 0 8px;font-size:14px;color:#ffffff;font-weight:600;">Security Tip</h4>
                 <p style="margin:0;font-size:13px;line-height:1.5;color:#64748b;">
-                  Never share this code with anyone. Amazingpay staff will never ask for your verification code or password via email or chat.
+                  Never share this code with anyone. justpae staff will never ask for your verification code or password via email or chat.
                 </p>
               </div>
 
@@ -86,7 +86,7 @@ function buildEmailHtml(otp: string, email: string): string {
             <td style="padding:32px 40px;background-color:rgba(255,255,255,0.02);border-top:1px solid rgba(255,255,255,0.05);">
               <p style="margin:0;font-size:12px;text-align:center;color:#475569;line-height:1.8;">
                 Sent to <span style="color:#94a3b8;">${email}</span><br>
-                <strong>Amazingpay Inc.</strong><br>
+                <strong>justpae Inc.</strong><br>
                 123 Business Way, Suite 500<br>
                 San Francisco, CA 94107<br>
                 <br>
@@ -101,9 +101,9 @@ function buildEmailHtml(otp: string, email: string): string {
           <tr>
             <td align="center">
               <p style="margin:0;font-size:12px;color:#475569;">
-                <a href="https://trade.amazingpay.app/help" style="color:#475569;text-decoration:none;margin:0 8px;">Support</a>
-                <a href="https://trade.amazingpay.app/privacy" style="color:#475569;text-decoration:none;margin:0 8px;">Privacy Policy</a>
-                <a href="https://trade.amazingpay.app/terms" style="color:#475569;text-decoration:none;margin:0 8px;">Terms of Use</a>
+                <a href="https://justpae.vercel.app/help" style="color:#475569;text-decoration:none;margin:0 8px;">Support</a>
+                <a href="https://justpae.vercel.app/privacy" style="color:#475569;text-decoration:none;margin:0 8px;">Privacy Policy</a>
+                <a href="https://justpae.vercel.app/terms" style="color:#475569;text-decoration:none;margin:0 8px;">Terms of Use</a>
               </p>
             </td>
           </tr>
@@ -189,13 +189,13 @@ serve(async (req) => {
     }
 
     // Build the plain text version for better deliverability
-    const plainTextContent = `Your Amazingpay verification code is: ${otp}. This code will expire in 10 minutes. If you did not request this code, please ignore this email.`;
+    const plainTextContent = `Your justpae verification code is: ${otp}. This code will expire in 10 minutes. If you did not request this code, please ignore this email.`;
 
     // Send email via Resend
     const emailPayload = {
-      from: "Amazingpay <admin@trade.amazingpay.app>",
+      from: "justpae <admin@trade.justpae.app>",
       to: [email],
-      subject: `${otp} is your Amazingpay verification code`,
+      subject: `${otp} is your justpae verification code`,
       html: buildEmailHtml(otp, email),
       text: plainTextContent,
     };

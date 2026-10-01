@@ -36,9 +36,9 @@ const SplashScreen = () => {
         {/* Logo Container */}
         <div className="relative inline-block">
           <div className="w-24 h-24 sm:w-32 sm:h-32 mx-auto bg-white/10 rounded-3xl flex items-center justify-center backdrop-blur-xl shadow-2xl border border-white/20">
-            <img 
-              src="/lovable-uploads/d8bf89ab-4a7e-4d3a-b1d3-c492661136b6.png" 
-              alt="Amazingpay Logo" 
+            <img
+              src="/lovable-uploads/d8bf89ab-4a7e-4d3a-b1d3-c492661136b6.png"
+              alt="justpae Logo"
               className="w-16 h-16 sm:w-20 sm:h-20 object-contain animate-float"
             />
           </div>
@@ -48,7 +48,7 @@ const SplashScreen = () => {
         {/* App Name & Slogan */}
         <div className="space-y-3">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
-            AmazingPay
+            justpae
           </h1>
           <p className="text-lg sm:text-xl text-white/70 font-light tracking-wide">
             More Than Crypto

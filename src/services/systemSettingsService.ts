@@ -23,14 +23,14 @@ export interface SystemSettingsFormData {
 export const systemSettingsService = {
   async verifyAdminStatus(userId: string): Promise<boolean> {
     console.log('Verifying admin status for user:', userId);
-    
+
     // Verify user exists in profiles
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('id')
       .eq('id', userId)
       .single();
-    
+
     if (profileError || !profileData) {
       console.error('Profile verification failed:', profileError);
       throw new Error('User verification failed - profile not found');
@@ -43,7 +43,7 @@ export const systemSettingsService = {
   async fetchSystemSettings(): Promise<SystemSetting[]> {
     // First ensure basic settings exist
     await this.ensureBasicSettingsExist();
-    
+
     const { data, error } = await supabase
       .from('system_settings')
       .select('*')
@@ -65,9 +65,9 @@ export const systemSettingsService = {
       { key: 'usd_to_ngn_rate', value: '1650', description: 'Manual USD to NGN exchange rate used across the app' },
       { key: 'crypto_buy_rate', value: '1680', description: 'Rate when users buy crypto' },
       { key: 'crypto_sell_rate', value: '1620', description: 'Rate when users sell crypto' },
-      { key: 'corporate_bank_name', value: 'AmazingPay Bank', description: 'Corporate Bank Name for user deposits' },
+      { key: 'corporate_bank_name', value: 'justpae Bank', description: 'Corporate Bank Name for user deposits' },
       { key: 'corporate_account_number', value: '2109876543', description: 'Corporate Account Number for user deposits' },
-      { key: 'corporate_account_name', value: 'AmazingPay Limited', description: 'Corporate Account Name for user deposits' },
+      { key: 'corporate_account_name', value: 'justpae Limited', description: 'Corporate Account Name for user deposits' },
       { key: 'notification_templates', value: '{}', description: 'JSON templates for notifications' }
     ];
 
@@ -173,11 +173,11 @@ export const systemSettingsService = {
       usd_to_ngn_rate: settingsMap.usd_to_ngn_rate?.toString() || '1650',
       crypto_buy_rate: settingsMap.crypto_buy_rate?.toString() || '1680',
       crypto_sell_rate: settingsMap.crypto_sell_rate?.toString() || '1620',
-      corporate_bank_name: settingsMap.corporate_bank_name?.toString() || 'AmazingPay Bank',
+      corporate_bank_name: settingsMap.corporate_bank_name?.toString() || 'justpae Bank',
       corporate_account_number: settingsMap.corporate_account_number?.toString() || '2109876543',
-      corporate_account_name: settingsMap.corporate_account_name?.toString() || 'AmazingPay Limited',
-      notification_templates: typeof settingsMap.notification_templates === 'string' 
-        ? settingsMap.notification_templates 
+      corporate_account_name: settingsMap.corporate_account_name?.toString() || 'justpae Limited',
+      notification_templates: typeof settingsMap.notification_templates === 'string'
+        ? settingsMap.notification_templates
         : JSON.stringify(settingsMap.notification_templates || {}, null, 2)
     };
   },
@@ -202,9 +202,9 @@ export const systemSettingsService = {
       { key: 'usd_to_ngn_rate', value: (parseFloat(formData.usd_to_ngn_rate) || 1650).toString() },
       { key: 'crypto_buy_rate', value: (parseFloat(formData.crypto_buy_rate) || 1680).toString() },
       { key: 'crypto_sell_rate', value: (parseFloat(formData.crypto_sell_rate) || 1620).toString() },
-      { key: 'corporate_bank_name', value: formData.corporate_bank_name || 'AmazingPay Bank' },
+      { key: 'corporate_bank_name', value: formData.corporate_bank_name || 'justpae Bank' },
       { key: 'corporate_account_number', value: formData.corporate_account_number || '2109876543' },
-      { key: 'corporate_account_name', value: formData.corporate_account_name || 'AmazingPay Limited' },
+      { key: 'corporate_account_name', value: formData.corporate_account_name || 'justpae Limited' },
       { key: 'notification_templates', value: notificationTemplates }
     ];
   }
