@@ -190,3 +190,66 @@ export const LOCAL_WALLET_COUNTRIES = new Set(
 
 /** Countries bills/airtime can be paid in — the same three supported markets. */
 export const BILL_COUNTRIES = COUNTRIES.filter((c) => LOCAL_WALLET_COUNTRIES.has(c.code));
+
+/**
+ * Signup accepts any country in the list above, not only the three with a
+ * local wallet. A user in a fourth country still gets USD and USDT wallets and
+ * a real, accurately recorded country — recording "NG" for someone in Kenya's
+ * neighbour because the list was shorter is worse than having no local wallet.
+ */
+export function isKnownCountry(code: string): boolean {
+  return COUNTRY_NAMES.has(code);
+}
+
+/**
+ * The identity document each supported country actually uses. Asking a
+ * Ghanaian for a BVN, or a Kenyan for a NIN, is the kind of detail that makes
+ * an onboarding form feel like it was built for somewhere else.
+ *
+ * `pattern` is a light format check only — none of these are verified against
+ * an issuing authority here. The stored value is the raw input for a human
+ * reviewer, which is exactly what kyc_documents.value is for.
+ */
+export interface KycIdField {
+  /** kyc_documents.document_type for this input. */
+  documentType: string;
+  label: string;
+  hint: string;
+  /** Digits-only length, where the format is fixed. */
+  pattern?: RegExp;
+}
+
+export const KYC_ID_FIELDS: Record<string, KycIdField> = {
+  NG: {
+    documentType: "nigeria_bvn_or_nin",
+    label: "BVN or NIN",
+    hint: "11 digits. Dial *565*0# for your BVN.",
+    pattern: /^\d{11}$/,
+  },
+  GH: {
+    documentType: "ghana_card_number",
+    label: "Ghana Card number",
+    hint: "Format GHA-XXXXXXXXX-X, as printed on the card.",
+    pattern: /^GHA-\d{9}-\d$/i,
+  },
+  KE: {
+    documentType: "kenya_national_id",
+    label: "National ID number",
+    hint: "The 7 or 8 digit number on your Huduma or national ID card.",
+    pattern: /^\d{7,8}$/,
+  },
+};
+
+/**
+ * Falls back to a generic field rather than refusing to onboard someone from a
+ * country without a specific entry — a reviewer can still work with a passport
+ * number plus the uploaded documents.
+ */
+export function kycIdFieldFor(country: string | null | undefined): KycIdField {
+  if (country && KYC_ID_FIELDS[country]) return KYC_ID_FIELDS[country];
+  return {
+    documentType: "government_id_number",
+    label: "Government ID number",
+    hint: "Passport or national ID number, exactly as printed.",
+  };
+}
