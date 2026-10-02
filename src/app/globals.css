@@ -123,6 +123,11 @@
   html {
     background-color: hsl(var(--jp-background));
     -webkit-text-size-adjust: 100%;
+    /* Scrolling past the top otherwise fires Android's pull-to-refresh and
+       iOS's whole-page rubber band. This is an app with its own scroll
+       containers and a bottom sheet the user drags, not a document.
+       Inner scrollables use `contain` instead, keeping their own bounce. */
+    overscroll-behavior: none;
   }
 
   body {
@@ -194,18 +199,52 @@
     }
   }
 
-  /* Tap feedback shouldn't flash a grey box on Android/iOS. */
+  /* Tap feedback shouldn't flash a grey box on Android/iOS.
+
+     `touch-action: manipulation` removes the browser's wait-and-see delay
+     before firing click (it is deciding whether a double-tap-zoom is coming),
+     which is most of what "the app feels laggy" actually means.
+
+     `user-select: none` is on CONTROLS ONLY — never on body. A long press on a
+     button otherwise selects its label, which no native control does. Amounts,
+     references and wallet addresses stay selectable because people copy
+     them. */
   button,
   a,
-  [role="button"] {
+  [role="button"],
+  [role="tab"] {
     -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
-  /* Sticky :hover on touch devices makes every tapped row look selected. */
+  /* Sticky :hover on touch devices makes every tapped row look selected: the
+     first tap applies :hover and leaves it until something else is tapped.
+     Tailwind 4's `hover:` variant already compiles behind
+     @media (hover: hover), so this only has to catch hand-written rules. */
   @media (hover: none) {
     .hover\:bg-accent:hover {
       background-color: transparent;
     }
+  }
+
+  /* Press feedback belongs on :active, which fires on finger-down and works on
+     every input type — unlike :hover, which touch does not have. A control
+     that only reacts on click responds when the finger LEAVES, and that reads
+     as lag however fast it is. */
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active {
+    transform: scale(0.98);
+  }
+
+  button,
+  [role="button"] {
+    transition:
+      transform 120ms ease-out,
+      background-color 120ms ease-out,
+      border-color 120ms ease-out,
+      opacity 120ms ease-out;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -232,12 +271,35 @@
     height: env(safe-area-inset-bottom, 0px);
   }
 
-  /* Horizontal wallet-card rail on mobile: snap, no visible scrollbar. */
+  /* Horizontal wallet-card rail on mobile: snap, no visible scrollbar.
+
+     `touch-action: pan-y` hands vertical panning back to the browser while
+     this element owns horizontal — without it a horizontal swipe is ambiguous
+     and the page jitters vertically as the rail moves. Native scroll snapping
+     is used rather than a JS gesture because the browser's own physics beat a
+     hand-rolled spring. */
   .snap-rail {
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
     -ms-overflow-style: none;
     overscroll-behavior-x: contain;
+    touch-action: pan-y;
+  }
+
+  /* The app shell tracks the VISIBLE viewport. 100vh is the height with the
+     browser chrome collapsed, so on load a 100vh shell overflows by the height
+     of the URL bar and anything pinned to the bottom sits underneath it. */
+  .h-screen-dvh {
+    height: 100dvh;
+  }
+  .min-h-screen-dvh {
+    min-height: 100dvh;
+  }
+
+  /* Inner scrollables keep their own bounce but don't drag the page behind
+     them once they hit the end. */
+  .scroll-contain {
+    overscroll-behavior: contain;
   }
   .snap-rail::-webkit-scrollbar {
     display: none;
