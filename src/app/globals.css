@@ -1,0 +1,314 @@
+@import "tailwindcss";
+
+/* ============================================================================
+   justpae design tokens
+   ----------------------------------------------------------------------------
+   Carried over verbatim from the pre-rebuild app's `tailwind.config.ts`
+   (`fintech.*`) and `src/index.css` (`.dark`). The HSL triples below are the
+   exact values that shipped there; the hexes they resolve to are noted so the
+   mapping is auditable.
+
+   There is NO light theme. The old app kept a `:root` light fallback and a
+   `.dark` override that was applied by default — the fallback was never a real
+   surface, so it's dropped rather than ported. Everything lives on `:root` and
+   `color-scheme: dark` tells the browser (and form controls, and scrollbars)
+   what ground it's painting on.
+   ============================================================================ */
+
+:root {
+  color-scheme: dark;
+
+  /* ── Semantic surfaces (was .dark in src/index.css) ───────────────────── */
+  --jp-background: 216 18% 5%; /* #0B0D10 — ink ground */
+  --jp-foreground: 36.9 37.1% 93.1%; /* paper-warm off-white */
+  --jp-card: 214.3 14.3% 9.6%; /* #15181C — elevated card */
+  --jp-card-foreground: 36.9 37.1% 93.1%;
+  --jp-popover: 213.3 14.3% 12.4%;
+  --jp-popover-foreground: 36.9 37.1% 93.1%;
+  --jp-primary: 36.5 65.3% 57.1%; /* #D9A14A — currency gold */
+  --jp-primary-foreground: 34.7 51.4% 7.3%;
+  --jp-secondary: 213.3 14.3% 12.4%;
+  --jp-secondary-foreground: 36.9 37.1% 93.1%;
+  --jp-muted: 213 13% 14%;
+  --jp-muted-foreground: 31.8 7.8% 57.1%;
+  --jp-accent: 213 13% 15%;
+  --jp-accent-foreground: 36.9 37.1% 93.1%;
+  --jp-success: 155.7 43.9% 42%; /* #3C9A74 — naira green */
+  --jp-success-foreground: 36.9 37.1% 93.1%;
+  --jp-destructive: 10.4 51.6% 56.3%;
+  --jp-destructive-foreground: 36.9 37.1% 93.1%;
+  --jp-border: 213 13% 18%;
+  --jp-input: 213 13% 18%;
+  --jp-ring: 36.5 65.3% 57.1%;
+
+  /* ── Sidebar (desktop chrome) ─────────────────────────────────────────── */
+  --jp-sidebar: 213.3 14.3% 12.4%;
+  --jp-sidebar-foreground: 36.9 37.1% 93.1%;
+  --jp-sidebar-primary: 36.5 65.3% 57.1%;
+  --jp-sidebar-primary-foreground: 34.7 51.4% 7.3%;
+  --jp-sidebar-accent: 213 13% 15%;
+  --jp-sidebar-accent-foreground: 36.9 37.1% 93.1%;
+  --jp-sidebar-border: 213 13% 18%;
+  --jp-sidebar-ring: 36.5 65.3% 57.1%;
+
+  /* ── Base radius (was --radius: 0.75rem) ──────────────────────────────── */
+  --jp-radius: 0.75rem;
+}
+
+@theme inline {
+  /* Semantic colors */
+  --color-background: hsl(var(--jp-background));
+  --color-foreground: hsl(var(--jp-foreground));
+  --color-card: hsl(var(--jp-card));
+  --color-card-foreground: hsl(var(--jp-card-foreground));
+  --color-popover: hsl(var(--jp-popover));
+  --color-popover-foreground: hsl(var(--jp-popover-foreground));
+  --color-primary: hsl(var(--jp-primary));
+  --color-primary-foreground: hsl(var(--jp-primary-foreground));
+  --color-secondary: hsl(var(--jp-secondary));
+  --color-secondary-foreground: hsl(var(--jp-secondary-foreground));
+  --color-muted: hsl(var(--jp-muted));
+  --color-muted-foreground: hsl(var(--jp-muted-foreground));
+  --color-accent: hsl(var(--jp-accent));
+  --color-accent-foreground: hsl(var(--jp-accent-foreground));
+  --color-success: hsl(var(--jp-success));
+  --color-success-foreground: hsl(var(--jp-success-foreground));
+  --color-destructive: hsl(var(--jp-destructive));
+  --color-destructive-foreground: hsl(var(--jp-destructive-foreground));
+  --color-border: hsl(var(--jp-border));
+  --color-input: hsl(var(--jp-input));
+  --color-ring: hsl(var(--jp-ring));
+
+  --color-sidebar: hsl(var(--jp-sidebar));
+  --color-sidebar-foreground: hsl(var(--jp-sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--jp-sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--jp-sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--jp-sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--jp-sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--jp-sidebar-border));
+
+  /* Raw brand ramp, carried from tailwind.config.ts's `fintech.*` block. The
+     semantic tokens above are what components should normally reach for;
+     these exist for the places that genuinely need a specific brand step
+     (gradients, the wallet-card washes, the mark's own gold). */
+  --color-gold: #d9a14a;
+  --color-gold-light: #f2c572;
+  --color-gold-dark: #b8803a;
+  --color-ink: #0b0d10;
+  --color-ink-light: #15181c;
+  --color-ink-raised: #1b1f24;
+  --color-naira: #3c9a74;
+  --color-naira-light: #5fb995;
+
+  /* Typography — Fraunces (display/balances), Manrope (UI),
+     IBM Plex Mono (data/addresses/amounts). Loaded via next/font in
+     src/app/layout.tsx, which sets these three --font-*-face variables. */
+  --font-sans: var(--font-manrope-face), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-fraunces-face), ui-serif, Georgia, serif;
+  --font-mono: var(--font-plex-mono-face), ui-monospace, SFMono-Regular, monospace;
+
+  /* Radii — same lg/md/sm relationship the old config defined. */
+  --radius-sm: calc(var(--jp-radius) - 4px);
+  --radius-md: calc(var(--jp-radius) - 2px);
+  --radius-lg: var(--jp-radius);
+  --radius-xl: calc(var(--jp-radius) + 4px);
+  --radius-2xl: calc(var(--jp-radius) + 8px);
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--jp-border));
+  }
+
+  html {
+    background-color: hsl(var(--jp-background));
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: hsl(var(--jp-background));
+    color: hsl(var(--jp-foreground));
+    font-family: var(--font-sans);
+    /* Balances and amounts line up column-to-column without a monospace font. */
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── ONE focus indicator, never two ───────────────────────────────────────
+     The pre-rebuild app combined a border colour change with an offset ring,
+     which drew two visibly separate boxes around a focused input. The rule
+     here is: the focused element's border goes gold and gains a soft 1px ring
+     in the SAME place as the border (box-shadow inset-free, zero offset), and
+     the UA outline is suppressed. Nothing adds a second outline.           */
+  input,
+  textarea,
+  select {
+    outline: none;
+  }
+
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    border-color: hsl(var(--jp-ring));
+    box-shadow: 0 0 0 1px hsl(var(--jp-ring) / 0.45);
+    outline: none;
+  }
+
+  /* An input that sits inside a bordered wrapper (the amount field, the
+     password field with its eye toggle) must not light up on its own — only
+     the wrapper does. `.jp-field` marks such a wrapper. */
+  .jp-field:focus-within {
+    border-color: hsl(var(--jp-ring));
+    box-shadow: 0 0 0 1px hsl(var(--jp-ring) / 0.45);
+  }
+
+  .jp-field input:focus-visible,
+  .jp-field select:focus-visible,
+  .jp-field textarea:focus-visible {
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  /* Buttons and links keep a visible keyboard affordance, also single. */
+  button:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible,
+  [role="tab"]:focus-visible {
+    outline: 2px solid hsl(var(--jp-ring) / 0.7);
+    outline-offset: 2px;
+  }
+
+  /* iOS zooms the page whenever a focused input's text is under 16px. Every
+     control is 16px up to the sm breakpoint and may shrink past it. */
+  input,
+  textarea,
+  select {
+    font-size: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    input,
+    textarea,
+    select {
+      font-size: 0.875rem;
+    }
+  }
+
+  /* Tap feedback shouldn't flash a grey box on Android/iOS. */
+  button,
+  a,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Sticky :hover on touch devices makes every tapped row look selected. */
+  @media (hover: none) {
+    .hover\:bg-accent:hover {
+      background-color: transparent;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  /* Safe-area helpers — the mobile tab bar sits on the home-indicator edge. */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .h-safe-bottom {
+    height: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Horizontal wallet-card rail on mobile: snap, no visible scrollbar. */
+  .snap-rail {
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    overscroll-behavior-x: contain;
+  }
+  .snap-rail::-webkit-scrollbar {
+    display: none;
+  }
+  .snap-item {
+    scroll-snap-align: center;
+  }
+
+  /* Any wide block (a rate strip, a token, a long reference) scrolls inside
+     itself rather than pushing the page sideways. */
+  .scroll-x {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .jp-skeleton {
+    background-image: linear-gradient(
+      90deg,
+      hsl(var(--jp-muted)) 0%,
+      hsl(var(--jp-accent)) 50%,
+      hsl(var(--jp-muted)) 100%
+    );
+    background-size: 200% 100%;
+    animation: jp-shimmer 1.4s ease-in-out infinite;
+  }
+
+  @keyframes jp-shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  .jp-sheet-in {
+    animation: jp-sheet-in 220ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  @keyframes jp-sheet-in {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  .jp-panel-in {
+    animation: jp-panel-in 220ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  @keyframes jp-panel-in {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  .jp-fade-in {
+    animation: jp-fade-in 160ms ease-out;
+  }
+
+  @keyframes jp-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
