@@ -224,16 +224,27 @@ export type UsdCollectionAccount = {
 };
 
 /**
- * NOTE: every Tables entry carries `Relationships: []`, and it is load-bearing
- * rather than decoration. @supabase/postgrest-js's select-query type parser
- * resolves a narrowed select (e.g. `.select("markup_rate")`) to `never` when a
- * table definition is missing the key, which turns every field access on the
- * result into a compile error that looks like the column doesn't exist. The
- * arrays are empty because nothing here relies on the typed-embed syntax — the
- * key simply has to be present.
+ * Two things in this type exist purely to satisfy @supabase/postgrest-js's
+ * `GenericSchema` constraint, and both are load-bearing rather than
+ * decoration — getting either wrong produces errors that look like the
+ * database is wrong rather than the type:
+ *
+ *  - `Views`. If the schema does not structurally match `GenericSchema`, the
+ *    client silently falls back to an untyped schema: every `.rpc()` call's
+ *    args parameter resolves to `undefined` ("Argument of type {...} is not
+ *    assignable to parameter of type 'undefined'") and every narrowed select
+ *    resolves to `never`. There are no views, hence the empty mapped type.
+ *
+ *  - `Relationships: []` on every Tables entry. Without the key, the
+ *    select-query type parser resolves a narrowed select (e.g.
+ *    `.select("markup_rate")`) to `never`, which turns every field access on
+ *    the result into a compile error that reads like a missing column. The
+ *    arrays are empty because nothing here uses the typed-embed syntax; the
+ *    key simply has to be present.
  */
 export type Database = {
   public: {
+    Views: { [_ in never]: never };
     Tables: {
       profiles: { Row: Profile; Insert: Partial<Profile> & { id: string; email: string }; Update: Partial<Profile>; Relationships: [] };
       wallets: { Row: Wallet; Insert: Partial<Wallet> & { user_id: string; currency: Currency }; Update: Partial<Wallet>; Relationships: [] };
