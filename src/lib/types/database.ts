@@ -223,15 +223,24 @@ export type UsdCollectionAccount = {
   created_at: string;
 };
 
+/**
+ * NOTE: every Tables entry carries `Relationships: []`, and it is load-bearing
+ * rather than decoration. @supabase/postgrest-js's select-query type parser
+ * resolves a narrowed select (e.g. `.select("markup_rate")`) to `never` when a
+ * table definition is missing the key, which turns every field access on the
+ * result into a compile error that looks like the column doesn't exist. The
+ * arrays are empty because nothing here relies on the typed-embed syntax — the
+ * key simply has to be present.
+ */
 export type Database = {
   public: {
     Tables: {
-      profiles: { Row: Profile; Insert: Partial<Profile> & { id: string; email: string }; Update: Partial<Profile> };
-      wallets: { Row: Wallet; Insert: Partial<Wallet> & { user_id: string; currency: Currency }; Update: Partial<Wallet> };
+      profiles: { Row: Profile; Insert: Partial<Profile> & { id: string; email: string }; Update: Partial<Profile>; Relationships: [] };
+      wallets: { Row: Wallet; Insert: Partial<Wallet> & { user_id: string; currency: Currency }; Update: Partial<Wallet>; Relationships: [] };
       kyc_documents: {
         Row: KycDocument;
         Insert: Partial<KycDocument> & { user_id: string; tier: KycTier; document_type: string };
-        Update: Partial<KycDocument>;
+        Update: Partial<KycDocument>; Relationships: [];
       };
       transactions: {
         Row: Transaction;
@@ -242,12 +251,12 @@ export type Database = {
           amount: number;
           currency: Currency;
         };
-        Update: Partial<Transaction>;
+        Update: Partial<Transaction>; Relationships: [];
       };
       webhook_events: {
         Row: WebhookEvent;
         Insert: Partial<WebhookEvent> & { provider: string; event_type: string; payload: Record<string, unknown> };
-        Update: Partial<WebhookEvent>;
+        Update: Partial<WebhookEvent>; Relationships: [];
       };
       deposits: {
         Row: Deposit;
@@ -257,20 +266,20 @@ export type Database = {
           amount: number;
           provider: TransactionProvider;
         };
-        Update: Partial<Deposit>;
+        Update: Partial<Deposit>; Relationships: [];
       };
       withdrawal_recipients: {
         Row: WithdrawalRecipient;
         Insert: Partial<WithdrawalRecipient> & { user_id: string; currency: Currency; account_holder_name: string };
-        Update: Partial<WithdrawalRecipient>;
+        Update: Partial<WithdrawalRecipient>; Relationships: [];
       };
-      withdrawal_pins: { Row: WithdrawalPin; Insert: { user_id: string }; Update: Partial<WithdrawalPin> };
+      withdrawal_pins: { Row: WithdrawalPin; Insert: { user_id: string }; Update: Partial<WithdrawalPin>; Relationships: [] };
       rate_markups: {
         Row: RateMarkup;
         Insert: Partial<RateMarkup> & { base_currency: Currency; quote_currency: Currency; markup_rate: number };
-        Update: Partial<RateMarkup>;
+        Update: Partial<RateMarkup>; Relationships: [];
       };
-      app_settings: { Row: AppSetting; Insert: Partial<AppSetting> & { key: string; value: string }; Update: Partial<AppSetting> };
+      app_settings: { Row: AppSetting; Insert: Partial<AppSetting> & { key: string; value: string }; Update: Partial<AppSetting>; Relationships: [] };
       bill_payments: {
         Row: BillPayment;
         Insert: Partial<BillPayment> & {
@@ -283,7 +292,7 @@ export type Database = {
           amount: number;
           currency: Currency;
         };
-        Update: Partial<BillPayment>;
+        Update: Partial<BillPayment>; Relationships: [];
       };
       bill_beneficiaries: {
         Row: BillBeneficiary;
@@ -296,12 +305,12 @@ export type Database = {
           biller_name: string;
           customer_identifier: string;
         };
-        Update: Partial<BillBeneficiary>;
+        Update: Partial<BillBeneficiary>; Relationships: [];
       };
       usd_collection_accounts: {
         Row: UsdCollectionAccount;
         Insert: Partial<UsdCollectionAccount> & { user_id: string; provider: string; reference_code: string };
-        Update: Partial<UsdCollectionAccount>;
+        Update: Partial<UsdCollectionAccount>; Relationships: [];
       };
     };
     Functions: {
@@ -362,6 +371,11 @@ export type Database = {
         };
         Returns: undefined;
       };
+      set_busha_recipient_id: {
+        Args: { p_user_id: string; p_currency: Currency; p_recipient_id: string };
+        Returns: undefined;
+      };
+
       set_withdrawal_pin: { Args: { p_pin: string }; Returns: undefined };
       change_withdrawal_pin: { Args: { p_pin: string }; Returns: undefined };
 
@@ -407,6 +421,27 @@ export type Database = {
         Returns: undefined;
       };
       refund_bill_payment: { Args: { p_bill_payment_id: string; p_reason: string }; Returns: undefined };
+
+      upsert_usd_collection_account: {
+        Args: {
+          p_user_id: string;
+          p_provider: string;
+          p_reference_code: string;
+          p_account_name?: string | null;
+          p_account_number?: string | null;
+          p_routing_number?: string | null;
+          p_bank_name?: string | null;
+          p_bank_address?: string | null;
+          p_account_type?: string | null;
+          p_status?: string;
+        };
+        Returns: string;
+      };
+
+      set_transaction_provider_reference: {
+        Args: { p_transaction_id: string; p_provider_reference: string };
+        Returns: undefined;
+      };
     };
   };
 };
