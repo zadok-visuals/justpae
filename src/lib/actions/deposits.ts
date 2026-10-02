@@ -8,7 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { Currency } from "@/lib/types/database";
 import * as busha from "@/lib/busha/client";
 import * as klasha from "@/lib/klasha/client";
-import { KLASHA_GHS_DEPOSIT_ENABLED } from "@/lib/flags";
+import { depositAvailability } from "@/lib/deposits/availability";
 import { toCustomerError } from "@/lib/provider-error";
 
 /**
@@ -25,35 +25,6 @@ import { toCustomerError } from "@/lib/provider-error";
  *   USD             not depositable at all. USD arrives via /receive, from a
  *                   verified provider webhook, and nothing else credits it.
  */
-
-/** Currencies the primary provider accepts for deposit on this account. */
-const BUSHA_DEPOSIT_CURRENCIES: Currency[] = ["NGN", "KES", "USDT"];
-
-export type DepositAvailability =
-  | { available: true; provider: "busha" | "klasha" }
-  | { available: false; reason: string };
-
-export function depositAvailability(currency: Currency): DepositAvailability {
-  if (BUSHA_DEPOSIT_CURRENCIES.includes(currency)) {
-    return { available: true, provider: "busha" };
-  }
-  if (currency === "GHS") {
-    return KLASHA_GHS_DEPOSIT_ENABLED
-      ? { available: true, provider: "klasha" }
-      : {
-          available: false,
-          reason:
-            "Cedi deposits are coming soon — we're finishing setup with our Ghana collection partner.",
-        };
-  }
-  if (currency === "USD") {
-    return {
-      available: false,
-      reason: "Receive dollars using your USD receiving details instead of depositing.",
-    };
-  }
-  return { available: false, reason: `${currency} deposits aren't available yet.` };
-}
 
 export interface DepositQuoteState {
   error?: string;

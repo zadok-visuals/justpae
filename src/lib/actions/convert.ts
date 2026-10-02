@@ -28,8 +28,15 @@ import { CURRENCY_CODES } from "@/lib/currencies";
  *     it.
  */
 
-/** How long a shown quote stays valid. Drives the countdown on /convert. */
-export const QUOTE_TTL_SECONDS = 60;
+/**
+ * How long a shown quote stays valid. Drives the countdown on /convert.
+ *
+ * NOT exported: every export of a `"use server"` file must be an async
+ * function, because Next.js treats each one as a callable server action. The
+ * client never needs the number anyway — it counts down to the `expiresAt`
+ * timestamp the quote carries.
+ */
+const QUOTE_TTL_SECONDS = 60;
 
 export interface ConversionQuote {
   from: Currency;

@@ -47,16 +47,19 @@ interface TextFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   hint?: string;
   error?: string | null;
-  prefix?: React.ReactNode;
-  suffix?: React.ReactNode;
+  /** Named `leading`/`trailing`, not prefix/suffix: `prefix` is a real HTML
+   *  attribute (RDFa) typed as string, so extending InputHTMLAttributes with a
+   *  ReactNode `prefix` is a type conflict, not just a naming preference. */
+  leading?: React.ReactNode;
+  trailing?: React.ReactNode;
 }
 
 export function TextField({
   label,
   hint,
   error,
-  prefix,
-  suffix,
+  leading,
+  trailing,
   className = "",
   ...props
 }: TextFieldProps) {
@@ -69,14 +72,14 @@ export function TextField({
         {label}
       </Label>
       <div className={`${FIELD_SHELL} h-12`}>
-        {prefix && <span className="shrink-0 text-muted-foreground">{prefix}</span>}
+        {leading && <span className="shrink-0 text-muted-foreground">{leading}</span>}
         <input
           {...props}
           id={id}
           aria-invalid={error ? true : undefined}
           className="min-w-0 flex-1 border-0 bg-transparent py-0 text-foreground placeholder:text-muted-foreground"
         />
-        {suffix && <span className="shrink-0 text-muted-foreground">{suffix}</span>}
+        {trailing && <span className="shrink-0 text-muted-foreground">{trailing}</span>}
       </div>
       <FieldError>{error}</FieldError>
     </div>
@@ -89,7 +92,7 @@ export function PasswordField({
   error,
   className = "",
   ...props
-}: Omit<TextFieldProps, "prefix" | "suffix" | "type">) {
+}: Omit<TextFieldProps, "leading" | "trailing" | "type">) {
   const generatedId = useId();
   const id = props.id ?? generatedId;
   const [visible, setVisible] = useState(false);
