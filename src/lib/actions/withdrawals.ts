@@ -119,7 +119,7 @@ export async function setWithdrawalRecipient(
   });
 
   if (error) return { error: error.message };
-  revalidatePath("/settings");
+  revalidatePath("/profile");
   revalidatePath("/withdraw");
   return { ok: true };
 }
@@ -190,7 +190,7 @@ export async function confirmRecipientChange(
   });
 
   if (error) return { error: error.message };
-  revalidatePath("/settings");
+  revalidatePath("/profile");
   revalidatePath("/withdraw");
   return { ok: true };
 }
@@ -213,7 +213,7 @@ export async function setTransactionPin(
 
   const { error } = await supabase.rpc("set_withdrawal_pin", { p_pin: pin });
   if (error) return { error: error.message };
-  revalidatePath("/settings");
+  revalidatePath("/profile");
   return { ok: true };
 }
 
@@ -244,7 +244,7 @@ export async function changeTransactionPin(
 
   const { error } = await supabase.rpc("change_withdrawal_pin", { p_pin: pin });
   if (error) return { error: error.message };
-  revalidatePath("/settings");
+  revalidatePath("/profile");
   return { ok: true };
 }
 

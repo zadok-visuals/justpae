@@ -60,6 +60,7 @@ export function IndividualKycForm({
           autoComplete="tel"
           enterKeyHint="next"
           required
+          defaultValue={defaultPhone}
           placeholder="+234…"
         />
 
