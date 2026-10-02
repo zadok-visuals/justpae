@@ -28,18 +28,18 @@ const MarketTrends: React.FC<MarketTrendsProps> = ({
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Market Trend</h2>
-        <div className="flex items-center space-x-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Market Trend</h2>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onRefresh}
             disabled={isLoadingPrices}
-            className="text-fintech-orange p-2"
+            className="text-primary p-2 rounded-full"
           >
             <RefreshCw className={`w-4 h-4 ${isLoadingPrices ? 'animate-spin' : ''}`} />
           </Button>
-          <Button variant="ghost" size="sm" className="text-fintech-orange">
+          <Button variant="ghost" size="sm" className="text-primary rounded-full">
             See All
           </Button>
         </div>
@@ -47,21 +47,21 @@ const MarketTrends: React.FC<MarketTrendsProps> = ({
       <div className="space-y-3">
         {marketData.length > 0 ? (
           marketData.map((crypto, index) => (
-            <Card key={index} className="rounded-2xl shadow-sm bg-white dark:bg-gray-800">
+            <Card key={index} className="rounded-2xl border border-border bg-card shadow-sm">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-fintech-orange rounded-full flex items-center justify-center text-white font-bold text-lg">
+                    <div className="w-11 h-11 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-bold text-base">
                       {getCryptoLogo(crypto.symbol)}
                     </div>
                     <div>
-                      <div className="font-semibold text-gray-900 dark:text-white">{crypto.symbol}</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">Volume: ${crypto.volume24h.toLocaleString()}</div>
+                      <div className="font-semibold text-foreground">{crypto.symbol}</div>
+                      <div className="text-xs text-muted-foreground tabular-nums">Volume: ${crypto.volume24h.toLocaleString()}</div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-semibold text-gray-900 dark:text-white">${crypto.price.toLocaleString()}</div>
-                    <div className={`text-sm ${crypto.change24h >= 0 ? 'text-fintech-green' : 'text-red-500'}`}>
+                    <div className="font-semibold text-foreground tabular-nums">${crypto.price.toLocaleString()}</div>
+                    <div className={`text-sm tabular-nums ${crypto.change24h >= 0 ? 'text-success' : 'text-destructive'}`}>
                       {crypto.change24h >= 0 ? '+' : ''}{crypto.change24h.toFixed(2)}%
                     </div>
                   </div>
@@ -70,7 +70,7 @@ const MarketTrends: React.FC<MarketTrendsProps> = ({
             </Card>
           ))
         ) : (
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+          <div className="text-center py-8 text-muted-foreground text-sm">
             {isLoadingPrices ? 'Loading market data...' : 'No market data available'}
           </div>
         )}

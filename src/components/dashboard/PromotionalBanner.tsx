@@ -1,28 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Target } from 'lucide-react';
+import { Building2, MessageCircle } from 'lucide-react';
 
 const PromotionalBanner: React.FC = () => {
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
 
   const banners = [
     {
-      title: "Our Physical Offices",
-      description: "For easy inquiries, complaint resolution/feedback, see our physical office locations.",
+      eyebrow: "Support",
+      title: "Our physical offices",
+      description: "For inquiries, complaints or feedback, see our physical office locations.",
       buttonText: "Learn more",
-      buttonLink: "https://www.justpae.vercel.app/", // added link
-      icon: "₿",
-      gradient: "from-purple-500 to-pink-500",
+      buttonLink: "https://www.justpae.vercel.app/",
+      icon: Building2,
       target: "_blank"
     },
     {
-      title: "24/7 Customer Support",
-      description: "Get instant help anytime, anywhere. Our support team is always ready to assist you with your transactions.",
-      buttonText: "Contact Support",
-      buttonLink: "https://wa.me/2349032668298?text=Hello%2C%20I%20need%20help%20with%20my%20account", // added link 
-      icon: "💬",
-      gradient: "from-blue-500 to-teal-500",
+      eyebrow: "Always on",
+      title: "24/7 customer support",
+      description: "Get instant help anytime, anywhere — our team is always ready to assist.",
+      buttonText: "Contact support",
+      buttonLink: "https://wa.me/2349032668298?text=Hello%2C%20I%20need%20help%20with%20my%20account",
+      icon: MessageCircle,
       target: "_blank"
     }
   ];
@@ -39,34 +39,41 @@ const PromotionalBanner: React.FC = () => {
     window.open(banners[currentBannerIndex].buttonLink, banners[currentBannerIndex].target);
   };
 
+  const ActiveIcon = banners[currentBannerIndex].icon;
+
   return (
-    <Card className={`bg-gradient-to-r ${banners[currentBannerIndex].gradient} rounded-xl shadow-lg overflow-hidden h-32`}>
-      <CardContent className="p-4 text-white relative h-full">
-        <div className="flex items-center justify-between h-full py-2">
-          <div className="flex-1">
-            <h3 className="font-bold text-base mb-1">{banners[currentBannerIndex].title}</h3>
-            <p className="text-xs opacity-90 mb-3">
+    <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-primary mb-1.5">
+              {banners[currentBannerIndex].eyebrow}
+            </p>
+            <h3 className="font-semibold text-base text-foreground mb-1">
+              {banners[currentBannerIndex].title}
+            </h3>
+            <p className="text-xs text-muted-foreground leading-relaxed mb-4 max-w-sm">
               {banners[currentBannerIndex].description}
             </p>
-
             <Button
               onClick={handleButtonClick}
-              className="bg-black text-white hover:bg-gray-800 text-xs px-3 py-1 h-6"
+              size="sm"
+              className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 text-xs px-4 h-8"
             >
               {banners[currentBannerIndex].buttonText}
             </Button>
-
           </div>
-          <div className="w-12 h-12 bg-yellow-400 rounded-lg flex items-center justify-center ml-3">
-            <span className="text-lg">{banners[currentBannerIndex].icon}</span>
+          <div className="w-11 h-11 shrink-0 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
+            <ActiveIcon className="w-5 h-5" />
           </div>
         </div>
-        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
+        <div className="flex justify-center gap-1.5 mt-4">
           {banners.map((_, index) => (
             <div
               key={index}
-              className={`w-1.5 h-1.5 rounded-full ${index === currentBannerIndex ? 'bg-white' : 'bg-white/50'
-                }`}
+              className={`h-1.5 rounded-full transition-all ${
+                index === currentBannerIndex ? 'w-4 bg-primary' : 'w-1.5 bg-border'
+              }`}
             />
           ))}
         </div>

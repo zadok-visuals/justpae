@@ -22,46 +22,52 @@ const PortfolioCard: React.FC<PortfolioCardProps> = ({
   formatEquivalentUSD
 }) => {
   return (
-    <Card className="fintech-gradient-blue text-white rounded-2xl shadow-lg">
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm opacity-80">Total Portfolio</h2>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-white p-1 h-auto"
+    <Card className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
+      <div
+        className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 rounded-full bg-primary opacity-[0.08] blur-3xl"
+        aria-hidden="true"
+      />
+      <CardContent className="relative p-6 sm:p-7">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Total Portfolio
+          </h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-foreground h-auto py-1 px-2 rounded-full"
             onClick={onToggleBalanceVisibility}
-            >
+          >
             {hideBalance ? (
               <>
                 <EyeOff className="w-4 h-4" />
-                <span className="ml-1 text-xs">Show Balance</span>
+                <span className="ml-1.5 text-xs font-medium">Show</span>
               </>
             ) : (
               <>
                 <Eye className="w-4 h-4" />
-                <span className="ml-1 text-xs">Hide Balance</span>
+                <span className="ml-1.5 text-xs font-medium">Hide</span>
               </>
             )}
           </Button>
         </div>
         <div className="space-y-1">
-          <div className="text-3xl font-bold">
+          <div className="font-display text-4xl sm:text-5xl font-medium tracking-tight tabular-nums text-foreground">
             {formatBalance(totalValue)}
           </div>
-          <div className="text-lg opacity-80">
+          <div className="text-base text-muted-foreground tabular-nums">
             {formatEquivalentUSD(totalValue)}
           </div>
-          {pendingFiatBalance > 0 && (
-            <div className="mt-4 pt-4 border-t border-white/20">
-              <p className="text-xs opacity-80 mb-1 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
-                Pending Clearance
-              </p>
-              <p className="text-sm font-semibold">{formatBalance(pendingFiatBalance)}</p>
-            </div>
-          )}
         </div>
+        {pendingFiatBalance > 0 && (
+          <div className="mt-5 pt-5 border-t border-border flex items-center justify-between">
+            <p className="text-xs text-muted-foreground flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              Pending clearance
+            </p>
+            <p className="text-sm font-semibold tabular-nums text-foreground">{formatBalance(pendingFiatBalance)}</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
