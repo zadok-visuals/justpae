@@ -118,7 +118,9 @@ export function PasswordField({
           // control. It stays reachable to a screen reader and to a pointer.
           tabIndex={-1}
           aria-label={visible ? "Hide password" : "Show password"}
-          className="shrink-0 px-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+          // Full field height, pulled into the shell's padding: 44px of target
+          // for a two-letter word, with no change to the field's own size.
+          className="-mr-3 inline-flex h-12 shrink-0 items-center px-3 text-xs font-medium text-muted-foreground hover:text-foreground"
         >
           {visible ? "Hide" : "Show"}
         </button>

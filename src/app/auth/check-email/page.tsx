@@ -24,7 +24,10 @@ export default function CheckEmailPage() {
 
           <p className="text-center text-sm text-muted-foreground">
             Already confirmed?{" "}
-            <Link href="/login" className="font-medium text-primary">
+            <Link
+              href="/login"
+              className="inline-flex min-h-11 items-center px-1 font-medium text-primary"
+            >
               Sign in
             </Link>
           </p>

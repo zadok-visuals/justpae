@@ -103,7 +103,10 @@ export default async function KycStatusPage() {
         </Card>
       )}
 
-      <Link href="/home" className="block text-center text-sm font-medium text-primary">
+      <Link
+        href="/home"
+        className="mx-auto flex min-h-11 w-fit items-center px-3 text-sm font-medium text-primary"
+      >
         Back to home
       </Link>
     </div>

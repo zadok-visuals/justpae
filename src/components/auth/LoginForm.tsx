@@ -64,15 +64,23 @@ export function LoginForm({ notice }: { notice?: string }) {
         </SubmitButton>
       </form>
 
-      <div className="space-y-2 text-center text-sm">
+      {/* Both links are 44px tall. These are the two escape hatches from a
+          failed sign-in, which is exactly when a near miss is most annoying. */}
+      <div className="text-center text-sm">
         <p>
-          <Link href="/forgot-password" className="font-medium text-primary">
+          <Link
+            href="/forgot-password"
+            className="inline-flex min-h-11 items-center px-2 font-medium text-primary"
+          >
             Forgot your password?
           </Link>
         </p>
         <p className="text-muted-foreground">
           New here?{" "}
-          <Link href="/signup" className="font-medium text-primary">
+          <Link
+            href="/signup"
+            className="inline-flex min-h-11 items-center px-1 font-medium text-primary"
+          >
             Create an account
           </Link>
         </p>

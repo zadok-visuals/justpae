@@ -1,6 +1,6 @@
 import { requireAdminUser } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { Card } from "@/components/ui/Primitives";
+import { Card, EmptyState } from "@/components/ui/Primitives";
 import { RateMarkupForm, SettingsForm } from "@/components/admin/RatesForms";
 import { listMarkups } from "@/lib/rates/markup";
 import { formatNumber } from "@/lib/currencies";
@@ -30,9 +30,18 @@ export default async function AdminRatesPage() {
 
       <Card>
         <h2 className="mb-3 text-base font-semibold text-foreground">Current markups</h2>
-        {/* The table scrolls inside itself rather than pushing the page
-            sideways — there is no viewport where a horizontally scrolling
-            document is the right answer. */}
+        {markups.length === 0 ? (
+          // Headings over an empty tbody read as a broken table. The migrations
+          // seed a markup per pair, so an empty list means something went wrong
+          // with them — say so rather than showing a blank grid.
+          <EmptyState
+            title="No markups configured"
+            body="The migrations seed one per pair. An empty list means they haven't been applied to this project yet."
+          />
+        ) : (
+        /* The table scrolls inside itself rather than pushing the page
+           sideways — there is no viewport where a horizontally scrolling
+           document is the right answer. */
         <div className="scroll-x">
           <table className="w-full min-w-[22rem] text-sm">
             <thead>
@@ -65,6 +74,7 @@ export default async function AdminRatesPage() {
             </tbody>
           </table>
         </div>
+        )}
       </Card>
     </div>
   );

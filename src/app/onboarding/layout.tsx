@@ -22,7 +22,11 @@ export default async function OnboardingLayout({ children }: { children: React.R
     <div className="flex min-h-screen-dvh flex-col bg-background">
       <header className="flex items-center justify-between gap-3 px-5 pb-2 pt-[calc(1.25rem+env(safe-area-inset-top,0px))]">
         <Wordmark />
-        <Link href="/home" className="text-sm font-medium text-muted-foreground">
+        <Link
+          href="/home"
+          // -my-2 absorbs the 44px target into the header's existing height.
+          className="-my-2 inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground"
+        >
           Later
         </Link>
       </header>

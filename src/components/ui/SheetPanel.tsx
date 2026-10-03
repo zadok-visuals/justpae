@@ -103,7 +103,10 @@ export function SheetPanel({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="-mr-1 mt-1 flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground sm:mt-0"
+            // size-11 is 44px. An ✕ glyph makes a small visual target look
+            // adequate; the negative margins keep the box from pushing the
+            // header taller than the title line it sits on.
+            className="-my-1 -mr-2 flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground"
           >
             ✕
           </button>

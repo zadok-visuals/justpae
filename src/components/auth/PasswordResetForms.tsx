@@ -17,7 +17,10 @@ export function ForgotPasswordForm() {
           If that address has an account, a reset link is on its way. The link works in any
           browser, not just this one.
         </Banner>
-        <Link href="/login" className="block text-center text-sm font-medium text-primary">
+        <Link
+          href="/login"
+          className="mx-auto flex min-h-11 w-fit items-center px-3 text-sm font-medium text-primary"
+        >
           Back to sign in
         </Link>
       </div>
@@ -51,7 +54,10 @@ export function ForgotPasswordForm() {
         <SubmitButton pendingLabel="Sending…">Send reset link</SubmitButton>
       </form>
 
-      <Link href="/login" className="block text-center text-sm font-medium text-primary">
+      <Link
+        href="/login"
+        className="mx-auto flex min-h-11 w-fit items-center px-3 text-sm font-medium text-primary"
+      >
         Back to sign in
       </Link>
     </div>

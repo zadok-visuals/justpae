@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { Card, Pill, Banner, DetailRow } from "@/components/ui/Primitives";
-import { Button } from "@/components/ui/Button";
+import { SubmitButton } from "@/components/ui/Button";
 import { TransactionPinCard } from "@/components/settings/TransactionPinCard";
 import { RecipientCard } from "@/components/settings/RecipientCard";
 import { logOut } from "@/lib/actions/auth";
@@ -141,16 +141,22 @@ export default async function ProfilePage() {
             <p className="mt-1 text-sm text-muted-foreground">
               Verification queue, withdrawal queue, rates and margin.
             </p>
-            <Link href="/admin" className="mt-2 inline-block text-sm font-medium text-primary">
+            <Link
+              href="/admin"
+              className="mt-1 inline-flex min-h-11 items-center text-sm font-medium text-primary"
+            >
               Open admin →
             </Link>
           </Card>
         )}
 
         <form action={logOut}>
-          <Button type="submit" variant="secondary" fullWidth>
+          {/* SubmitButton, not a plain Button: sign-out ends in a redirect and
+              the round trip is visible, so the button has to disable and spin
+              like every other submit in the app. */}
+          <SubmitButton variant="secondary" size="md" pendingLabel="Signing out…">
             Sign out
-          </Button>
+          </SubmitButton>
         </form>
       </div>
     </PageShell>
