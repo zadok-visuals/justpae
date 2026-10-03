@@ -115,7 +115,10 @@ export function AmountInput({
           <button
             type="button"
             onClick={onMax}
-            className="shrink-0 rounded-md border border-border px-2 py-1 text-xs font-semibold uppercase tracking-wide text-primary"
+            // h-11: 44px. "Max" is a two-syllable word in a 26px-tall box
+            // otherwise, sitting right beside the amount the user is still
+            // typing — a near miss here clears the field instead.
+            className="inline-flex h-11 shrink-0 items-center rounded-md border border-border px-3 text-xs font-semibold uppercase tracking-wide text-primary"
           >
             Max
           </button>

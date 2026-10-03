@@ -127,6 +127,31 @@ export function SkeletonRows({ rows = 5 }: { rows?: number }) {
 }
 
 /**
+ * A form's worth of skeleton: label stub, field stub, repeated, then a button.
+ * Used by the route-level loading.tsx of every form page so the field stack
+ * doesn't shift when the real labels arrive.
+ */
+export function SkeletonForm({ fields = 3, button = true }: { fields?: number; button?: boolean }) {
+  return (
+    <div className="space-y-4">
+      {Array.from({ length: fields }).map((_, i) => (
+        <div key={i} className="space-y-2">
+          <Skeleton className="h-3.5 w-24" />
+          {/* h-12 is the real field height — see .jp-field in globals.css. */}
+          <Skeleton className="h-12 w-full" />
+        </div>
+      ))}
+      {button && <Skeleton className="h-12 w-full rounded-lg" />}
+    </div>
+  );
+}
+
+/** A card-shaped block, for pages whose body is a stack of Cards. */
+export function SkeletonCard({ className = "h-32" }: { className?: string }) {
+  return <Skeleton className={`w-full rounded-xl ${className}`} />;
+}
+
+/**
  * An empty state always carries an action. "No transactions yet" alone is a
  * dead end; the person reading it came here to do something.
  */

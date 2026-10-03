@@ -75,7 +75,7 @@ export function ActivityFilters() {
               aria-selected={active}
               type="button"
               onClick={() => update({ filter: tab.value === "all" ? null : tab.value })}
-              className={`min-h-9 shrink-0 rounded-full border px-3 text-sm font-medium ${
+              className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-medium ${
                 active
                   ? "border-primary bg-primary/15 text-primary"
                   : "border-border bg-card text-muted-foreground"
@@ -118,7 +118,9 @@ export function ActivityFilters() {
                   update({ search: null });
                 }}
                 aria-label="Clear search"
-                className="shrink-0 text-xs font-medium text-muted-foreground"
+                // Fills the field's full height and is pulled into its padding,
+                // so the target is 44px tall without making the field taller.
+                className="-mr-3 inline-flex h-11 shrink-0 items-center px-3 text-xs font-medium text-muted-foreground"
               >
                 Clear
               </button>
@@ -147,18 +149,20 @@ export function ActivityFilters() {
           </span>
         </div>
 
-        <details className="rounded-lg border border-border bg-card px-3 py-2 sm:col-span-1">
-          <summary className="cursor-pointer text-sm font-medium text-foreground">
+        <details className="rounded-lg border border-border bg-card px-3 sm:col-span-1">
+          {/* min-h-11 on the summary itself: the disclosure is the control, and
+              a 20px line of text is not a tap target. */}
+          <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium text-foreground">
             Date range
           </summary>
-          <div className="mt-2 space-y-2">
+          <div className="space-y-2 pb-3">
             <label className="block text-xs text-muted-foreground">
               From
               <input
                 type="date"
                 value={params.get("from") ?? ""}
                 onChange={(e) => update({ from: e.target.value || null })}
-                className="mt-1 h-10 w-full rounded-md border border-input bg-secondary px-2 text-foreground"
+                className="mt-1 min-h-11 w-full rounded-md border border-input bg-secondary px-2 text-foreground"
               />
             </label>
             <label className="block text-xs text-muted-foreground">
@@ -167,7 +171,7 @@ export function ActivityFilters() {
                 type="date"
                 value={params.get("to") ?? ""}
                 onChange={(e) => update({ to: e.target.value || null })}
-                className="mt-1 h-10 w-full rounded-md border border-input bg-secondary px-2 text-foreground"
+                className="mt-1 min-h-11 w-full rounded-md border border-input bg-secondary px-2 text-foreground"
               />
             </label>
           </div>

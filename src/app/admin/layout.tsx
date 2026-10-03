@@ -28,7 +28,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <Link href="/admin" aria-label="justpae admin">
               <Wordmark />
             </Link>
-            <Link href="/home" className="text-sm font-medium text-muted-foreground">
+            <Link
+              href="/home"
+              // -my-2 keeps the 44px target from growing the header's height.
+              className="-my-2 inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground"
+            >
               Back to app
             </Link>
           </div>
@@ -38,7 +42,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <Link
                 key={tab.href}
                 href={tab.href}
-                className="min-h-9 shrink-0 rounded-full border border-border bg-card px-3 text-sm font-medium leading-9 text-foreground"
+                // min-h-11 / leading-11: 44px, the smallest a tap target should
+                // be. These are the only way between admin queues on a phone.
+                className="min-h-11 shrink-0 rounded-full border border-border bg-card px-4 text-sm font-medium leading-11 text-foreground"
               >
                 {tab.label}
               </Link>
