@@ -64,6 +64,21 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // A session can exist before the email is confirmed: if the Supabase
+  // project's own "Confirm email" setting is off, signUp() returns a session
+  // immediately, and nothing in application code ever calls /auth/verify —
+  // the new account lands straight on /home with no confirmation at all.
+  // Enforced here, independent of that dashboard setting, so a project
+  // misconfigured that way (or reconfigured later) can't let an unverified
+  // address straight into the dashboard. /auth/* stays reachable — that's
+  // the only way an unconfirmed user can ever finish confirming.
+  if (user && !user.email_confirmed_at && !pathname.startsWith("/auth")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/verify";
+    url.search = new URLSearchParams({ email: user.email ?? "" }).toString();
+    return NextResponse.redirect(url);
+  }
+
   if (user && (pathname === "/login" || pathname === "/signup" || pathname === "/")) {
     const url = request.nextUrl.clone();
     url.pathname = "/home";

@@ -18,6 +18,7 @@ import {
 import { CopyField } from "@/components/ui/CopyButton";
 import { Button } from "@/components/ui/Button";
 import { BottomTabBar, Sidebar, TopBar, MobileTopBar } from "@/components/layout/DashboardChrome";
+import { PageTitleProvider, PageTitlePublisher } from "@/components/layout/PageTitleContext";
 import { ConvertForm } from "@/components/convert/ConvertForm";
 import { WithdrawForm } from "@/components/withdraw/WithdrawForm";
 import { DepositForm } from "@/components/deposit/DepositForm";
@@ -165,8 +166,10 @@ export default function DevGallery() {
   const electricityBillers = billersFor("NG", "electricity");
 
   return (
+    <PageTitleProvider>
     <div className="flex h-screen-dvh flex-col overflow-hidden bg-background">
-      <TopBar />
+      <PageTitlePublisher title="Component gallery" />
+      <TopBar userName="Ada Gallery" />
       <div className="flex min-h-0 flex-1">
       <Sidebar isAdmin />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
@@ -346,5 +349,6 @@ export default function DevGallery() {
       </div>
       <BottomTabBar />
     </div>
+    </PageTitleProvider>
   );
 }

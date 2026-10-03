@@ -17,6 +17,9 @@ export default async function OnboardingLayout({ children }: { children: React.R
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  if (!user.email_confirmed_at) {
+    redirect(`/auth/verify?email=${encodeURIComponent(user.email ?? "")}`);
+  }
 
   return (
     <div className="flex min-h-screen-dvh flex-col bg-background">

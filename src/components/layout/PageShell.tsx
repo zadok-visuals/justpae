@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MobileTopBar } from "@/components/layout/DashboardChrome";
+import { PageTitlePublisher } from "@/components/layout/PageTitleContext";
 
 /**
  * The content column every dashboard page sits in.
@@ -26,6 +27,9 @@ export function PageShell({
 }) {
   return (
     <>
+      {/* Publishes to the desktop TopBar; renders nothing itself. On mobile
+          the title still comes from MobileTopBar below, not this. */}
+      <PageTitlePublisher title={title} />
       <MobileTopBar title={title} />
 
       <div className={`mx-auto w-full px-4 py-5 sm:px-6 sm:py-8 ${wide ? "max-w-4xl" : "max-w-2xl"}`}>
@@ -38,14 +42,10 @@ export function PageShell({
           </Link>
         )}
 
-        <header className="mb-5 hidden sm:block">
-          <h1 className="font-display text-2xl font-semibold text-foreground">{title}</h1>
-          {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
-        </header>
-
-        {/* On mobile the title lives in the top bar, so only the subtitle
-            repeats here — showing both would print the same words twice. */}
-        {subtitle && <p className="mb-4 text-sm text-muted-foreground sm:hidden">{subtitle}</p>}
+        {/* The title itself now lives only in the top bar (desktop) and
+            MobileTopBar (mobile) — this is just the subtitle, shown at every
+            size since there is no separate desktop header left to repeat it. */}
+        {subtitle && <p className="mb-4 text-sm text-muted-foreground">{subtitle}</p>}
 
         {children}
       </div>

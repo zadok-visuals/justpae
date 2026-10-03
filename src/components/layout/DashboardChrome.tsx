@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useFormStatus } from "react-dom";
 import { Wordmark } from "@/components/layout/Mark";
 import { logOut } from "@/lib/actions/auth";
+import { useCurrentPageTitle } from "@/components/layout/PageTitleContext";
 import {
   HomeIcon,
   ActivityIcon,
@@ -82,24 +83,52 @@ export function BottomTabBar() {
   );
 }
 
+/** First letter of each of the first two words — "Ada Obi" → "AO", one word →
+ *  its first letter. Falls back to "?" for an empty name rather than nothing,
+ *  so the avatar circle is never blank. */
+function initialsFor(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  return parts
+    .slice(0, 2)
+    .map((p) => p[0]!.toUpperCase())
+    .join("");
+}
+
 /**
  * Shared desktop-only top strip. The logo used to live inside the sidebar's
  * own box, with nothing connecting it to the content column beside it — the
- * dividing rule below it stopped dead at the sidebar's right edge. Pulling
- * the logo (and its border-b) up into a bar that spans the FULL width means
- * that rule is one line, not two that happen to match: it starts under
- * "justpae" and runs, uninterrupted, past the sidebar into the page header
- * beside it.
+ * dividing rule below it stopped dead at the sidebar's right edge, and the
+ * page's own title rendered separately, further down, in a second header of
+ * its own. Pulling the logo AND the current page's title into one bar that
+ * spans the full width — the title published by whichever PageShell is
+ * mounted, via PageTitleContext — means there is one row and one rule, not
+ * a logo strip stacked on top of a page header that happens to look similar.
  */
-export function TopBar() {
+export function TopBar({ userName }: { userName: string }) {
+  const title = useCurrentPageTitle();
+
   return (
-    <div className="hidden shrink-0 border-b border-sidebar-border sm:flex">
+    <div className="hidden shrink-0 items-center border-b border-sidebar-border sm:flex">
       <div className="flex w-60 shrink-0 items-center px-5 py-3">
         <Link href="/home" aria-label="justpae home" className="inline-flex min-h-11 items-center">
           <Wordmark />
         </Link>
       </div>
-      <div className="flex-1" />
+
+      <h1 className="min-w-0 flex-1 truncate font-display text-xl font-semibold text-foreground">
+        {title}
+      </h1>
+
+      <div className="flex shrink-0 items-center px-5">
+        <Link
+          href="/profile"
+          aria-label="Profile"
+          className="flex size-10 items-center justify-center rounded-full bg-sidebar-accent text-sm font-semibold text-foreground"
+        >
+          {initialsFor(userName)}
+        </Link>
+      </div>
     </div>
   );
 }
