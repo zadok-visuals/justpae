@@ -1,14 +1,17 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import { TextField, PasswordField, SelectField } from "@/components/ui/Field";
 import { SubmitButton } from "@/components/ui/Button";
+import { PasswordStrengthMeter } from "@/components/auth/PasswordStrengthMeter";
 import { signUp, signInWithGoogle } from "@/lib/actions/auth";
 import { COUNTRIES, LOCAL_WALLET_COUNTRIES } from "@/lib/countries";
+import { PASSWORD_REQUIREMENT_HINT } from "@/lib/passwordStrength";
 
 export function SignupForm() {
   const [state, formAction] = useActionState(signUp, {});
+  const [password, setPassword] = useState("");
 
   return (
     <div className="space-y-5">
@@ -75,16 +78,21 @@ export function SignupForm() {
           </optgroup>
         </SelectField>
 
-        <PasswordField
-          name="password"
-          label="Password"
-          hint="At least 8 characters"
-          autoComplete="new-password"
-          enterKeyHint="go"
-          required
-          minLength={8}
-          error={state.error}
-        />
+        <div>
+          <PasswordField
+            name="password"
+            label="Password"
+            hint={PASSWORD_REQUIREMENT_HINT}
+            autoComplete="new-password"
+            enterKeyHint="go"
+            required
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            error={state.error}
+          />
+          <PasswordStrengthMeter password={password} />
+        </div>
 
         <SubmitButton pendingLabel="Creating your account…">Create account</SubmitButton>
       </form>

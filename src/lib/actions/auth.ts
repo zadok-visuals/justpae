@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isKnownCountry } from "@/lib/countries";
+import { assessPasswordStrength } from "@/lib/passwordStrength";
 
 export interface AuthActionState {
   error?: string;
@@ -24,8 +25,8 @@ export async function signUp(
   if (!email || !password || !fullName || !country) {
     return { error: "All fields are required." };
   }
-  if (password.length < 8) {
-    return { error: "Password must be at least 8 characters." };
+  if (!assessPasswordStrength(password).meetsMinimum) {
+    return { error: "Password is too weak — use at least 8 characters with a mix of letters, numbers or symbols." };
   }
   if (!isKnownCountry(country)) {
     return { error: "Pick your country from the list." };
@@ -42,13 +43,63 @@ export async function signUp(
     password,
     options: {
       data: { full_name: fullName, country },
-      emailRedirectTo: `${appUrl()}/auth/confirm?next=/home`,
+      emailRedirectTo: `${appUrl()}/auth/confirm?next=/onboarding/kyc`,
     },
   });
 
   if (error) return { error: error.message };
   if (data.session) redirect("/home");
-  redirect("/auth/check-email");
+  // confirm-signup.html sends a 6-digit code as the primary path (works by
+  // being typed in, with no same-browser assumption at all) and the
+  // token_hash link above as a fallback for anyone who'd rather tap than
+  // type. /auth/verify collects the code; /auth/confirm still handles the
+  // link for whoever uses it.
+  redirect(`/auth/verify?email=${encodeURIComponent(email)}`);
+}
+
+export interface VerifyCodeState {
+  error?: string;
+}
+
+export async function verifySignupCode(
+  _prevState: VerifyCodeState,
+  formData: FormData,
+): Promise<VerifyCodeState> {
+  const email = String(formData.get("email") ?? "").trim();
+  const token = String(formData.get("code") ?? "").trim();
+
+  if (!email) return { error: "Missing email — go back and sign up again." };
+  if (token.length !== 6) return { error: "Enter the 6-digit code from your email." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.verifyOtp({ email, token, type: "signup" });
+
+  if (error) {
+    // GoTrue's own message ("Token has expired or is invalid") already says
+    // exactly this, in clearer words than anything worth writing here.
+    return { error: error.message };
+  }
+
+  redirect("/onboarding/kyc");
+}
+
+export interface ResendCodeState {
+  error?: string;
+  sent?: boolean;
+}
+
+export async function resendSignupCode(
+  _prevState: ResendCodeState,
+  formData: FormData,
+): Promise<ResendCodeState> {
+  const email = String(formData.get("email") ?? "").trim();
+  if (!email) return { error: "Missing email — go back and sign up again." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resend({ type: "signup", email });
+
+  if (error) return { error: error.message };
+  return { sent: true };
 }
 
 export async function logIn(
@@ -124,8 +175,8 @@ export async function resetPassword(
   const password = String(formData.get("password") ?? "");
   const confirmPassword = String(formData.get("confirmPassword") ?? "");
 
-  if (!password || password.length < 8) {
-    return { error: "Password must be at least 8 characters." };
+  if (!password || !assessPasswordStrength(password).meetsMinimum) {
+    return { error: "Password is too weak — use at least 8 characters with a mix of letters, numbers or symbols." };
   }
   if (password !== confirmPassword) return { error: "Passwords do not match." };
 

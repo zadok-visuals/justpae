@@ -5,7 +5,7 @@ import { requireEnv } from "@/lib/supabase/env";
 
 /**
  * Paths reachable without a session. Prefix-matched, so "/auth" covers
- * /auth/callback, /auth/confirm and /auth/check-email.
+ * /auth/callback, /auth/confirm and /auth/verify.
  *
  * "/" is checked for an EXACT match below rather than folded in here —
  * startsWith("/") matches every path and would disable auth gating entirely.

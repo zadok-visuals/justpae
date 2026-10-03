@@ -31,9 +31,14 @@ link that is minutes old and perfectly valid. This is one of the most common
 and most invisible signup-funnel failures in a Supabase app, because it works
 every time on the developer's own machine.
 
-These templates use `{{ .TokenHash }}` instead and point at `/auth/confirm`,
-which calls `verifyOtp({ type, token_hash })`. A token hash carries everything
-needed to verify on its own, so the link works in any browser on any device.
+`confirm-signup.html` leads with `{{ .Token }}`, the 6-digit code — the app's
+`/auth/verify` page asks for it directly, and a code the user types in has no
+same-browser assumption to break in the first place. The `{{ .TokenHash }}`
+link further down is kept as a secondary option for anyone who'd rather tap
+than type; it points at `/auth/confirm`, which calls
+`verifyOtp({ type, token_hash })` — a token hash, unlike a PKCE code, carries
+everything needed to verify on its own, so the link works in any browser on
+any device too.
 
 `/auth/callback` still does the code exchange — that path is OAuth only, where
 the same-browser assumption genuinely holds.
