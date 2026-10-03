@@ -48,6 +48,9 @@ export function BottomTabBar() {
 
   return (
     <nav
+      // Distinctly named from the sidebar's nav. Only one is ever in the
+      // accessibility tree (the other's container is display:none), but two
+      // landmarks sharing a name is confusing the moment that stops holding.
       aria-label="Main"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur-md sm:hidden"
     >
@@ -85,7 +88,7 @@ export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
         </Link>
       </div>
 
-      <nav aria-label="Main" className="flex-1 px-3">
+      <nav aria-label="Sidebar" className="flex-1 px-3">
         <ul className="space-y-1">
           {TABS.map(({ href, label, Icon }) => {
             const active = isActive(pathname, href);

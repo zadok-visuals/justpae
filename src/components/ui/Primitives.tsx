@@ -30,7 +30,13 @@ export function SectionHeader({
         {title}
       </h2>
       {action && (
-        <Link href={action.href} className="text-sm font-medium text-primary">
+        // -my-* plus min-h-11 gives a 44px touch target without adding
+        // vertical space to the header: a 20px link is a miss on a phone
+        // however neatly it sits next to the title.
+        <Link
+          href={action.href}
+          className="-my-3 inline-flex min-h-11 items-center text-sm font-medium text-primary"
+        >
           {action.label}
         </Link>
       )}
@@ -201,7 +207,10 @@ export function Banner({
       <p className="text-sm font-semibold text-foreground">{title}</p>
       {children && <div className="mt-1 text-sm text-muted-foreground">{children}</div>}
       {action && (
-        <Link href={action.href} className="mt-2 inline-block text-sm font-medium text-primary">
+        <Link
+          href={action.href}
+          className="-mb-2 mt-1 inline-flex min-h-11 items-center text-sm font-medium text-primary"
+        >
           {action.label} →
         </Link>
       )}

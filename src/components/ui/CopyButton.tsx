@@ -39,7 +39,9 @@ export function CopyButton({
     <button
       type="button"
       onClick={copy}
-      className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-medium text-foreground ${className}`}
+      // h-11, not h-9: 44px is the floor for a touch target, and this one is
+      // tapped more than almost anything else on a receipt.
+      className={`inline-flex h-11 shrink-0 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium text-foreground ${className}`}
       // Announced to a screen reader, which gets no visual confirmation.
       aria-label={`${label} ${value}`}
     >
