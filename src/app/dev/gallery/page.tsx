@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/Primitives";
 import { CopyField } from "@/components/ui/CopyButton";
 import { Button } from "@/components/ui/Button";
-import { BottomTabBar, Sidebar, MobileTopBar } from "@/components/layout/DashboardChrome";
+import { BottomTabBar, Sidebar, TopBar, MobileTopBar } from "@/components/layout/DashboardChrome";
 import { ConvertForm } from "@/components/convert/ConvertForm";
 import { WithdrawForm } from "@/components/withdraw/WithdrawForm";
 import { DepositForm } from "@/components/deposit/DepositForm";
@@ -165,9 +165,11 @@ export default function DevGallery() {
   const electricityBillers = billersFor("NG", "electricity");
 
   return (
-    <div className="flex min-h-screen-dvh bg-background">
+    <div className="flex h-screen-dvh flex-col overflow-hidden bg-background">
+      <TopBar />
+      <div className="flex min-h-0 flex-1">
       <Sidebar isAdmin />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
         <main className="min-w-0 flex-1 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] sm:pb-0">
           <MobileTopBar title="Component gallery" />
           <div className="mx-auto w-full max-w-2xl space-y-6 px-4 py-5 sm:px-6 sm:py-8">
@@ -340,6 +342,7 @@ export default function DevGallery() {
             </Section>
           </div>
         </main>
+      </div>
       </div>
       <BottomTabBar />
     </div>

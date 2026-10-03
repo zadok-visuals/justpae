@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useFormStatus } from "react-dom";
 import { Wordmark } from "@/components/layout/Mark";
+import { logOut } from "@/lib/actions/auth";
 import {
   HomeIcon,
   ActivityIcon,
@@ -10,6 +12,7 @@ import {
   BillsIcon,
   ProfileIcon,
   AdminIcon,
+  LogOutIcon,
 } from "@/components/layout/NavIcons";
 
 /**
@@ -22,7 +25,9 @@ import {
  * indicator.
  *
  * DESKTOP: a left sidebar, and NO bottom bar. A tab bar pinned to the bottom
- * of a 1440px window is a phone control stranded on a desktop.
+ * of a 1440px window is a phone control stranded on a desktop. The sidebar's
+ * own logo row lives in TopBar instead of inside the sidebar — see TopBar's
+ * comment for why.
  *
  * One tree, switched by CSS, so there is no viewport check in JS and no
  * hydration mismatch.
@@ -77,19 +82,49 @@ export function BottomTabBar() {
   );
 }
 
-export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
-  const pathname = usePathname();
-
+/**
+ * Shared desktop-only top strip. The logo used to live inside the sidebar's
+ * own box, with nothing connecting it to the content column beside it — the
+ * dividing rule below it stopped dead at the sidebar's right edge. Pulling
+ * the logo (and its border-b) up into a bar that spans the FULL width means
+ * that rule is one line, not two that happen to match: it starts under
+ * "justpae" and runs, uninterrupted, past the sidebar into the page header
+ * beside it.
+ */
+export function TopBar() {
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar sm:flex">
-      <div className="px-5 py-3">
-        {/* The wordmark is 22px of artwork; the link around it is 44. */}
+    <div className="hidden shrink-0 border-b border-sidebar-border sm:flex">
+      <div className="flex w-60 shrink-0 items-center px-5 py-3">
         <Link href="/home" aria-label="justpae home" className="inline-flex min-h-11 items-center">
           <Wordmark />
         </Link>
       </div>
+      <div className="flex-1" />
+    </div>
+  );
+}
 
-      <nav aria-label="Sidebar" className="flex-1 px-3">
+function SidebarLogOutButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground disabled:opacity-50"
+    >
+      <LogOutIcon className="size-5" />
+      {pending ? "Signing out…" : "Sign out"}
+    </button>
+  );
+}
+
+export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
+  const pathname = usePathname();
+
+  return (
+    <aside className="hidden w-60 shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar sm:flex">
+      <nav aria-label="Sidebar" className="flex-1 px-3 py-3">
         <ul className="space-y-1">
           {TABS.map(({ href, label, Icon }) => {
             const active = isActive(pathname, href);
@@ -128,6 +163,12 @@ export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
           </div>
         )}
       </nav>
+
+      {/* Pinned below the (independently scrolling) nav list, not inside it —
+          sign-out should never scroll out of reach on a tall nav. */}
+      <form action={logOut} className="shrink-0 border-t border-sidebar-border px-3 py-3">
+        <SidebarLogOutButton />
+      </form>
     </aside>
   );
 }
