@@ -82,8 +82,9 @@ export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar sm:flex">
-      <div className="px-5 py-5">
-        <Link href="/home" aria-label="justpae home">
+      <div className="px-5 py-3">
+        {/* The wordmark is 22px of artwork; the link around it is 44. */}
+        <Link href="/home" aria-label="justpae home" className="inline-flex min-h-11 items-center">
           <Wordmark />
         </Link>
       </div>
@@ -142,7 +143,7 @@ export function MobileTopBar({ title }: { title?: string }) {
       {title ? (
         <h1 className="truncate text-base font-semibold text-foreground">{title}</h1>
       ) : (
-        <Link href="/home" aria-label="justpae home">
+        <Link href="/home" aria-label="justpae home" className="inline-flex min-h-11 items-center">
           <Wordmark />
         </Link>
       )}

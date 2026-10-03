@@ -25,7 +25,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <header className="border-b border-border px-4 pb-3 pt-[calc(1rem+env(safe-area-inset-top,0px))] sm:px-6">
         <div className="mx-auto flex max-w-5xl flex-col gap-3">
           <div className="flex items-center justify-between gap-3">
-            <Link href="/admin" aria-label="justpae admin">
+            <Link
+              href="/admin"
+              aria-label="justpae admin"
+              className="-my-2 inline-flex min-h-11 items-center"
+            >
               <Wordmark />
             </Link>
             <Link
