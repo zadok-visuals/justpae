@@ -174,6 +174,21 @@
     box-shadow: none;
   }
 
+  /* The control fills its wrapper's height.
+     Every .jp-field shell is at least 44px tall, but the input inside one is
+     only as tall as its own line — 24px for body text — and the wrapper
+     centres it. That leaves roughly 10px of dead strip above and below that
+     looks tappable and isn't: a tap there lands on the div, not the field, and
+     nothing focuses. align-self: stretch hands the whole shell to the control,
+     which is what makes the measured 44px a real target rather than a
+     decorative one. Overrides the wrapper's items-center for these children
+     only, so the Max button and the show/hide toggle keep their own sizing. */
+  .jp-field > input,
+  .jp-field > select,
+  .jp-field > textarea {
+    align-self: stretch;
+  }
+
   /* Buttons and links keep a visible keyboard affordance, also single. */
   button:focus-visible,
   a:focus-visible,
