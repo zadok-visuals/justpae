@@ -11,6 +11,17 @@ import type { Database } from "@/lib/types/database";
  */
 const PUBLIC_PATHS = ["/login", "/signup", "/auth", "/forgot-password", "/reset-password"];
 
+/**
+ * /dev/gallery is the component gallery used for the 375px/1440px viewport
+ * check. It is session-free so it can be opened without a Supabase project,
+ * and it is gated TWICE: the page itself calls notFound() outside development,
+ * and this list only admits it in development. Either gate alone would do; both
+ * are here because a dev-only route that leaks into production is the kind of
+ * thing a single flipped condition causes.
+ */
+const DEV_ONLY_PUBLIC_PATHS =
+  process.env.NODE_ENV === "development" ? ["/dev/"] : [];
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -40,7 +51,10 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const isPublicPath = pathname === "/" || PUBLIC_PATHS.some((path) => pathname.startsWith(path));
+  const isPublicPath =
+    pathname === "/" ||
+    PUBLIC_PATHS.some((path) => pathname.startsWith(path)) ||
+    DEV_ONLY_PUBLIC_PATHS.some((path) => pathname.startsWith(path));
 
   if (!user && !isPublicPath) {
     const url = request.nextUrl.clone();

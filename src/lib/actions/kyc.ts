@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { kycIdFieldFor } from "@/lib/countries";
+import { kycIdFieldFor, kycIdPattern } from "@/lib/countries";
 
 export interface KycActionState {
   error?: string;
@@ -77,7 +77,8 @@ export async function submitIndividualKyc(
   if (!fullName) return { error: "Enter your full name as it appears on your ID." };
   if (!phone) return { error: "Phone number is required." };
   if (!idNumber) return { error: `${idField.label} is required.` };
-  if (idField.pattern && !idField.pattern.test(idNumber)) {
+  const idPattern = kycIdPattern(idField);
+  if (idPattern && !idPattern.test(idNumber)) {
     return { error: idField.hint };
   }
   if (!selfie || selfie.size === 0) return { error: "A selfie is required." };

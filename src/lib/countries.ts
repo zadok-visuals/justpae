@@ -209,14 +209,23 @@ export function isKnownCountry(code: string): boolean {
  * `pattern` is a light format check only — none of these are verified against
  * an issuing authority here. The stored value is the raw input for a human
  * reviewer, which is exactly what kyc_documents.value is for.
+ *
+ * It is held as a STRING, not a RegExp, and that is load-bearing. The whole
+ * KycIdField is handed from a Server Component to the client KYC form, and a
+ * RegExp is not serializable across that boundary — React throws "Only plain
+ * objects ... can be passed to Client Components" and the verification screen
+ * 500s before it renders. Strings cross it fine; kycIdPattern() rebuilds the
+ * RegExp on the server side, where the check actually runs.
  */
 export interface KycIdField {
   /** kyc_documents.document_type for this input. */
   documentType: string;
   label: string;
   hint: string;
-  /** Digits-only length, where the format is fixed. */
-  pattern?: RegExp;
+  /** Anchored regex SOURCE, where the format is fixed. Never a RegExp. */
+  pattern?: string;
+  /** Flags for the above, e.g. "i" for a case-insensitive card number. */
+  patternFlags?: string;
 }
 
 export const KYC_ID_FIELDS: Record<string, KycIdField> = {
@@ -224,21 +233,28 @@ export const KYC_ID_FIELDS: Record<string, KycIdField> = {
     documentType: "nigeria_bvn_or_nin",
     label: "BVN or NIN",
     hint: "11 digits. Dial *565*0# for your BVN.",
-    pattern: /^\d{11}$/,
+    pattern: "^\\d{11}$",
   },
   GH: {
     documentType: "ghana_card_number",
     label: "Ghana Card number",
     hint: "Format GHA-XXXXXXXXX-X, as printed on the card.",
-    pattern: /^GHA-\d{9}-\d$/i,
+    pattern: "^GHA-\\d{9}-\\d$",
+    patternFlags: "i",
   },
   KE: {
     documentType: "kenya_national_id",
     label: "National ID number",
     hint: "The 7 or 8 digit number on your Huduma or national ID card.",
-    pattern: /^\d{7,8}$/,
+    pattern: "^\\d{7,8}$",
   },
 };
+
+/** The compiled form of KycIdField.pattern, or null when there is no check. */
+export function kycIdPattern(field: KycIdField): RegExp | null {
+  if (!field.pattern) return null;
+  return new RegExp(field.pattern, field.patternFlags);
+}
 
 /**
  * Falls back to a generic field rather than refusing to onboard someone from a
