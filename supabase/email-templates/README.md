@@ -1,0 +1,57 @@
+# Auth email templates
+
+**These are not applied by `supabase db push`, and the CLI cannot sync them to a
+remote project.** They have to be pasted into the dashboard once per project:
+
+Supabase dashboard → **Authentication → Emails** → pick the template → paste the
+matching file's contents → Save.
+
+| Dashboard template | File |
+| --- | --- |
+| Confirm signup | `confirm-signup.html` |
+| Reset password | `reset-password.html` |
+| Magic link | not used — the app has no magic-link flow |
+| Change email address | `confirm-signup.html` works as-is (`type=email_change`) |
+| Invite user | not used |
+
+## Why they can't be left at the defaults
+
+The default templates use `{{ .ConfirmationURL }}`, which produces a PKCE
+`code` link. **A PKCE code only verifies in the same browser that requested
+it** — the code verifier lives in that browser's storage and nowhere else.
+
+Email links are routinely opened somewhere else:
+
+- signed up on a phone, link tapped on a laptop
+- link opened by a desktop mail client in the system browser
+- link opened in whatever in-app browser Gmail or Outlook embeds
+
+In all three the code exchange fails and the person sees "link expired" on a
+link that is minutes old and perfectly valid. This is one of the most common
+and most invisible signup-funnel failures in a Supabase app, because it works
+every time on the developer's own machine.
+
+These templates use `{{ .TokenHash }}` instead and point at `/auth/confirm`,
+which calls `verifyOtp({ type, token_hash })`. A token hash carries everything
+needed to verify on its own, so the link works in any browser on any device.
+
+`/auth/callback` still does the code exchange — that path is OAuth only, where
+the same-browser assumption genuinely holds.
+
+## Before pasting
+
+Replace `{{ .SiteURL }}` — the templates use it, and it resolves to the
+project's **Site URL**, so set that first:
+
+Dashboard → **Authentication → URL Configuration**
+
+- **Site URL** — the deployed origin, e.g. `https://justpae.example`. Every
+  link in these emails is built from it. Leaving it at `http://localhost:3000`
+  sends production users confirmation links to their own laptops.
+- **Redirect URLs** — add `https://<your-domain>/auth/callback` and
+  `https://<your-domain>/auth/confirm`, plus the Vercel preview pattern if
+  previews need working auth:
+  `https://<project>-*.vercel.app/auth/callback`.
+
+This must match `APP_URL` in the app's environment. They are two separate
+settings in two separate systems that have to agree.

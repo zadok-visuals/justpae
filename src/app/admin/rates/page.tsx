@@ -37,6 +37,7 @@ export default async function AdminRatesPage() {
           <EmptyState
             title="No markups configured"
             body="The migrations seed one per pair. An empty list means they haven't been applied to this project yet."
+            action={{ href: "/admin", label: "Back to admin" }}
           />
         ) : (
         /* The table scrolls inside itself rather than pushing the page
