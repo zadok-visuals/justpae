@@ -15,10 +15,11 @@ import type { AdminRole, KycStatus } from "@/lib/types/database";
  * privileges, and collapsing them is what makes one compromised admin account
  * the whole system.
  *
- * Every function writes to the ledger. The RPCs that have a function of their
- * own already log from inside it (see 0019), so the ones here that do not —
- * none, as it happens — would log from the action; the pattern is stated
- * because the next admin capability someone adds must follow one of the two.
+ * Everything here reaches the ledger, by one of two routes: the RPCs that have
+ * a Postgres function of their own log from inside it (see 0019), and the
+ * reads log from the action. The next admin capability anyone adds must pick
+ * one of those two — an audit trail with holes in it is worse than useless,
+ * because it is misleading about what it covers.
  */
 
 export interface AdminUserActionState {
@@ -48,10 +49,22 @@ export interface AdminUserSearchResult {
  * review.
  */
 export async function searchUsers(query: string): Promise<AdminUserSearchResult[]> {
-  await requireAdminUser();
+  const actor = await requireAdminUser();
 
   const term = query.trim();
   if (term.length < 2) return [];
+
+  // READS GET LOGGED TOO, not only writes. The question an investigation asks
+  // is usually "who looked up this customer", and a ledger that records only
+  // changes cannot answer it. The search TERM is what is recorded rather than
+  // the result set: it is what the admin actually chose to do, it is one row
+  // instead of twenty-five, and it does not copy a page of other people's
+  // email addresses into a table every admin can read.
+  await logAdminActivity({
+    adminId: actor.id,
+    action: "user.search",
+    detail: { query: term },
+  });
 
   const service = createAdminClient();
 
@@ -291,21 +304,4 @@ export async function revokeAdminRole(
 
   revalidatePath("/admin/users");
   return { ok: true };
-}
-
-/**
- * Records that an admin opened an account's full detail.
- *
- * READS GET LOGGED TOO, not just writes. The question an investigation asks is
- * usually "who looked at this customer", and a ledger that only records
- * changes cannot answer it. This is called from the user detail page.
- */
-export async function logUserInspection(userId: string): Promise<void> {
-  const actor = await requireAdminUser();
-  await logAdminActivity({
-    adminId: actor.id,
-    action: "user.view",
-    targetType: "user",
-    targetId: userId,
-  });
 }
