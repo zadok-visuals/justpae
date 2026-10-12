@@ -68,7 +68,7 @@ export async function signUp(
     return { error: "Sign up is temporarily unavailable. Please try again shortly." };
   }
 
-  // confirm-signup.html sends a 6-digit code as the primary path (works by
+  // confirm-signup.html sends {{ .Token }} as the primary path (works by
   // being typed in, with no same-browser assumption at all) and the
   // token_hash link above as a fallback for anyone who'd rather tap than
   // type. /auth/verify collects the code; /auth/confirm still handles the
@@ -86,8 +86,14 @@ export async function verifySignupCode(
   _prevState: VerifyCodeState,
   formData: FormData,
 ): Promise<VerifyCodeState> {
-  const token = String(formData.get("code") ?? "").trim();
-  if (token.length !== 6) return { error: "Enter the 6-digit code from your email." };
+  // Supabase's Email OTP Length is a dashboard setting (6-10 digits), not a
+  // constant this app controls — hard-coding a specific length here is
+  // exactly what silently truncated a valid code and turned it into a
+  // "Token has expired or is invalid" error. Stripped of spaces (some mail
+  // clients render the code with one) rather than relying on the client to
+  // have sent it clean.
+  const token = String(formData.get("code") ?? "").replace(/\s+/g, "");
+  if (!/^\d{6,10}$/.test(token)) return { error: "Enter the code from your email." };
 
   const supabase = await createClient();
   // Resolved server-side rather than trusted from the form — the email this

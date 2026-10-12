@@ -1,5 +1,20 @@
 # Auth email templates
 
+**Both `.html` files here are generated — don't hand-edit them.** Their
+content (copy, subject line, button label, whether there's a code panel) is
+defined in `scripts/build-emails.ts`; their actual layout, colours and
+light/dark-mode handling live in `src/lib/email/layout.ts`, the same shell the
+app's own transactional emails (KYC, withdrawals, support) will use later.
+Change one of those two files, then run:
+
+```
+npm run emails:build
+```
+
+and commit the regenerated `.html` — Supabase has no API this could push to
+directly, so the files in this directory have to be the actual thing you
+paste into the dashboard, not just a description of it.
+
 ## Checklist for a new project
 
 All dashboard-only — none of this is covered by `supabase db push`:
@@ -53,9 +68,13 @@ link that is minutes old and perfectly valid. This is one of the most common
 and most invisible signup-funnel failures in a Supabase app, because it works
 every time on the developer's own machine.
 
-`confirm-signup.html` leads with `{{ .Token }}`, the 6-digit code — the app's
-`/auth/verify` page asks for it directly, and a code the user types in has no
-same-browser assumption to break in the first place. The `{{ .TokenHash }}`
+`confirm-signup.html` leads with `{{ .Token }}` — the length is whatever
+**Authentication → Providers → Email → Email OTP Length** is set to in this
+project's dashboard (6-10 digits), not a constant, and both
+`src/components/ui/OtpField.tsx` and `verifySignupCode` accept that whole
+range rather than assuming one. The app's `/auth/verify` page asks for the
+code directly, and a code the user types in has no same-browser assumption to
+break in the first place. The `{{ .TokenHash }}`
 link further down is kept as a secondary option for anyone who'd rather tap
 than type; it points at `/auth/confirm`, which calls
 `verifyOtp({ type, token_hash })` — a token hash, unlike a PKCE code, carries

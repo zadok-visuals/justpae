@@ -17,7 +17,7 @@ export function VerifyCodeForm({ email }: { email: string }) {
       <div>
         <h1 className="font-display text-2xl font-semibold text-foreground">Check your email</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          We sent a 6-digit code to <span className="font-medium text-foreground">{email}</span>.
+          We sent a code to <span className="font-medium text-foreground">{email}</span>.
           Enter it below to finish setting up your account.
         </p>
       </div>
@@ -30,7 +30,11 @@ export function VerifyCodeForm({ email }: { email: string }) {
           error={verifyState.error}
           autoFocus
         />
-        <SubmitButton pendingLabel="Verifying…" disabled={code.length !== 6}>
+        {/* 6 is the shortest code Supabase will ever send (Email OTP Length
+            is dashboard-configurable, 6-10) — this only guards against
+            submitting while the field is still obviously incomplete, never
+            against a specific length. */}
+        <SubmitButton pendingLabel="Verifying…" disabled={code.length < 6}>
           Verify email
         </SubmitButton>
       </form>
