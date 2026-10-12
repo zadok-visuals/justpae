@@ -3,6 +3,7 @@ import type { Currency } from "@/lib/types/database";
 import { getPayoutChannel, createBushaRecipient, createPayoutTransfer } from "@/lib/busha/payout";
 import { MINIMUM_WITHDRAWAL_USDT_THRESHOLD } from "@/lib/busha/limits";
 import { evaluateWithdrawalRouting } from "@/lib/withdrawals/threshold";
+import { RECIPIENT_CHANGE_HOLD_HOURS } from "@/lib/withdrawals/rules";
 
 /**
  * Server-only. Attempts the automated payout for a withdrawal that
@@ -78,6 +79,33 @@ export async function attemptAutomatedPayout(
     ]);
 
     const recipient = recipientResult.data;
+
+    // THE 24-HOUR HOLD. A payout destination that was changed in the last day
+    // does not get paid out automatically, however small the amount.
+    //
+    // The password re-check in confirmRecipientChange stops an attacker with a
+    // stolen session. It does not stop one with the password itself — and the
+    // whole point of changing a recipient is to redirect money, so that is the
+    // single highest-value action in the product. This puts a human and a delay
+    // between the change and the money leaving, which is the only thing that
+    // gives the real account holder time to act on the notification email.
+    //
+    // create_withdrawal_request already sets requires_extra_verification for
+    // rows inside the window, so the hold holds even if this path is skipped
+    // entirely; this branch is what stops the payout attempt itself and makes
+    // the reason legible in the admin queue.
+    if (
+      recipient?.recipient_changed_at &&
+      Date.now() - new Date(recipient.recipient_changed_at).getTime() <
+        RECIPIENT_CHANGE_HOLD_HOURS * 60 * 60 * 1000
+    ) {
+      await admin.rpc("flag_withdrawal_for_verification", { p_transaction_id: transactionId });
+      await admin.rpc("record_automated_payout_failure", {
+        p_transaction_id: transactionId,
+        p_reason: `Payout recipient was changed less than ${RECIPIENT_CHANGE_HOLD_HOURS} hours ago — held for manual approval`,
+      });
+      return;
+    }
 
     if (!routing.automated) {
       const channel = getPayoutChannel(currency);

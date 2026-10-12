@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getTransfer } from "@/lib/busha/client";
 import { requireCronSecret, staleCutoff } from "@/lib/cron/auth";
+import { verifyTransferMatchesRow } from "@/lib/transfers/verify";
 
 /**
  * Safety net for `transactions` rows waiting on a provider transfer — the
@@ -23,9 +24,17 @@ export async function GET(request: Request) {
 
   const { data: stale } = await admin
     .from("transactions")
-    .select("id, type, provider_reference")
+    // The amount and currency columns are selected because completion is no
+    // longer allowed on the provider's status alone — the transfer has to
+    // describe THIS row. See src/lib/transfers/verify.ts.
+    .select(
+      "id, type, provider_reference, amount, currency, target_currency, target_amount, raw_target_amount",
+    )
     .eq("provider", "busha")
     .in("status", ["pending", "processing"])
+    // A row already flagged as mismatched is left alone: it is waiting for a
+    // human, and re-checking it every 15 minutes only rewrites the same flag.
+    .eq("needs_manual_review", false)
     .lt("created_at", staleCutoff())
     .not("provider_reference", "is", null);
 
@@ -37,6 +46,24 @@ export async function GET(request: Request) {
 
     try {
       const transfer = await getTransfer(tx.provider_reference);
+
+      // BEFORE any completion. A transfer that is finished but is not this
+      // row's transfer must never credit this row — that was exactly the
+      // second half of the conversion attack closed in migration 0010.
+      const match = verifyTransferMatchesRow(tx, transfer);
+      if (!match.matches) {
+        console.error("[reconcile-transfers] provider transfer does not match row", {
+          transactionId: tx.id,
+          providerReference: tx.provider_reference,
+          reason: match.reason,
+        });
+        await admin.rpc("flag_transaction_for_review", {
+          p_transaction_id: tx.id,
+          p_reason: match.reason ?? "Provider transfer does not match this row",
+        });
+        results.push({ transactionId: tx.id, outcome: "flagged for manual review (mismatch)" });
+        continue;
+      }
 
       if (transfer.status === "funds_converted" || transfer.status === "funds_delivered") {
         const { error } = isWithdrawal

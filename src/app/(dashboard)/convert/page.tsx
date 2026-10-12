@@ -16,9 +16,12 @@ export default async function ConvertPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: wallets }, { data: pin }] = await Promise.all([
+  // has_transaction_pin() rather than selecting from withdrawal_pins: the
+  // select policy that allowed that also allowed selecting pin_hash, so it was
+  // dropped in 0012. This asks the only question the page actually has.
+  const [{ data: wallets }, { data: hasPin }] = await Promise.all([
     supabase.from("wallets").select("*").eq("user_id", user.id),
-    supabase.from("withdrawal_pins").select("user_id").eq("user_id", user.id).maybeSingle(),
+    supabase.rpc("has_transaction_pin"),
   ]);
 
   const list = (wallets ?? []) as Wallet[];
@@ -48,7 +51,7 @@ export default async function ConvertPage() {
       subtitle="Move money between your wallets at live rates."
       back={{ href: "/home", label: "Home" }}
     >
-      <ConvertForm wallets={list} routes={routes} hasPin={pin != null} />
+      <ConvertForm wallets={list} routes={routes} hasPin={hasPin === true} />
     </PageShell>
   );
 }

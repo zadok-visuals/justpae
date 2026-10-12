@@ -14,12 +14,14 @@ export default async function WithdrawPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: wallets }, { data: recipients }, { data: profile }, { data: pin }] =
+  // See the note in /convert: withdrawal_pins is no longer readable by a user
+  // session, because reading it meant being able to read pin_hash.
+  const [{ data: wallets }, { data: recipients }, { data: profile }, { data: hasPin }] =
     await Promise.all([
       supabase.from("wallets").select("*").eq("user_id", user.id),
       supabase.from("withdrawal_recipients").select("*").eq("user_id", user.id),
       supabase.from("profiles").select("kyc_status").eq("id", user.id).maybeSingle(),
-      supabase.from("withdrawal_pins").select("user_id").eq("user_id", user.id).maybeSingle(),
+      supabase.rpc("has_transaction_pin"),
     ]);
 
   return (
@@ -31,7 +33,7 @@ export default async function WithdrawPage() {
       <WithdrawForm
         wallets={(wallets ?? []) as Wallet[]}
         recipients={(recipients ?? []) as WithdrawalRecipient[]}
-        hasPin={pin != null}
+        hasPin={hasPin === true}
         // Checked here for the UI only. create_withdrawal_request checks it
         // again in SQL, which is the check that actually holds — this one just
         // avoids presenting a form that is guaranteed to be rejected.

@@ -24,12 +24,27 @@ export const SETTING_KEYS = {
   automatedPayoutWindowHours: "automated_payout_window_hours",
   /** Flat withdrawal fee as a fraction of the amount. Default 0.01 (1%). */
   withdrawalFeeRate: "withdrawal_fee_rate",
+  /**
+   * Bill payment fee as a fraction of the amount. Default 0 — the point of
+   * this key is that the number has one server-side home, not that it starts
+   * non-zero. Read inside create_bill_payment_for_user, in the same
+   * transaction that debits; it was previously a p_fee argument the caller
+   * supplied.
+   */
+  billPaymentFeeRate: "bill_payment_fee_rate",
+  /** Consecutive wrong transaction PINs before the PIN locks. Default 5. */
+  pinMaxFailedAttempts: "pin_max_failed_attempts",
+  /** How long a locked transaction PIN stays locked, in minutes. Default 30. */
+  pinLockMinutes: "pin_lock_minutes",
 } as const;
 
 export const SETTING_DEFAULTS: Record<string, number> = {
   [SETTING_KEYS.automatedPayoutThresholdUsd]: 1000,
   [SETTING_KEYS.automatedPayoutWindowHours]: 24,
   [SETTING_KEYS.withdrawalFeeRate]: 0.01,
+  [SETTING_KEYS.billPaymentFeeRate]: 0,
+  [SETTING_KEYS.pinMaxFailedAttempts]: 5,
+  [SETTING_KEYS.pinLockMinutes]: 30,
 };
 
 /**

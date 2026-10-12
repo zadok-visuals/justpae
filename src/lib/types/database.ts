@@ -101,6 +101,15 @@ export type Transaction = {
   extra_verification_confirmed_by: string | null;
   automated_payout_attempt_failed_reason: string | null;
   automated_payout_retry_count: number;
+  /**
+   * Set when the provider's own transfer object disagreed with this row — a
+   * different source amount, a different currency pair, or a target amount
+   * outside rounding tolerance. Such a row is NEVER completed automatically
+   * (see 0010 and the reconciler): a mismatch is either our bug or someone
+   * pointing a row at a transfer that isn't its own, and both need a human.
+   */
+  needs_manual_review: boolean;
+  manual_review_reason: string | null;
   decline_reason: string | null;
   created_at: string;
 };
@@ -143,10 +152,38 @@ export type WithdrawalRecipient = {
   created_at: string;
 };
 
+/**
+ * NOTE: pin_hash is deliberately absent from this type, and the table is no
+ * longer readable by `authenticated` at all (0012 dropped the select policy
+ * that exposed it and revoked the table grants). Whether a user has a PIN is
+ * answered by the has_transaction_pin() RPC.
+ */
 export type WithdrawalPin = {
   user_id: string;
+  failed_attempts: number;
+  locked_until: string | null;
   created_at: string;
   updated_at: string;
+};
+
+/** See the conversion_quotes table entry below for why this exists. */
+export type ConversionQuoteRow = {
+  id: string;
+  user_id: string;
+  source_currency: Currency;
+  target_currency: Currency;
+  source_amount: number;
+  target_amount: number;
+  provider_rate: number | null;
+  markup_rate: number | null;
+  customer_rate: number | null;
+  raw_target_amount: number | null;
+  /** Written by server code after the provider call returned. Never an
+   *  argument a caller supplies. */
+  provider_reference: string | null;
+  expires_at: string;
+  consumed_at: string | null;
+  created_at: string;
 };
 
 /**
@@ -323,27 +360,46 @@ export type Database = {
         Insert: Partial<UsdCollectionAccount> & { user_id: string; provider: string; reference_code: string };
         Update: Partial<UsdCollectionAccount>; Relationships: [];
       };
+      /**
+       * The server's own record of a price it quoted. RLS is on with NO
+       * policies and the table grants are revoked, so only the service-role
+       * client can touch it — which is the point: the figures a conversion
+       * settles at must come from a row the server wrote, never from a
+       * function argument. See supabase/migrations/0010.
+       */
+      conversion_quotes: {
+        Row: ConversionQuoteRow;
+        Insert: Partial<ConversionQuoteRow> & {
+          user_id: string;
+          source_currency: Currency;
+          target_currency: Currency;
+          source_amount: number;
+          target_amount: number;
+          expires_at: string;
+        };
+        Update: Partial<ConversionQuoteRow>; Relationships: [];
+      };
     };
     Functions: {
       credit_deposit: { Args: { p_deposit_id: string; p_actual_amount?: number | null }; Returns: undefined };
       fail_deposit: { Args: { p_deposit_id: string; p_reason?: string | null }; Returns: undefined };
 
-      create_conversion: {
-        Args: {
-          p_source_currency: Currency;
-          p_target_currency: Currency;
-          p_source_amount: number;
-          p_target_amount: number;
-          p_provider_reference: string | null;
-          p_provider_rate: number | null;
-          p_markup_rate: number | null;
-          p_customer_rate: number | null;
-          p_raw_target_amount: number | null;
-          p_pin: string;
-        };
+      /**
+       * Replaces create_conversion (dropped in 0010). Takes an id and a PIN —
+       * never an amount or a rate. Every figure on the resulting transaction
+       * row is read off the conversion_quotes row the server wrote with the
+       * service role. Server-only; see the migration for the attack this
+       * closes.
+       */
+      create_conversion_from_quote: {
+        Args: { p_user_id: string; p_quote_id: string; p_pin: string };
         Returns: string;
       };
       complete_conversion: { Args: { p_transaction_id: string }; Returns: undefined };
+      flag_transaction_for_review: {
+        Args: { p_transaction_id: string; p_reason: string };
+        Returns: undefined;
+      };
       fail_conversion: { Args: { p_transaction_id: string; p_reason?: string | null }; Returns: undefined };
 
       create_withdrawal_request: {
@@ -369,9 +425,18 @@ export type Database = {
         };
         Returns: undefined;
       };
-      request_recipient_change: { Args: { p_currency: Currency }; Returns: undefined };
-      confirm_recipient_change: {
+      /**
+       * Both recipient-change functions are server-only (0013). Their password
+       * re-check can only be done in TS, so they are reachable only from the
+       * server action that performs it — not from the session alongside it.
+       */
+      request_recipient_change_for_user: {
+        Args: { p_user_id: string; p_currency: Currency };
+        Returns: undefined;
+      };
+      confirm_recipient_change_for_user: {
         Args: {
+          p_user_id: string;
           p_currency: Currency;
           p_account_holder_name: string;
           p_bank_account_number: string | null;
@@ -380,15 +445,24 @@ export type Database = {
           p_bank_code: string | null;
           p_network: string | null;
         };
-        Returns: undefined;
+        Returns: RecipientChangeResultRow[];
       };
+      my_recipient_change_hold_active: { Args: { p_currency: Currency }; Returns: boolean };
       set_busha_recipient_id: {
         Args: { p_user_id: string; p_currency: Currency; p_recipient_id: string };
         Returns: undefined;
       };
 
       set_withdrawal_pin: { Args: { p_pin: string }; Returns: undefined };
-      change_withdrawal_pin: { Args: { p_pin: string }; Returns: undefined };
+      /** Server-only (0013): the password re-check happens in TS, so this is
+       *  reachable only from the action that does it. */
+      change_withdrawal_pin_for_user: { Args: { p_user_id: string; p_pin: string }; Returns: undefined };
+      /** Replaces the dropped "withdrawal_pins: read own" select policy, which
+       *  also exposed pin_hash. auth.uid()-scoped. */
+      has_transaction_pin: { Args: Record<string, never>; Returns: boolean };
+      /** Server-only. Increments the failed-PIN counter in its own transaction,
+       *  after the money function's raise has rolled its own back. */
+      record_pin_failure: { Args: { p_user_id: string }; Returns: PinFailureRow[] };
 
       admin_approve_kyc: { Args: { p_user_id: string }; Returns: undefined };
       admin_reject_kyc: { Args: { p_user_id: string; p_reason: string }; Returns: undefined };
@@ -406,8 +480,15 @@ export type Database = {
       };
       admin_set_setting: { Args: { p_key: string; p_value: string; p_set_by: string }; Returns: undefined };
 
-      create_bill_payment: {
+      /**
+       * Replaces create_bill_payment (dropped in 0010). Note the absence of
+       * p_fee: the fee is derived inside the function from app_settings, in the
+       * same transaction that debits, so there is no argument a caller could
+       * pass to influence it.
+       */
+      create_bill_payment_for_user: {
         Args: {
+          p_user_id: string;
           p_category: BillCategory;
           p_country: string;
           p_biller_code: string;
@@ -416,12 +497,13 @@ export type Database = {
           p_customer_name: string | null;
           p_amount: number;
           p_currency: Currency;
-          p_fee: number;
           p_provider: string;
           p_pin: string;
         };
         Returns: string;
       };
+      /** The same arithmetic the debit uses, for the review screen. */
+      quote_bill_fee: { Args: { p_amount: number }; Returns: number };
       complete_bill_payment: {
         Args: {
           p_bill_payment_id: string;
@@ -449,8 +531,16 @@ export type Database = {
         Returns: string;
       };
 
-      set_transaction_provider_reference: {
-        Args: { p_transaction_id: string; p_provider_reference: string };
+      /** Server-only (0011). The ONLY path to kyc_status = 'pending', and it
+       *  can reach no other value — approval stays in admin_approve_kyc. */
+      submit_kyc_profile: {
+        Args: {
+          p_user_id: string;
+          p_kyc_type: KycType;
+          p_full_name?: string | null;
+          p_phone?: string | null;
+          p_business_name?: string | null;
+        };
         Returns: undefined;
       };
     };
@@ -460,4 +550,20 @@ export type Database = {
 export type RollingWithdrawalTotalRow = {
   currency: Currency;
   total: number;
+};
+
+/** confirm_recipient_change_for_user's RETURNS TABLE row. Destinations are
+ *  already masked by the function — never a full account number. */
+export type RecipientChangeResultRow = {
+  previous_destination: string | null;
+  new_destination: string | null;
+  hold_until: string;
+};
+
+/** record_pin_failure's RETURNS TABLE row. Column names avoid colliding with
+ *  withdrawal_pins' own, which plpgsql would read as ambiguous. */
+export type PinFailureRow = {
+  attempts_used: number;
+  locked_until_at: string | null;
+  just_locked: boolean;
 };

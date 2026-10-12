@@ -31,10 +31,12 @@ export default async function BillCategoryPage(props: PageProps<"/bills/[categor
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: profile }, { data: wallets }, { data: pin }] = await Promise.all([
+  // See the note in /convert: withdrawal_pins is no longer readable by a user
+  // session, because reading it meant being able to read pin_hash.
+  const [{ data: profile }, { data: wallets }, { data: hasPin }] = await Promise.all([
     supabase.from("profiles").select("country").eq("id", user.id).maybeSingle(),
     supabase.from("wallets").select("*").eq("user_id", user.id),
-    supabase.from("withdrawal_pins").select("user_id").eq("user_id", user.id).maybeSingle(),
+    supabase.rpc("has_transaction_pin"),
   ]);
 
   // Bills are country-scoped: the same biller code means nothing across
@@ -79,7 +81,7 @@ export default async function BillCategoryPage(props: PageProps<"/bills/[categor
         category={billCategory}
         billers={billers}
         wallets={(wallets ?? []) as Wallet[]}
-        hasPin={pin != null}
+        hasPin={hasPin === true}
         available={isBillsAvailable()}
         initialBillerCode={initialBillerCode}
         initialIdentifier={first(search.identifier)}

@@ -3,12 +3,16 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Currency } from "@/lib/types/database";
 import { attemptAutomatedPayout } from "@/lib/withdrawals/automated-payout";
 import { evaluateWithdrawalRouting, usdEquivalent } from "@/lib/withdrawals/threshold";
 import { getBanks } from "@/lib/busha/client";
 import { MINIMUM_WITHDRAWAL_USDT_THRESHOLD } from "@/lib/busha/limits";
 import { toCustomerError } from "@/lib/provider-error";
+import { isPinLockedError, isWrongPinError, resolvePinError } from "@/lib/pin";
+import { RECIPIENT_CHANGE_HOLD_HOURS, pinFormatError } from "@/lib/withdrawals/rules";
+import { sendRecipientChangedEmail } from "@/lib/email";
 
 export interface WithdrawalActionState {
   error?: string;
@@ -144,7 +148,15 @@ export async function requestRecipientChange(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { error } = await supabase.rpc("request_recipient_change", { p_currency: currency });
+  // Through the service role. The function used to be granted to
+  // `authenticated`, which meant a stolen session could open the change window
+  // itself and then confirm into it — the password check in this file was
+  // beside the door rather than in front of it.
+  const admin = createAdminClient();
+  const { error } = await admin.rpc("request_recipient_change_for_user", {
+    p_user_id: user.id,
+    p_currency: currency,
+  });
   if (error) return { error: error.message };
   return { requested: true };
 }
@@ -179,7 +191,11 @@ export async function confirmRecipientChange(
   });
   if (authError) return { error: "Incorrect password." };
 
-  const { error } = await supabase.rpc("confirm_recipient_change", {
+  // Password verified above, so this call is now the ONLY way the function can
+  // be reached — it is revoked from `authenticated`.
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("confirm_recipient_change_for_user", {
+    p_user_id: user.id,
     p_currency: currency,
     p_account_holder_name: parsed.accountHolderName,
     p_bank_account_number: parsed.bankAccountNumber,
@@ -190,6 +206,23 @@ export async function confirmRecipientChange(
   });
 
   if (error) return { error: error.message };
+
+  // Tell the account holder, every time, out of band. A password re-check stops
+  // a stolen session; it does not stop a stolen password, and this email plus
+  // the 24-hour hold below is what gives the real owner a chance to notice and
+  // us a chance to stop the payout.
+  //
+  // Deliberately not fatal: the recipient HAS changed by this point, and
+  // reporting failure would be a lie that also hides the change from the user.
+  const result = Array.isArray(data) ? data[0] : data;
+  await sendRecipientChangedEmail({
+    to: user.email,
+    currency,
+    previousDestination: result?.previous_destination ?? null,
+    newDestination: result?.new_destination ?? null,
+    holdHours: RECIPIENT_CHANGE_HOLD_HOURS,
+  });
+
   revalidatePath("/profile");
   revalidatePath("/withdraw");
   return { ok: true };
@@ -208,9 +241,13 @@ export async function setTransactionPin(
   const pin = String(formData.get("pin") ?? "").trim();
   const confirmPin = String(formData.get("confirmPin") ?? "").trim();
 
-  if (!/^\d{4,6}$/.test(pin)) return { error: "PIN must be 4 to 6 digits." };
+  const formatError = pinFormatError(pin);
+  if (formatError) return { error: formatError };
   if (pin !== confirmPin) return { error: "The two PINs don't match." };
 
+  // Still called from the session: set_withdrawal_pin refuses outright if a PIN
+  // already exists, so the worst it can do is set the first PIN on an account
+  // that has none — the owner's own first run, which moves no money.
   const { error } = await supabase.rpc("set_withdrawal_pin", { p_pin: pin });
   if (error) return { error: error.message };
   revalidatePath("/profile");
@@ -233,7 +270,8 @@ export async function changeTransactionPin(
 
   const pin = String(formData.get("pin") ?? "").trim();
   const confirmPin = String(formData.get("confirmPin") ?? "").trim();
-  if (!/^\d{4,6}$/.test(pin)) return { error: "PIN must be 4 to 6 digits." };
+  const formatError = pinFormatError(pin);
+  if (formatError) return { error: formatError };
   if (pin !== confirmPin) return { error: "The two PINs don't match." };
 
   const { error: authError } = await supabase.auth.signInWithPassword({
@@ -242,7 +280,14 @@ export async function changeTransactionPin(
   });
   if (authError) return { error: "Incorrect password." };
 
-  const { error } = await supabase.rpc("change_withdrawal_pin", { p_pin: pin });
+  // Service role, user id from the verified session. Revoked from
+  // `authenticated`: a stolen session could otherwise replace the PIN that
+  // authorises every money-out action, with no password at all.
+  const admin = createAdminClient();
+  const { error } = await admin.rpc("change_withdrawal_pin_for_user", {
+    p_user_id: user.id,
+    p_pin: pin,
+  });
   if (error) return { error: error.message };
   revalidatePath("/profile");
   return { ok: true };
@@ -321,13 +366,24 @@ export async function requestWithdrawal(
     };
   }
 
+  // Still session-called: this function takes no figure that affects the credit
+  // side. p_amount is the DEBIT, bounded by the user's own locked balance, and
+  // the fee and net amount are both derived inside the function from
+  // app_settings. See the Phase 1 grant audit in the commit message.
   const { data: transactionId, error } = await supabase.rpc("create_withdrawal_request", {
     p_currency: currency,
     p_amount: amount,
     p_pin: pin,
   });
 
-  if (error) return { error: error.message };
+  if (error) {
+    if (isWrongPinError(error) || isPinLockedError(error)) {
+      return {
+        error: await resolvePinError({ userId: user.id, email: user.email, error }),
+      };
+    }
+    return { error: error.message };
+  }
 
   let automated = false;
   if (transactionId) {

@@ -29,7 +29,7 @@ export default async function ProfilePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: profile }, { data: wallets }, { data: recipients }, { data: pin }] =
+  const [{ data: profile }, { data: wallets }, { data: recipients }, { data: hasPin }] =
     await Promise.all([
       supabase
         .from("profiles")
@@ -38,7 +38,10 @@ export default async function ProfilePage() {
         .maybeSingle(),
       supabase.from("wallets").select("*").eq("user_id", user.id),
       supabase.from("withdrawal_recipients").select("*").eq("user_id", user.id),
-      supabase.from("withdrawal_pins").select("user_id").eq("user_id", user.id).maybeSingle(),
+      // has_transaction_pin() rather than selecting from withdrawal_pins: the
+      // select policy that allowed that also allowed selecting pin_hash, so it
+      // was dropped in 0012. This asks the only question the card needs.
+      supabase.rpc("has_transaction_pin"),
     ]);
 
   // The bank list comes from the provider, which expects its OWN codes rather
@@ -125,7 +128,7 @@ export default async function ProfilePage() {
           </Banner>
         )}
 
-        <TransactionPinCard hasPin={pin != null} />
+        <TransactionPinCard hasPin={hasPin === true} />
 
         {payoutCurrencies.length > 0 && (
           <RecipientCard

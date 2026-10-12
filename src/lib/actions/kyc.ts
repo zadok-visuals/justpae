@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { kycIdFieldFor, kycIdPattern } from "@/lib/countries";
 
 export interface KycActionState {
@@ -113,25 +114,33 @@ export async function submitIndividualKyc(
     // rejected original and the correction with no indication which is which.
     // Status is reset to pending on every row touched, because resubmitting
     // always means "look at this again".
+    // `status` is deliberately NOT in this payload. The column is revoked from
+    // `authenticated` (0011) and a trigger forces it to 'pending' on any write
+    // from a user session — because the old payload setting it explicitly was
+    // the same door a user could walk through with status: 'approved'. The
+    // forced value is the one this flow wanted anyway.
     const { error: docsError } = await supabase.from("kyc_documents").upsert(
-      documents.map((doc) => ({ ...doc, user_id: user.id, status: "pending" as const })),
+      documents.map((doc) => ({ ...doc, user_id: user.id })),
       { onConflict: "user_id,document_type" },
     );
     if (docsError) throw docsError;
 
+    // Through the service role, with the user id from the verified session.
+    // kyc_status, kyc_type and kyc_rejection_reason are no longer writable from
+    // a user session at all — the policy that allowed it also allowed
+    // kyc_status = 'approved', which is the gate every withdrawal is checked
+    // against. submit_kyc_profile can only ever reach 'pending'.
+    //
     // full_name matters beyond display: set_withdrawal_recipient checks the
     // payout account holder name against it, which is what blocks paying out
     // to a third party. It has to be the name on the ID.
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({
-        full_name: fullName,
-        phone,
-        kyc_type: "individual",
-        kyc_status: "pending",
-        kyc_rejection_reason: null,
-      })
-      .eq("id", user.id);
+    const admin = createAdminClient();
+    const { error: profileError } = await admin.rpc("submit_kyc_profile", {
+      p_user_id: user.id,
+      p_kyc_type: "individual",
+      p_full_name: fullName,
+      p_phone: phone,
+    });
     if (profileError) throw profileError;
   } catch (err) {
     console.error("[kyc.submitIndividualKyc] failed", err);
@@ -209,21 +218,20 @@ export async function submitBusinessKyc(
       });
     }
 
+    // See submitIndividualKyc: no `status` in the payload, and the profile
+    // write goes through the service role.
     const { error: docsError } = await supabase.from("kyc_documents").upsert(
-      documents.map((doc) => ({ ...doc, user_id: user.id, status: "pending" as const })),
+      documents.map((doc) => ({ ...doc, user_id: user.id })),
       { onConflict: "user_id,document_type" },
     );
     if (docsError) throw docsError;
 
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({
-        business_name: businessName,
-        kyc_type: "business",
-        kyc_status: "pending",
-        kyc_rejection_reason: null,
-      })
-      .eq("id", user.id);
+    const admin = createAdminClient();
+    const { error: profileError } = await admin.rpc("submit_kyc_profile", {
+      p_user_id: user.id,
+      p_kyc_type: "business",
+      p_business_name: businessName,
+    });
     if (profileError) throw profileError;
   } catch (err) {
     console.error("[kyc.submitBusinessKyc] failed", err);

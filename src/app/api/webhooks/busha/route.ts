@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getTransfer } from "@/lib/busha/client";
+import { verifyTransferMatchesRow } from "@/lib/transfers/verify";
 
 /**
  * Provider webhook receiver.
@@ -131,7 +132,7 @@ async function handleDeposit(
 ) {
   const { data: deposit } = await admin
     .from("deposits")
-    .select("id, status")
+    .select("id, status, currency")
     .eq("provider", "busha")
     .eq("provider_reference", providerReference)
     .maybeSingle();
@@ -150,6 +151,23 @@ async function handleDeposit(
   let actualAmount: number | null = null;
   try {
     const transfer = await getTransfer(providerReference);
+
+    // A deposit's AMOUNT legitimately differs from the request — a 10 USDT
+    // request can land as 12, and crediting the requested figure would
+    // short-change the user. So only the currency is checked here, not the
+    // amount: crediting a USDT arrival into an NGN wallet is never a
+    // self-correction, it is a mismatch.
+    const arrivedCurrency = transfer.target_currency?.trim().toUpperCase();
+    if (arrivedCurrency && arrivedCurrency !== deposit.currency) {
+      console.error("[busha webhook] deposit currency mismatch, taking no action", {
+        eventId,
+        depositId: deposit.id,
+        rowCurrency: deposit.currency,
+        transferCurrency: arrivedCurrency,
+      });
+      return;
+    }
+
     transferStatus = transfer.status;
     actualAmount = Number(transfer.target_amount);
   } catch (err) {
@@ -206,7 +224,11 @@ async function handleTransfer(
 
   const { data: transaction } = await admin
     .from("transactions")
-    .select("id, type, status")
+    // Amounts and currencies, because the provider's status alone is no longer
+    // enough to complete a row — see src/lib/transfers/verify.ts.
+    .select(
+      "id, type, status, needs_manual_review, amount, currency, target_currency, target_amount, raw_target_amount",
+    )
     .eq("provider", "busha")
     .eq("provider_reference", providerReference)
     .maybeSingle();
@@ -220,11 +242,32 @@ async function handleTransfer(
     return;
   }
   if (transaction.status !== "pending" && transaction.status !== "processing") return;
+  // Already waiting for a human. A webhook retry must not re-litigate it.
+  if (transaction.needs_manual_review) return;
 
   const isWithdrawal = transaction.type === "withdrawal";
 
   try {
     const transfer = await getTransfer(providerReference);
+
+    // Re-fetching the transfer proves it is real and finished. This proves it
+    // is THIS row's transfer. Both are needed: a forged payload can name a
+    // reference, and a row can have been created pointing at a reference that
+    // was never its own.
+    const match = verifyTransferMatchesRow(transaction, transfer);
+    if (!match.matches) {
+      console.error("[busha webhook] provider transfer does not match row", {
+        eventId,
+        transactionId: transaction.id,
+        providerReference,
+        reason: match.reason,
+      });
+      await admin.rpc("flag_transaction_for_review", {
+        p_transaction_id: transaction.id,
+        p_reason: match.reason ?? "Provider transfer does not match this row",
+      });
+      return;
+    }
 
     if (transfer.status === "funds_converted" || transfer.status === "funds_delivered") {
       const { error } = isWithdrawal

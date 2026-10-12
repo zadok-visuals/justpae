@@ -35,10 +35,21 @@ export interface EmailOptions {
   /** The highlighted block for a verification code — raw HTML, sized and
    *  spaced by the caller since only the caller knows what's actually in it. */
   panelHtml?: string;
-  button: EmailButton;
+  /**
+   * Optional, because not every email has somewhere to send you. The auth
+   * templates do ("Verify your email"); a notification that a payout recipient
+   * changed, or that a PIN locked, is a statement of fact — giving it a button
+   * means inventing a destination, and an email whose only action is "log in"
+   * trains people to click links in emails about their money, which is exactly
+   * the habit a fintech should not be building.
+   *
+   * When omitted, the button row AND the plain-text fallback-link row are both
+   * dropped — the fallback only exists to rescue a button that didn't render.
+   */
+  button?: EmailButton;
   /** The plain-text fallback link's own intro line, e.g. "If the button
    *  doesn't work, copy this address into your browser:". href reused from
-   *  `button`. */
+   *  `button`. Ignored when there is no button. */
   fallbackIntro?: string;
   /** Paragraphs after the button/fallback block, before the footer — e.g.
    *  "If you didn't request this, you can ignore this email." */
@@ -208,23 +219,35 @@ export function renderEmail(options: EmailOptions): string {
               </tr>`
                   : ""
               }
-              <tr>
+              ${
+                button
+                  ? `<tr>
                 <td align="center" style="padding:28px 28px 0 28px;">
                   ${bulletproofButton(button)}
                 </td>
-              </tr>
-              <tr>
+              </tr>`
+                  : ""
+              }
+              ${
+                button || closingParagraphs.length
+                  ? `<tr>
                 <td style="padding:20px 28px 0 28px;">
-                  <p class="email-muted" style="margin:0;font-family:${FONT};font-size:13px;line-height:1.5;color:${LIGHT.muted};">${fallbackIntro}</p>
-                  <p class="email-muted" style="margin:8px 0 0 0;font-family:${MONO};font-size:12px;line-height:1.5;color:${LIGHT.muted};word-break:break-all;">${button.href}</p>
+                  ${
+                    button
+                      ? `<p class="email-muted" style="margin:0;font-family:${FONT};font-size:13px;line-height:1.5;color:${LIGHT.muted};">${fallbackIntro}</p>
+                  <p class="email-muted" style="margin:8px 0 0 0;font-family:${MONO};font-size:12px;line-height:1.5;color:${LIGHT.muted};word-break:break-all;">${button.href}</p>`
+                      : ""
+                  }
                   ${closingParagraphs
                     .map(
                       (p) =>
-                        `<p class="email-muted" style="margin:18px 0 0 0;font-family:${FONT};font-size:13px;line-height:1.5;color:${LIGHT.muted};">${p}</p>`,
+                        `<p class="email-muted" style="margin:${button ? 18 : 0}px 0 0 0;font-family:${FONT};font-size:13px;line-height:1.5;color:${LIGHT.muted};">${p}</p>`,
                     )
                     .join("\n")}
                 </td>
-              </tr>
+              </tr>`
+                  : ""
+              }
               <tr>
                 <td style="padding:28px 28px 28px 28px;">
                   <p class="email-footer-text" style="margin:0;font-family:${FONT};font-size:12px;line-height:1.5;color:${LIGHT.footerText};">

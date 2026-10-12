@@ -11,6 +11,7 @@ import { applyMarkupToAmount } from "@/lib/rates/markup";
 import { MINIMUM_USDT_EQUIVALENT } from "@/lib/busha/limits";
 import { toCustomerError } from "@/lib/provider-error";
 import { CURRENCY_CODES } from "@/lib/currencies";
+import { isPinLockedError, isWrongPinError, resolvePinError } from "@/lib/pin";
 
 /**
  * /convert's server side.
@@ -26,6 +27,13 @@ import { CURRENCY_CODES } from "@/lib/currencies";
  *     provider — rejecting post-hoc using its own response figures would be
  *     too late to stop a sub-minimum conversion, only early enough to strand
  *     it.
+ *
+ *  3. And — since this file alone enforcing rule 1 was the whole problem — the
+ *     figures are now written to a conversion_quotes row with the service role
+ *     and the settlement function is given nothing but that row's id. Rule 1
+ *     used to be a promise this file made on behalf of a function that
+ *     `authenticated` could call directly, bypassing it. It is now a property
+ *     of the schema. See supabase/migrations/0010 for the attack that was open.
  */
 
 /**
@@ -202,27 +210,77 @@ export async function executeConversion(
   const rawTargetAmount = Number(transfer.target_amount);
   const customerTargetAmount = applyMarkupToAmount(rawTargetAmount, route.markupRate);
 
-  const { data: transactionId, error: rpcError } = await supabase.rpc("create_conversion", {
-    p_source_currency: transfer.source_currency.toUpperCase() as Currency,
-    p_target_currency: transfer.target_currency.toUpperCase() as Currency,
-    p_source_amount: round2(sourceAmount),
-    p_target_amount: round2(customerTargetAmount),
-    p_provider_reference: transfer.id,
-    p_provider_rate: route.providerRate,
-    p_markup_rate: route.markupRate,
-    p_customer_rate: route.customerRate,
-    p_raw_target_amount: round2(rawTargetAmount),
-    p_pin: pin,
-  });
+  // THE QUOTE ROW IS THE CONTRACT. Every figure that will end up on the ledger
+  // row is written here, with the service role, by this server code — the
+  // amounts the provider itself just reported, the rate trail resolved
+  // server-side, and the provider reference of the transfer that was actually
+  // created. create_conversion_from_quote then takes nothing but this row's id
+  // and a PIN.
+  //
+  // This is what replaces passing eleven figures into an RPC that `authenticated`
+  // could call directly. Previously a user could name their own target amount
+  // and attach the reference of one of their own earlier completed transfers;
+  // now there is no argument through which a figure can arrive.
+  const admin = createAdminClient();
+
+  const { data: quoteRow, error: quoteError } = await admin
+    .from("conversion_quotes")
+    .insert({
+      user_id: user.id,
+      source_currency: transfer.source_currency.toUpperCase() as Currency,
+      target_currency: transfer.target_currency.toUpperCase() as Currency,
+      source_amount: round2(sourceAmount),
+      target_amount: round2(customerTargetAmount),
+      provider_rate: route.providerRate,
+      markup_rate: route.markupRate,
+      customer_rate: route.customerRate,
+      raw_target_amount: round2(rawTargetAmount),
+      provider_reference: transfer.id,
+      expires_at: new Date(Date.now() + QUOTE_TTL_SECONDS * 1000).toISOString(),
+    })
+    .select("id")
+    .single();
+
+  if (quoteError || !quoteRow) {
+    console.error("[convert.executeConversion] transfer executed but quote write failed", {
+      userId: user.id,
+      transferId: transfer.id,
+      error: quoteError,
+    });
+    return { error: "Could not complete that conversion. Please contact support." };
+  }
+
+  const { data: transactionId, error: rpcError } = await admin.rpc(
+    "create_conversion_from_quote",
+    {
+      // From the verified session, server-side — not from the form, and not
+      // from auth.uid(), which is null on the service-role client.
+      p_user_id: user.id,
+      p_quote_id: quoteRow.id,
+      p_pin: pin,
+    },
+  );
 
   if (rpcError) {
     // The provider transfer already happened but the ledger write did not —
-    // the user's balance is untouched (create_conversion is what debits) while
-    // the provider has moved funds inside our own account. That needs a human,
-    // and it must be loud in the logs rather than a generic toast.
+    // the user's balance is untouched (the RPC is what debits) while the
+    // provider has moved funds inside our own account. That needs a human, and
+    // it must be loud in the logs rather than a generic toast.
+    //
+    // A wrong PIN is the common case here and is NOT an operational problem, so
+    // it is handled first: resolvePinError counts the attempt (which has to
+    // happen in a fresh transaction — see src/lib/pin.ts) and locks the PIN
+    // after five.
+    if (isWrongPinError(rpcError) || isPinLockedError(rpcError)) {
+      return {
+        error: await resolvePinError({ userId: user.id, email: user.email, error: rpcError }),
+      };
+    }
+
     console.error("[convert.executeConversion] transfer executed but ledger write failed", {
       userId: user.id,
       transferId: transfer.id,
+      quoteId: quoteRow.id,
       error: rpcError,
     });
     return { error: rpcError.message };
@@ -237,7 +295,6 @@ export async function executeConversion(
     transactionId &&
     (transfer.status === "funds_converted" || transfer.status === "funds_delivered")
   ) {
-    const admin = createAdminClient();
     await admin.rpc("complete_conversion", { p_transaction_id: transactionId });
   }
 

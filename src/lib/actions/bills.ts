@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { BillCategory, Currency } from "@/lib/types/database";
 import { billersFor, findBiller, resolveProvider } from "@/lib/providers/bills";
 import { toCustomerError } from "@/lib/provider-error";
+import { isPinLockedError, isWrongPinError, resolvePinError } from "@/lib/pin";
 
 /**
  * Bill payments.
@@ -124,24 +125,39 @@ export async function payBill(
     };
   }
 
-  const { data: billPaymentId, error: rpcError } = await supabase.rpc("create_bill_payment", {
-    p_category: biller.category,
-    p_country: biller.country,
-    p_biller_code: biller.code,
-    p_biller_name: biller.name,
-    p_customer_identifier: customerIdentifier,
-    p_customer_name: customerName,
-    p_amount: amount,
-    p_currency: currency,
-    p_fee: 0,
-    p_provider: provider.name,
-    p_pin: pin,
-  });
-
-  if (rpcError) return { error: rpcError.message };
-  if (!billPaymentId) return { error: "Could not start that payment. Please try again." };
-
   const admin = createAdminClient();
+
+  // Called through the service role with the user id from the verified session,
+  // and WITHOUT a fee argument — create_bill_payment_for_user derives the fee
+  // from app_settings inside the same transaction that debits. The function it
+  // replaces took p_fee from the caller and was granted to `authenticated`,
+  // which made the fee whatever the caller said it was.
+  const { data: billPaymentId, error: rpcError } = await admin.rpc(
+    "create_bill_payment_for_user",
+    {
+      p_user_id: user.id,
+      p_category: biller.category,
+      p_country: biller.country,
+      p_biller_code: biller.code,
+      p_biller_name: biller.name,
+      p_customer_identifier: customerIdentifier,
+      p_customer_name: customerName,
+      p_amount: amount,
+      p_currency: currency,
+      p_provider: provider.name,
+      p_pin: pin,
+    },
+  );
+
+  if (rpcError) {
+    if (isWrongPinError(rpcError) || isPinLockedError(rpcError)) {
+      return {
+        error: await resolvePinError({ userId: user.id, email: user.email, error: rpcError }),
+      };
+    }
+    return { error: rpcError.message };
+  }
+  if (!billPaymentId) return { error: "Could not start that payment. Please try again." };
 
   try {
     const result = await provider.pay({
