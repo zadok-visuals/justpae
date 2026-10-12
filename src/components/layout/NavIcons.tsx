@@ -137,6 +137,25 @@ export function SupportIcon(props: IconProps) {
   );
 }
 
+/** The support composer's attach control. */
+export function PaperclipIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M20.4 11.6l-7.9 7.9a5 5 0 0 1-7.1-7.1l8.5-8.5a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-2.8-2.8l7.8-7.8" />
+    </Icon>
+  );
+}
+
+/** The support composer's submit control. */
+export function SendIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4.5 12L20 4l-5 16-4.2-6.3L4.5 12Z" />
+      <path d="M10.8 13.7L20 4" />
+    </Icon>
+  );
+}
+
 export function LogOutIcon(props: IconProps) {
   return (
     <Icon {...props}>

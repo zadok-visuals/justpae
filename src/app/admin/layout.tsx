@@ -7,6 +7,8 @@ const TABS = [
   { href: "/admin/withdrawals", label: "Withdrawals" },
   { href: "/admin/rates", label: "Rates" },
   { href: "/admin/pnl", label: "Margin" },
+  { href: "/admin/support", label: "Support" },
+  { href: "/admin/notifications", label: "Notifications" },
 ];
 
 /**

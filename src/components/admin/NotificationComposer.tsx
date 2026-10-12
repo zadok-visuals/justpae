@@ -1,0 +1,117 @@
+"use client";
+
+import { useActionState, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { SubmitButton } from "@/components/ui/Button";
+import { FieldError, TextField, TextAreaField } from "@/components/ui/Field";
+import { sendNotification } from "@/lib/actions/notifications";
+
+/**
+ * Admin notification compose.
+ *
+ * TARGETED BY EMAIL, NOT BY ID. The action resolves the email to a user id
+ * server-side and refuses an address with no account. An admin hand-typing a
+ * uuid is a transcription error waiting to happen, and the failure mode is
+ * sending one customer's account notice to a different customer.
+ *
+ * THE BROADCAST IS THE DEFAULT, and it says how many people it reached
+ * afterwards — not before. A "this will go to N users" preview invites an
+ * admin to treat N as the thing being confirmed, when the thing worth
+ * confirming is the wording.
+ */
+export function NotificationComposer() {
+  const [state, formAction] = useActionState(sendNotification, {});
+  const [audience, setAudience] = useState<"broadcast" | "user">("broadcast");
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (state.error) toast.error(state.error);
+    if (state.ok) {
+      toast.success(
+        state.recipients === 1
+          ? "Notification sent."
+          : `Notification sent to ${state.recipients ?? 0} ${
+              state.recipients === 1 ? "person" : "people"
+            }.`,
+      );
+      formRef.current?.reset();
+      setAudience("broadcast");
+    }
+  }, [state]);
+
+  return (
+    <form ref={formRef} action={formAction} className="space-y-4">
+      <fieldset>
+        <legend className="mb-1.5 text-sm font-medium text-foreground">Who gets this</legend>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {(
+            [
+              { value: "broadcast", label: "Everyone" },
+              { value: "user", label: "One person" },
+            ] as const
+          ).map((option) => (
+            <label
+              key={option.value}
+              className={`flex min-h-11 flex-1 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm font-medium ${
+                audience === option.value
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-border bg-secondary text-muted-foreground"
+              }`}
+            >
+              <input
+                type="radio"
+                name="audience"
+                value={option.value}
+                checked={audience === option.value}
+                onChange={() => setAudience(option.value)}
+                className="accent-primary"
+              />
+              {option.label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      {audience === "user" && (
+        <TextField
+          name="targetEmail"
+          label="Their email"
+          type="email"
+          required
+          autoComplete="off"
+          placeholder="customer@example.com"
+        />
+      )}
+
+      <TextField
+        name="title"
+        label="Title"
+        required
+        maxLength={120}
+        placeholder="e.g. Scheduled maintenance on Sunday"
+      />
+
+      <TextAreaField
+        name="body"
+        label="Message"
+        required
+        maxLength={600}
+        placeholder="Keep it short — this is read in a dropdown, not an inbox."
+      />
+
+      <TextField
+        name="href"
+        label="Link (optional)"
+        hint="A path inside the app"
+        // Mirrors both the action's regex and the table's own check
+        // constraint. An in-app notification that can point at an external URL
+        // is a phishing primitive, so it is refused in all three places.
+        pattern="^/[A-Za-z0-9/_?=&.\-]*$"
+        placeholder="/transactions"
+      />
+
+      <SubmitButton pendingLabel="Sending…">Send notification</SubmitButton>
+      <FieldError>{state.error}</FieldError>
+    </form>
+  );
+}
