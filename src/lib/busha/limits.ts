@@ -124,3 +124,36 @@ export function fiatMinimumDeposit(currency: string): number | undefined {
  * client bundle.
  */
 export const MINIMUM_WITHDRAWAL_USDT_THRESHOLD = 5;
+
+/**
+ * The withdrawal minimum expressed in the currency the user is actually
+ * holding.
+ *
+ * The screen used to say "the minimum withdrawal is about 5 USD in NGN", which
+ * fails twice over: nobody about to withdraw naira thinks in dollars, and
+ * "about" means they cannot tell whether their amount clears it. The server
+ * compares amount × rate against the 5 USD floor, so the honest thing to show
+ * is that same floor converted back.
+ *
+ * `usdPerUnit` is USD per 1 unit of the currency — the same figure
+ * usdEquivalent multiplies by. Omit it only when no live rate is available, in
+ * which case null means "say nothing" rather than quote a number we'd have had
+ * to invent.
+ *
+ * Rounds UP to the currency's step, exactly as getMinimumConversionAmount
+ * does, so the figure shown is never one the server would then reject.
+ */
+export function getMinimumWithdrawalAmount(
+  currency: string,
+  usdPerUnit?: number | null,
+): number | null {
+  if (currency === "USD" || currency === "USDT") return MINIMUM_WITHDRAWAL_USDT_THRESHOLD;
+  if (!usdPerUnit || usdPerUnit <= 0) return null;
+
+  const exactRequired = MINIMUM_WITHDRAWAL_USDT_THRESHOLD / usdPerUnit;
+  const step =
+    currency === "NGN" || currency === "GHS" || currency === "KES"
+      ? MINIMUM_ROUNDING_STEP[currency]
+      : 1;
+  return Math.ceil(exactRequired / step) * step;
+}

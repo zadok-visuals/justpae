@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Currency, TransactionStatus } from "@/lib/types/database";
 import { isMostRecentForCurrency, type ActivitySource } from "@/lib/transactions";
+import { toRpcError } from "@/lib/provider-error";
 
 /**
  * Full detail for one activity row.
@@ -100,7 +101,7 @@ async function depositDetail(
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (error) return { error: error.message };
+  if (error) return { error: toRpcError(error, "activity") };
   if (!data) return { error: "Deposit not found." };
 
   const { balanceAfter, isMostRecent } = await resolveBalanceInfo(
@@ -154,7 +155,7 @@ async function billDetail(
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (error) return { error: error.message };
+  if (error) return { error: toRpcError(error, "activity") };
   if (!data) return { error: "Payment not found." };
 
   const { balanceAfter, isMostRecent } = await resolveBalanceInfo(
@@ -207,7 +208,7 @@ async function transactionDetail(
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (error) return { error: error.message };
+  if (error) return { error: toRpcError(error, "activity") };
   if (!tx) return { error: "Transaction not found." };
 
   let description: string | null = null;

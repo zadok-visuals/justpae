@@ -9,7 +9,7 @@ import * as busha from "@/lib/busha/client";
 import { resolveRoute, resolveRoutesFrom, type ConversionRoute } from "@/lib/rates/routes";
 import { applyMarkupToAmount } from "@/lib/rates/markup";
 import { getMinimumConversionAmount } from "@/lib/busha/limits";
-import { toCustomerError } from "@/lib/provider-error";
+import { toCustomerError, toRpcError } from "@/lib/provider-error";
 import { CURRENCY_CODES, formatAmount } from "@/lib/currencies";
 import { isPinLockedError, isWrongPinError, resolvePinError } from "@/lib/pin";
 import { notifyConversionCompleted } from "@/lib/notify/events";
@@ -349,7 +349,7 @@ export async function checkConversionStatus(
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (error) return { error: error.message };
+  if (error) return { error: toRpcError(error, "convert") };
   if (!data) return { error: "Transaction not found." };
 
   const settleable =

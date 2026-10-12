@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdminUser, logAdminActivity } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AdminRole, KycStatus } from "@/lib/types/database";
+import { toRpcError } from "@/lib/provider-error";
 
 /**
  * Phase 4: the people-shaped admin actions — suspension, reinstatement, and
@@ -180,7 +181,7 @@ export async function suspendUser(
 
   // The function raises for a missing account and for an account that still
   // holds admin access. Both messages are written to be shown.
-  if (error) return { error: error.message };
+  if (error) return { error: toRpcError(error, "adminUsers") };
 
   // admin_suspend_user logs from inside itself — this is the in-app notice,
   // which is a separate thing. The user is told, with the reason: an account
@@ -212,7 +213,7 @@ export async function reinstateUser(
     p_by: actor.id,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: toRpcError(error, "adminUsers") };
 
   await service.rpc("admin_send_notification", {
     p_user_id: userId,
@@ -264,7 +265,7 @@ export async function grantAdminRole(
     p_granted_by: actor.id,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: toRpcError(error, "adminUsers") };
 
   // The grant is logged inside admin_grant_role. This tells the person, which
   // matters more than it looks: if they did not expect it, they are the first
@@ -300,7 +301,7 @@ export async function revokeAdminRole(
     p_revoked_by: actor.id,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: toRpcError(error, "adminUsers") };
 
   revalidatePath("/admin/users");
   return { ok: true };

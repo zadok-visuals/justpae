@@ -92,13 +92,16 @@ function WithdrawFormFields({
   const [amountText, setAmountText] = useState("");
   const [pin, setPin] = useState("");
 
-  const [routing, setRouting] = useState<{
-    automated: boolean;
-    reason: string | null;
-    thresholdUsd: number;
-    windowHours: number;
-  } | null>(null);
+  const [routing, setRouting] = useState<Awaited<
+    ReturnType<typeof previewWithdrawalRouting>
+  > | null>(null);
   const [, startPreview] = useTransition();
+
+  // The confirmation step. Nothing leaves the account until this is answered —
+  // before it existed, a withdrawal committed on a single tap with the fee
+  // nowhere on screen.
+  const confirm = useConfirm<null>();
+  const formRef = useRef<HTMLFormElement>(null);
 
   const wallet = wallets.find((w) => w.currency === currency);
   const balance = wallet?.balance ?? 0;
