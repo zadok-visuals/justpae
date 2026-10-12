@@ -4,7 +4,12 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { kycIdFieldFor, kycIdPattern } from "@/lib/countries";
+import {
+  kycIdFieldFor,
+  kycIdPattern,
+  isGovernmentIdType,
+  usesBvnOrNin,
+} from "@/lib/countries";
 import { verifyOwnedUpload } from "@/lib/storage/verifyUpload";
 import { adminNotificationRecipients, sendKycSubmittedEmail } from "@/lib/email";
 
@@ -12,7 +17,93 @@ export interface KycActionState {
   error?: string;
 }
 
+export interface OnboardingBasicsState {
+  error?: string;
+}
+
 const KYC_BUCKET = "kyc-documents";
+
+const ACCOUNT_TYPES = new Set(["individual", "business"]);
+
+/**
+ * STAGE ONE — account type and phone number, and nothing else.
+ *
+ * Reached right after email confirmation, from /onboarding/kyc. It exists so a
+ * new user can answer two quick questions and get to their dashboard, instead
+ * of being met by a document upload before they have seen a balance.
+ *
+ * It deliberately does NOT touch kyc_status: nothing has been submitted, so
+ * reporting "in review" would both lie to the user and put an empty row in the
+ * admin queue. kyc_rejection_reason is left alone for the same reason — a
+ * rejected user redoing this step needs to keep reading what went wrong.
+ *
+ * kyc_type is not writable from a user session (migration 0011 revoked it, and
+ * a trigger raises on any end-user write), so this goes through the service
+ * role with the user id from the verified session — the same shape
+ * submitIndividualKyc uses. See migration 0020 for why it is not
+ * submit_kyc_profile.
+ */
+export async function saveOnboardingBasics(
+  _prevState: OnboardingBasicsState,
+  formData: FormData,
+): Promise<OnboardingBasicsState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const accountType = String(formData.get("accountType") ?? "");
+  const phone = String(formData.get("phone") ?? "").trim();
+
+  if (!ACCOUNT_TYPES.has(accountType)) {
+    return { error: "Choose whether this is a personal or a business account." };
+  }
+  if (!phone) return { error: "Enter your phone number." };
+  // Loose on purpose: numbers here span three dial codes and several local
+  // formats, and a strict pattern rejects a valid number far more often than
+  // it catches a typo. A reviewer reads this field; it is not dialled.
+  if (!/^[+\d][\d\s()-]{5,19}$/.test(phone)) {
+    return { error: "That doesn't look like a phone number. Include your country code." };
+  }
+
+  const kycType = accountType as "individual" | "business";
+
+  try {
+    const admin = createAdminClient();
+    const { error } = await admin.rpc("save_onboarding_basics", {
+      p_user_id: user.id,
+      p_kyc_type: kycType,
+      p_phone: phone,
+    });
+    if (error) throw error;
+
+    // Written so a reviewer opening this user's documents already sees a phone
+    // number beside the rest. Business has no tier split — every business
+    // document, this one included, uses the single "business" tier.
+    const { error: docError } = await supabase.from("kyc_documents").upsert(
+      {
+        user_id: user.id,
+        tier: kycType === "business" ? "business" : "individual_tier_1",
+        document_type: "phone_number",
+        value: phone,
+      },
+      { onConflict: "user_id,document_type" },
+    );
+    if (docError) throw docError;
+  } catch (err) {
+    console.error("[kyc.saveOnboardingBasics] failed", err);
+    return {
+      error:
+        err instanceof Error && /account type cannot be changed/i.test(err.message)
+          ? err.message
+          : "We couldn't save that. Please try again.",
+    };
+  }
+
+  revalidatePath("/home");
+  redirect("/home");
+}
 
 /**
  * FILES NO LONGER ARRIVE HERE.
@@ -66,51 +157,83 @@ export async function submitIndividualKyc(
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("country")
+    .select("country, phone, kyc_type")
     .eq("id", user.id)
     .maybeSingle();
 
-  // The ID field is country-specific: a BVN for Nigeria, a Ghana Card number
-  // for Ghana, a national ID for Kenya. Asking a Ghanaian for a BVN is the
-  // kind of detail that makes onboarding feel built for somewhere else.
-  const idField = kycIdFieldFor(profile?.country);
+  // Stage one has to have happened: the phone number is collected there and
+  // this form no longer asks for it. Reached only by a stale link or a crafted
+  // request, since the page guard sends anyone without it back.
+  if (!profile?.phone) {
+    return {
+      error: "Finish setting up your account first — go back to your dashboard and continue.",
+    };
+  }
+
+  // Decided HERE, from the stored country — never from a client-sent value, so
+  // a crafted request cannot claim to be Nigerian (or not) to choose which
+  // fields get validated.
+  const nigerian = usesBvnOrNin(profile.country);
+
+  // The ID field is country-specific: a BVN or NIN for Nigeria, a Ghana Card
+  // number for Ghana, a national ID for Kenya. Asking a Ghanaian for a BVN is
+  // the kind of detail that makes onboarding feel built for somewhere else.
+  const idField = kycIdFieldFor(profile.country);
 
   const fullName = String(formData.get("fullName") ?? "").trim();
-  const phone = String(formData.get("phone") ?? "").trim();
   const idNumber = String(formData.get("idNumber") ?? "").trim();
+  const idType = String(formData.get("idType") ?? "").trim();
   // Storage paths, not Files. See requireOwnedUpload above.
-  const selfiePath = String(formData.get("selfie") ?? "").trim();
-  const idDocumentPath = String(formData.get("idDocument") ?? "").trim();
+  const governmentIdPath = String(formData.get("governmentId") ?? "").trim();
   const proofOfAddressPath = String(formData.get("proofOfAddress") ?? "").trim();
 
   if (!fullName) return { error: "Enter your full name as it appears on your ID." };
-  if (!phone) return { error: "Phone number is required." };
   if (!idNumber) return { error: `${idField.label} is required.` };
-  const idPattern = kycIdPattern(idField);
-  if (idPattern && !idPattern.test(idNumber)) {
-    return { error: idField.hint };
+
+  if (nigerian) {
+    // The 11-digit check is worth running for Nigeria because a BVN and a NIN
+    // are both fixed-length numbers and a mistyped one is a wasted review.
+    const idPattern = kycIdPattern(idField);
+    if (idPattern && !idPattern.test(idNumber)) return { error: idField.hint };
+  } else {
+    if (!isGovernmentIdType(idType)) return { error: "Tell us which ID this is." };
+    // Deliberately NO format check outside Nigeria. The country's pattern
+    // describes its national ID card, and applying it to the passport number
+    // the user actually entered would reject a perfectly good document. A
+    // human reads this field next to the photo.
   }
 
   try {
     const documents: DocumentRow[] = [
-      { tier: "individual_tier_1", document_type: "phone_number", value: phone },
-      { tier: "individual_tier_2", document_type: idField.documentType, value: idNumber },
+      // phone_number is absent on purpose: saveOnboardingBasics already wrote
+      // that row, and re-writing it here would be the only thing this action
+      // did to a value it never collected.
       {
         tier: "individual_tier_2",
-        document_type: "selfie",
-        file_ref: await requireOwnedUpload(supabase, user.id, selfiePath, "A photo of you"),
+        document_type: nigerian ? idField.documentType : "government_id_number",
+        value: idNumber,
       },
       {
         tier: "individual_tier_2",
-        document_type: "id_document",
+        // Renamed from "selfie": this is a photo of a government-issued
+        // document, not a face match. The old field asked for the wrong thing.
+        document_type: "government_id",
         file_ref: await requireOwnedUpload(
           supabase,
           user.id,
-          idDocumentPath,
-          `A photo of your ${idField.label}`,
+          governmentIdPath,
+          "A photo of your ID",
         ),
       },
     ];
+
+    if (!nigerian) {
+      documents.push({
+        tier: "individual_tier_2",
+        document_type: "government_id_type",
+        value: idType,
+      });
+    }
 
     if (proofOfAddressPath) {
       documents.push({
@@ -155,7 +278,10 @@ export async function submitIndividualKyc(
       p_user_id: user.id,
       p_kyc_type: "individual",
       p_full_name: fullName,
-      p_phone: phone,
+      // From the profile, not the form — stage one collected it and this form
+      // no longer carries it. coalesce in the function means passing the same
+      // value back is a no-op either way.
+      p_phone: profile.phone,
     });
     if (profileError) throw profileError;
 

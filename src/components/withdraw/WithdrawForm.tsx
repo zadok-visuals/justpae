@@ -30,6 +30,12 @@ interface WithdrawFormProps {
   recipients: WithdrawalRecipient[];
   hasPin: boolean;
   kycApproved: boolean;
+  /** Drives WHICH stage the gate below points at, not whether it shows. */
+  kycStatus: string | null;
+  kycType: string | null;
+  /** True once stage one (account type + phone) is on file. */
+  hasBasics: boolean;
+  rejectionReason: string | null;
 }
 
 /**
@@ -64,6 +70,10 @@ function WithdrawFormFields({
   recipients,
   hasPin,
   kycApproved,
+  kycStatus,
+  kycType,
+  hasBasics,
+  rejectionReason,
   state,
   formAction,
 }: WithdrawFormProps & {
@@ -118,14 +128,47 @@ function WithdrawFormFields({
   }, [currency, amount, insufficient]);
 
   if (!kycApproved) {
+    // The gate names the stage the user is actually at. "Start verification"
+    // pointing at the account-type question is a dead end for someone who
+    // answered it last week and only needs to send a photo.
+    if (kycStatus === "pending") {
+      return (
+        <Banner
+          tone="info"
+          title="We're reviewing your details"
+          action={{ href: "/onboarding/kyc/status", label: "View status" }}
+        >
+          Withdrawals open up as soon as you&apos;re verified. Your deposits and conversions
+          carry on as normal in the meantime.
+        </Banner>
+      );
+    }
+
+    const needsBasics = !hasBasics;
+    const idFormHref =
+      kycType === "business" ? "/onboarding/kyc/business" : "/onboarding/kyc/individual";
+
     return (
       <Banner
-        tone="warning"
-        title="Verify your identity to withdraw"
-        action={{ href: "/onboarding/kyc", label: "Start verification" }}
+        tone={kycStatus === "rejected" ? "danger" : "warning"}
+        title={
+          kycStatus === "rejected"
+            ? "We couldn't verify your details"
+            : "Verify your identity to withdraw"
+        }
+        action={{
+          href: needsBasics ? "/onboarding/kyc" : idFormHref,
+          label: kycStatus === "rejected"
+            ? "Resubmit"
+            : needsBasics
+              ? "Continue setting up"
+              : "Submit your ID",
+        }}
       >
-        We need to confirm who you are before money can leave your account. It takes a couple of
-        minutes.
+        {kycStatus === "rejected"
+          ? (rejectionReason ??
+            "Please review your documents and submit them again before withdrawing.")
+          : "We need to confirm who you are before money can leave your account. It takes a couple of minutes."}
       </Banner>
     );
   }

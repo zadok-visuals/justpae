@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { IndividualKycForm } from "@/components/kyc/KycForms";
-import { kycIdFieldFor, phoneHintFor } from "@/lib/countries";
+import { kycIdFieldFor, usesBvnOrNin } from "@/lib/countries";
 
 export const metadata = { title: "Verify your identity" };
 export const dynamic = "force-dynamic";
@@ -30,6 +30,11 @@ export default async function IndividualKycPage() {
   // against an individual submission.
   if (profile?.kyc_type === "business") redirect("/onboarding/kyc/business");
 
+  // Stage one skipped: this form no longer asks for a phone number, so without
+  // it the submission would fail inside the action. Back one stage instead of
+  // showing a form that cannot succeed.
+  if (!profile?.phone || !profile?.kyc_type) redirect("/onboarding/kyc");
+
   return (
     <div className="space-y-5">
       <Link
@@ -40,26 +45,25 @@ export default async function IndividualKycPage() {
       </Link>
 
       <div>
-        <h1 className="font-display text-2xl font-semibold text-foreground">Your details</h1>
+        <h1 className="font-display text-2xl font-semibold text-foreground">Submit your ID</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Everything here goes to a human reviewer. We don&apos;t share it.
+          Two steps. Everything here goes to a human reviewer, and we don&apos;t share it.
         </p>
       </div>
 
       <IndividualKycForm
         // Resolved on the server from the user's own country, so the form
         // never has to guess which document a country uses.
-        idField={kycIdFieldFor(profile?.country)}
-        defaultFullName={profile?.full_name ?? ""}
-        defaultPhone={profile?.phone ?? ""}
-        rejectionReason={profile?.kyc_rejection_reason ?? null}
+        idField={kycIdFieldFor(profile.country)}
+        defaultFullName={profile.full_name ?? ""}
+        rejectionReason={profile.kyc_rejection_reason ?? null}
         // Needed in the browser because the files are uploaded direct to
         // storage from there, and the user id is the first path segment the
         // bucket policy confines them to.
         userId={user.id}
-        // Country-aware, for the same reason idField is: a Ghanaian shown
-        // "+234…" is being told the product was built for Nigeria.
-        phoneHint={phoneHintFor(profile?.country)}
+        // Decided here, not in the browser: it chooses which fields the server
+        // then validates, so it must not be something a client can assert.
+        usesBvnOrNin={usesBvnOrNin(profile.country)}
       />
     </div>
   );

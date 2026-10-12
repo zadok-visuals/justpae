@@ -279,6 +279,40 @@ export function kycIdPattern(field: KycIdField): RegExp | null {
 }
 
 /**
+ * Which document the user is holding, asked only OUTSIDE Nigeria.
+ *
+ * Nigeria is the exception because a BVN or NIN is a number issued to the
+ * person, not a document in their hand — there is nothing to ask. Everywhere
+ * else the number alone is ambiguous to a reviewer, who needs to know whether
+ * they are checking a passport against a passport number or against a driver's
+ * licence number.
+ *
+ * "National ID card" deliberately covers the Ghana Card and Kenya's Huduma
+ * card rather than naming each: the stored value is read by a human alongside
+ * the uploaded photo, and the country is already on the profile.
+ */
+export const GOVERNMENT_ID_TYPES: { value: string; label: string }[] = [
+  { value: "passport", label: "Passport" },
+  { value: "national_id", label: "National ID card" },
+  { value: "drivers_licence", label: "Driver's licence" },
+  { value: "voters_card", label: "Voter's card" },
+];
+
+export function isGovernmentIdType(value: string): boolean {
+  return GOVERNMENT_ID_TYPES.some((type) => type.value === value);
+}
+
+/**
+ * True when this country's identity step asks for a BVN/NIN instead of a
+ * document number plus a type. Resolved from the stored profile on the server,
+ * never from a client-sent value — otherwise a crafted request could claim to
+ * be Nigerian (or not) to choose which fields get validated.
+ */
+export function usesBvnOrNin(country: string | null | undefined): boolean {
+  return country === "NG";
+}
+
+/**
  * Falls back to a generic field rather than refusing to onboard someone from a
  * country without a specific entry — a reviewer can still work with a passport
  * number plus the uploaded documents.

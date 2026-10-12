@@ -20,7 +20,11 @@ export default async function WithdrawPage() {
     await Promise.all([
       supabase.from("wallets").select("*").eq("user_id", user.id),
       supabase.from("withdrawal_recipients").select("*").eq("user_id", user.id),
-      supabase.from("profiles").select("kyc_status").eq("id", user.id).maybeSingle(),
+      supabase
+        .from("profiles")
+        .select("kyc_status, kyc_type, phone, kyc_rejection_reason")
+        .eq("id", user.id)
+        .maybeSingle(),
       supabase.rpc("has_transaction_pin"),
     ]);
 
@@ -38,6 +42,13 @@ export default async function WithdrawPage() {
         // again in SQL, which is the check that actually holds — this one just
         // avoids presenting a form that is guaranteed to be rejected.
         kycApproved={profile?.kyc_status === "approved"}
+        // Not whether to gate — how to get OUT of the gate. The banner points
+        // at stage one or at the matching ID form depending on how far this
+        // user actually got.
+        kycStatus={profile?.kyc_status ?? null}
+        kycType={profile?.kyc_type ?? null}
+        hasBasics={Boolean(profile?.phone && profile?.kyc_type)}
+        rejectionReason={profile?.kyc_rejection_reason ?? null}
       />
     </PageShell>
   );

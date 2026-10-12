@@ -752,6 +752,15 @@ export type Database = {
         };
         Returns: undefined;
       };
+
+      /** Server-only (0020). Stage-one onboarding: writes phone and kyc_type
+       *  and deliberately never touches kyc_status — nothing has been
+       *  submitted yet. See migration 0020 for why it is not
+       *  submit_kyc_profile. */
+      save_onboarding_basics: {
+        Args: { p_user_id: string; p_kyc_type: KycType; p_phone: string };
+        Returns: undefined;
+      };
     };
   };
 };

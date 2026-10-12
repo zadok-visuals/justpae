@@ -237,11 +237,24 @@ export default function DevGallery() {
                 recipients={recipients}
                 hasPin
                 kycApproved
+                kycStatus="approved"
+                kycType="individual"
+                hasBasics
+                rejectionReason={null}
               />
             </Section>
 
             <Section title="Withdraw — no destination yet">
-              <WithdrawForm wallets={wallets} recipients={[]} hasPin kycApproved />
+              <WithdrawForm
+                wallets={wallets}
+                recipients={[]}
+                hasPin
+                kycApproved
+                kycStatus="approved"
+                kycType="individual"
+                hasBasics
+                rejectionReason={null}
+              />
             </Section>
 
             <Section title="Add money">
@@ -272,10 +285,9 @@ export default function DevGallery() {
               <IndividualKycForm
                 idField={kycIdFieldFor("NG")}
                 defaultFullName=""
-                defaultPhone=""
                 rejectionReason="The photo of your ID was too blurry to read. Try again in daylight."
                 userId={GALLERY_USER_ID}
-                phoneHint="+234…"
+                usesBvnOrNin
               />
             </Section>
 

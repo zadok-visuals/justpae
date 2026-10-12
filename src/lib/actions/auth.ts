@@ -48,7 +48,11 @@ export async function signUp(
     password,
     options: {
       data: { full_name: fullName, country },
-      emailRedirectTo: `${appUrl()}/auth/confirm?next=/onboarding/kyc`,
+      // /home, not /onboarding/kyc. A brand-new user's first screen is their
+      // dashboard — balances, rates, somewhere to deposit — not a form asking
+      // for a BVN before they have any reason to trust us with one.
+      // Verification is offered from the Home banner, on their schedule.
+      emailRedirectTo: `${appUrl()}/auth/confirm?next=/home`,
     },
   });
 
@@ -110,7 +114,10 @@ export async function verifySignupCode(
   }
 
   await clearPendingVerificationEmail();
-  redirect("/onboarding/kyc");
+  // See emailRedirectTo in signUp: verification is not the first thing a new
+  // user is shown. Both entry paths — typing the code and tapping the link —
+  // have to agree on that, or one of them strands the user in a form.
+  redirect("/home");
 }
 
 export interface ResendCodeState {

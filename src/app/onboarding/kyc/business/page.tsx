@@ -15,7 +15,7 @@ export default async function BusinessKycPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("business_name, kyc_type, kyc_status, kyc_rejection_reason")
+    .select("business_name, phone, kyc_type, kyc_status, kyc_rejection_reason")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -27,6 +27,10 @@ export default async function BusinessKycPage() {
   // must not be shown the business form and have their kyc_type flipped.
   if (profile?.kyc_type === "individual") redirect("/onboarding/kyc/individual");
 
+  // Stage one skipped — see the individual page for why this goes back rather
+  // than rendering a form whose submission cannot succeed.
+  if (!profile?.phone || !profile?.kyc_type) redirect("/onboarding/kyc");
+
   return (
     <div className="space-y-5">
       <Link
@@ -37,9 +41,9 @@ export default async function BusinessKycPage() {
       </Link>
 
       <div>
-        <h1 className="font-display text-2xl font-semibold text-foreground">Business details</h1>
+        <h1 className="font-display text-2xl font-semibold text-foreground">Verify your business</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Everything here goes to a human reviewer. We don&apos;t share it.
+          Four steps. Everything here goes to a human reviewer, and we don&apos;t share it.
         </p>
       </div>
 

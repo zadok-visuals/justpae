@@ -60,7 +60,10 @@ const confirmSignup = withHeader(
     panelHtml: CODE_PANEL,
     button: {
       label: "Confirm my email",
-      href: "{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}&next=/onboarding/kyc",
+      // Lands on the dashboard, matching verifySignupCode. The link and the
+      // typed code are two routes to the same place and must not disagree
+      // about where a newly confirmed user belongs.
+      href: "{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}&next=/home",
     },
     fallbackIntro: "Rather tap than type? If the button doesn't work, copy this address into your browser:",
     closingParagraphs: [

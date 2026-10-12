@@ -5,7 +5,8 @@ import { WalletCards } from "@/components/home/WalletCards";
 import { QuickActions } from "@/components/home/QuickActions";
 import { RatesStrip, type StripRate } from "@/components/home/RatesStrip";
 import { ActivityRows } from "@/components/transactions/ActivityRows";
-import { SectionHeader, EmptyState, Banner } from "@/components/ui/Primitives";
+import { SectionHeader, EmptyState } from "@/components/ui/Primitives";
+import { KycStatusBanner } from "@/components/kyc/KycStatusBanner";
 import { fetchRecentActivity } from "@/lib/transactions";
 import { resolveRoute } from "@/lib/rates/routes";
 import type { Currency, Wallet } from "@/lib/types/database";
@@ -42,7 +43,7 @@ export default async function HomePage() {
   const [{ data: profile }, { data: wallets }, recent, rates] = await Promise.all([
     supabase
       .from("profiles")
-      .select("full_name, kyc_status, kyc_rejection_reason, kyc_type, country")
+      .select("full_name, phone, kyc_status, kyc_rejection_reason, kyc_type, country")
       .eq("id", user.id)
       .maybeSingle(),
     supabase.from("wallets").select("*").eq("user_id", user.id),
@@ -55,13 +56,12 @@ export default async function HomePage() {
   return (
     <PageShell title={firstName ? `Hello, ${firstName}` : "Home"}>
       <div className="space-y-6">
-        {profile?.kyc_status !== "approved" && (
-          <KycBanner
-            status={profile?.kyc_status}
-            reason={profile?.kyc_rejection_reason}
-            kycType={profile?.kyc_type}
-          />
-        )}
+        <KycStatusBanner
+          status={profile?.kyc_status}
+          phone={profile?.phone}
+          kycType={profile?.kyc_type}
+          rejectionReason={profile?.kyc_rejection_reason}
+        />
 
         <section>
           <SectionHeader title="Your wallets" />
@@ -92,57 +92,6 @@ export default async function HomePage() {
         </section>
       </div>
     </PageShell>
-  );
-}
-
-function KycBanner({
-  status,
-  reason,
-  kycType,
-}: {
-  status: string | undefined;
-  reason: string | null | undefined;
-  kycType: string | null | undefined;
-}) {
-  // Straight back to the form they already filled in, not to the generic
-  // chooser. A rejected user has already told us whether they are an
-  // individual or a business; making them answer that again before they can
-  // reach the one field they need to fix is the kind of friction that turns a
-  // resubmission into an abandonment.
-  const resubmitHref =
-    kycType === "business" ? "/onboarding/kyc/business" : "/onboarding/kyc/individual";
-
-  if (status === "pending") {
-    return (
-      <Banner tone="info" title="We're reviewing your details">
-        You can deposit and convert while we check your documents. Withdrawals open up once
-        you&apos;re verified.
-      </Banner>
-    );
-  }
-
-  if (status === "rejected") {
-    return (
-      <Banner
-        tone="danger"
-        title="We couldn't verify your details"
-        action={{ href: resubmitHref, label: "Fix and resubmit" }}
-      >
-        {/* The specific reason, not a generic "please resubmit" — without it
-            the next attempt is a guess and gets rejected for the same thing. */}
-        {reason ?? "Please review your documents and submit them again."}
-      </Banner>
-    );
-  }
-
-  return (
-    <Banner
-      tone="warning"
-      title="Verify your identity to withdraw"
-      action={{ href: "/onboarding/kyc", label: "Start verification" }}
-    >
-      It takes a couple of minutes. You can deposit and convert in the meantime.
-    </Banner>
   );
 }
 

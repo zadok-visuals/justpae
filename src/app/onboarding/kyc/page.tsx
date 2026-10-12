@@ -1,12 +1,23 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Banner } from "@/components/ui/Primitives";
+import { KycTypeSelector } from "@/components/kyc/KycTypeSelector";
+import { phoneHintFor } from "@/lib/countries";
 
-export const metadata = { title: "Verify your identity" };
+export const metadata = { title: "Finish setting up" };
 export const dynamic = "force-dynamic";
 
-export default async function KycTypePage() {
+/**
+ * STAGE ONE of onboarding: account type and phone number.
+ *
+ * This used to be a chooser whose two options led straight into a full
+ * document submission, which made identity verification the first thing a new
+ * user saw. It is now two questions and a button to the dashboard; the ID
+ * itself is stage two, offered from the Home banner whenever the user chooses.
+ *
+ * Nothing here is mandatory to use the app — only to withdraw.
+ */
+export default async function OnboardingBasicsPage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -15,59 +26,52 @@ export default async function KycTypePage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("kyc_status")
+    .select("phone, country, kyc_type, kyc_status, kyc_rejection_reason")
     .eq("id", user.id)
     .maybeSingle();
 
-  // Already submitted or approved: the status page is the useful destination,
-  // not a form that would overwrite a submission under review.
+  // Already in review or approved: the status page is the only useful
+  // destination. Re-asking for an account type would be offering to change
+  // something migration 0020 refuses to change.
   if (profile?.kyc_status === "pending" || profile?.kyc_status === "approved") {
     redirect("/onboarding/kyc/status");
+  }
+
+  // Stage one is already done, so this page has nothing left to ask. Straight
+  // on to the matching ID form rather than making them answer twice.
+  if (profile?.phone && profile?.kyc_type) {
+    redirect(
+      profile.kyc_type === "business"
+        ? "/onboarding/kyc/business"
+        : "/onboarding/kyc/individual",
+    );
   }
 
   return (
     <div className="space-y-5">
       <div>
         <h1 className="font-display text-2xl font-semibold text-foreground">
-          Verify your identity
+          Let&apos;s finish setting up
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Required before money can leave your account. You can deposit and convert without it.
+          Two quick details and you&apos;re in. You can send us your ID later, from your
+          dashboard, whenever it suits you.
         </p>
       </div>
 
-      {profile?.kyc_status === "rejected" && (
-        <Banner tone="danger" title="Your last submission was rejected">
-          Pick the same type you used before and resubmit — the details of what went wrong are on
-          the next screen.
+      {profile?.kyc_status === "rejected" && profile.kyc_rejection_reason && (
+        <Banner tone="danger" title="Your last submission needs another look">
+          {profile.kyc_rejection_reason}
         </Banner>
       )}
 
-      <div className="space-y-3">
-        <Link
-          href="/onboarding/kyc/individual"
-          className="block rounded-xl border border-border bg-card p-4"
-        >
-          <span className="block text-base font-semibold text-foreground">
-            I&apos;m an individual
-          </span>
-          <span className="mt-1 block text-sm text-muted-foreground">
-            Your name, phone number, ID number and a selfie. Takes about two minutes.
-          </span>
-        </Link>
-
-        <Link
-          href="/onboarding/kyc/business"
-          className="block rounded-xl border border-border bg-card p-4"
-        >
-          <span className="block text-base font-semibold text-foreground">
-            I&apos;m a business
-          </span>
-          <span className="mt-1 block text-sm text-muted-foreground">
-            Your registration certificate, tax number and a director&apos;s ID.
-          </span>
-        </Link>
-      </div>
+      <KycTypeSelector
+        // Country-aware: a Ghanaian shown "+234…" is being told the product
+        // was built for Nigeria.
+        phoneHint={phoneHintFor(profile?.country)}
+        defaultPhone={profile?.phone ?? ""}
+        defaultType={(profile?.kyc_type as "individual" | "business" | null) ?? null}
+      />
     </div>
   );
 }
