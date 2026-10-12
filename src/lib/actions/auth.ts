@@ -4,6 +4,11 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isKnownCountry } from "@/lib/countries";
 import { assessPasswordStrength } from "@/lib/passwordStrength";
+import {
+  setPendingVerificationEmail,
+  clearPendingVerificationEmail,
+  resolvePendingVerificationEmail,
+} from "@/lib/auth/pendingEmail";
 
 export interface AuthActionState {
   error?: string;
@@ -48,13 +53,29 @@ export async function signUp(
   });
 
   if (error) return { error: error.message };
-  if (data.session) redirect("/home");
+
+  if (data.session) {
+    // signUp() only returns a session immediately when the Supabase
+    // project's "Confirm email" setting is OFF — GoTrue skips the
+    // confirmation step entirely and signs the account straight in. That is
+    // a project misconfiguration, not a valid outcome: it means anyone can
+    // register with an email they don't control. Refuse to use the session
+    // rather than redirect a fresh signup straight into the app.
+    await supabase.auth.signOut();
+    console.error(
+      "[signUp] Supabase 'Confirm email' is OFF: refusing to create an unverified session",
+    );
+    return { error: "Sign up is temporarily unavailable. Please try again shortly." };
+  }
+
   // confirm-signup.html sends a 6-digit code as the primary path (works by
   // being typed in, with no same-browser assumption at all) and the
   // token_hash link above as a fallback for anyone who'd rather tap than
   // type. /auth/verify collects the code; /auth/confirm still handles the
-  // link for whoever uses it.
-  redirect(`/auth/verify?email=${encodeURIComponent(email)}`);
+  // link for whoever uses it. Neither carries the email in a URL — see
+  // pendingEmail.ts.
+  await setPendingVerificationEmail(email);
+  redirect("/auth/verify");
 }
 
 export interface VerifyCodeState {
@@ -65,13 +86,15 @@ export async function verifySignupCode(
   _prevState: VerifyCodeState,
   formData: FormData,
 ): Promise<VerifyCodeState> {
-  const email = String(formData.get("email") ?? "").trim();
   const token = String(formData.get("code") ?? "").trim();
-
-  if (!email) return { error: "Missing email — go back and sign up again." };
   if (token.length !== 6) return { error: "Enter the 6-digit code from your email." };
 
   const supabase = await createClient();
+  // Resolved server-side rather than trusted from the form — the email this
+  // code is checked against is never something the client gets to supply.
+  const email = await resolvePendingVerificationEmail(supabase);
+  if (!email) return { error: "This verification link has expired. Go back and sign up again." };
+
   const { error } = await supabase.auth.verifyOtp({ email, token, type: "signup" });
 
   if (error) {
@@ -80,6 +103,7 @@ export async function verifySignupCode(
     return { error: error.message };
   }
 
+  await clearPendingVerificationEmail();
   redirect("/onboarding/kyc");
 }
 
@@ -92,10 +116,14 @@ export async function resendSignupCode(
   _prevState: ResendCodeState,
   formData: FormData,
 ): Promise<ResendCodeState> {
-  const email = String(formData.get("email") ?? "").trim();
-  if (!email) return { error: "Missing email — go back and sign up again." };
+  // formData is unused but kept in the signature — useActionState requires
+  // the action's shape to match, even for a form with nothing but a button.
+  void formData;
 
   const supabase = await createClient();
+  const email = await resolvePendingVerificationEmail(supabase);
+  if (!email) return { error: "This verification link has expired. Go back and sign up again." };
+
   const { error } = await supabase.auth.resend({ type: "signup", email });
 
   if (error) return { error: error.message };
@@ -114,7 +142,14 @@ export async function logIn(
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-  if (error) return { error: error.message };
+  if (error) {
+    if (error.code === "email_not_confirmed") {
+      await setPendingVerificationEmail(email);
+      redirect("/auth/verify");
+    }
+    return { error: error.message };
+  }
+
   redirect("/home");
 }
 

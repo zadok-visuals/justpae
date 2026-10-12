@@ -1,5 +1,21 @@
 # Auth email templates
 
+## Checklist for a new project
+
+All four dashboard-only — none of this is covered by `supabase db push`:
+
+1. **Authentication → Providers → Email → "Confirm email": ON.** With it off,
+   GoTrue signs new accounts straight in with no verification step at all —
+   `signUp()` refuses that session when it detects this (see
+   `src/lib/actions/auth.ts`), so the symptom is "sign up is temporarily
+   unavailable" for every single user, not a quiet bypass. This has to be on.
+2. **Paste the templates** — table below.
+3. **Authentication → Emails → SMTP Settings: configure custom SMTP.**
+   Supabase's built-in sender is low-volume and rate-limited; fine for
+   development, not for real signups.
+4. **Authentication → URL Configuration: Site URL and Redirect URLs** — see
+   "Before pasting" below.
+
 **These are not applied by `supabase db push`, and the CLI cannot sync them to a
 remote project.** They have to be pasted into the dashboard once per project:
 

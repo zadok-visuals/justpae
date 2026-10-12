@@ -23,7 +23,6 @@ export function VerifyCodeForm({ email }: { email: string }) {
       </div>
 
       <form action={verifyAction} className="space-y-4">
-        <input type="hidden" name="email" value={email} />
         <OtpField
           value={code}
           onValueChange={setCode}
@@ -48,7 +47,6 @@ export function VerifyCodeForm({ email }: { email: string }) {
       )}
 
       <form action={resendAction}>
-        <input type="hidden" name="email" value={email} />
         <SubmitButton variant="secondary" pendingLabel="Sending…">
           Resend code
         </SubmitButton>

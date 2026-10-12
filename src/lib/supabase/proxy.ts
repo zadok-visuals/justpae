@@ -64,18 +64,24 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // A session can exist before the email is confirmed: if the Supabase
-  // project's own "Confirm email" setting is off, signUp() returns a session
-  // immediately, and nothing in application code ever calls /auth/verify —
-  // the new account lands straight on /home with no confirmation at all.
-  // Enforced here, independent of that dashboard setting, so a project
-  // misconfigured that way (or reconfigured later) can't let an unverified
-  // address straight into the dashboard. /auth/* stays reachable — that's
-  // the only way an unconfirmed user can ever finish confirming.
+  // NOT a guard against "Confirm email" being off. When that project setting
+  // is off, GoTrue confirms the address automatically at signUp() — so
+  // email_confirmed_at is already set the moment this ever runs, and this
+  // check doesn't fire. That misconfiguration is refused in signUp() itself
+  // (it signs the accidental session straight back out rather than letting
+  // it redirect anywhere), and the real fix is the dashboard setting staying
+  // on — not this.
+  //
+  // What THIS actually catches: a session that is genuinely, correctly
+  // pending confirmation (the normal case — signUp() or logIn() already sent
+  // the account here) navigating straight to a protected route instead of
+  // finishing on /auth/verify. /auth/* stays reachable — that's the only way
+  // an unconfirmed user can ever get unstuck. The email itself is never put
+  // in the URL; /auth/verify reads it from this same session.
   if (user && !user.email_confirmed_at && !pathname.startsWith("/auth")) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/verify";
-    url.search = new URLSearchParams({ email: user.email ?? "" }).toString();
+    url.search = "";
     return NextResponse.redirect(url);
   }
 

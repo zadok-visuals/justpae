@@ -1,17 +1,19 @@
 import { redirect } from "next/navigation";
 import { Wordmark } from "@/components/layout/Mark";
 import { VerifyCodeForm } from "@/components/auth/VerifyCodeForm";
+import { createClient } from "@/lib/supabase/server";
+import { resolvePendingVerificationEmail } from "@/lib/auth/pendingEmail";
 
 export const metadata = { title: "Verify your email" };
 
-export default async function VerifyPage(props: PageProps<"/auth/verify">) {
-  const { email } = await props.searchParams;
-  const value = Array.isArray(email) ? email[0] : email;
+export default async function VerifyPage() {
+  const supabase = await createClient();
+  const email = await resolvePendingVerificationEmail(supabase);
 
-  // Reachable only with an email in the URL — a direct hit with none means
-  // there is no signup to verify, so back to the start rather than a blank
-  // code field with nothing to check it against.
-  if (!value) redirect("/signup");
+  // Reachable only with a session or a pending-email cookie to check against
+  // — a direct hit with neither means there is no signup in progress, so
+  // back to the start rather than a code field with nothing to verify.
+  if (!email) redirect("/signup");
 
   return (
     <div className="flex min-h-screen-dvh flex-col bg-background">
@@ -20,7 +22,7 @@ export default async function VerifyPage(props: PageProps<"/auth/verify">) {
       </header>
 
       <main className="flex flex-1 items-start justify-center px-5 pt-4 sm:items-center sm:pt-0">
-        <VerifyCodeForm email={value} />
+        <VerifyCodeForm email={email} />
       </main>
     </div>
   );
