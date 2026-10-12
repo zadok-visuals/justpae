@@ -7,6 +7,7 @@ import { Wordmark } from "@/components/layout/Mark";
 import { logOut } from "@/lib/actions/auth";
 import { useCurrentPageTitle } from "@/components/layout/PageTitleContext";
 import { NotificationBell } from "@/components/layout/NotificationBell";
+import { useUnreadCounts } from "@/components/layout/UnreadCountsContext";
 import {
   HomeIcon,
   ActivityIcon,
@@ -107,16 +108,9 @@ function initialsFor(name: string): string {
  * mounted, via PageTitleContext — means there is one row and one rule, not
  * a logo strip stacked on top of a page header that happens to look similar.
  */
-export function TopBar({
-  userName,
-  unreadNotifications = 0,
-  unreadSupport = 0,
-}: {
-  userName: string;
-  unreadNotifications?: number;
-  unreadSupport?: number;
-}) {
+export function TopBar({ userName }: { userName: string }) {
   const title = useCurrentPageTitle();
+  const { notifications: unreadNotifications, support: unreadSupport } = useUnreadCounts();
 
   return (
     <div className="hidden shrink-0 items-center border-b border-sidebar-border sm:flex">
@@ -246,15 +240,9 @@ export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
  * destination lives in the bottom bar, so there is nothing to hide behind a
  * hamburger.
  */
-export function MobileTopBar({
-  title,
-  unreadNotifications = 0,
-  unreadSupport = 0,
-}: {
-  title?: string;
-  unreadNotifications?: number;
-  unreadSupport?: number;
-}) {
+export function MobileTopBar({ title }: { title?: string }) {
+  const { notifications: unreadNotifications, support: unreadSupport } = useUnreadCounts();
+
   return (
     <header className="sticky top-0 z-30 flex min-h-14 items-center justify-between gap-3 border-b border-border bg-background/95 px-4 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md sm:hidden">
       {title ? (

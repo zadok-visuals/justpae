@@ -3,6 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { BottomTabBar, Sidebar, TopBar } from "@/components/layout/DashboardChrome";
 import { PageTitleProvider } from "@/components/layout/PageTitleContext";
+import { UnreadCountsProvider } from "@/components/layout/UnreadCountsContext";
+import { getUnreadNotificationCount } from "@/lib/actions/notifications";
+import { getUnreadSupportCount } from "@/lib/actions/support";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -28,6 +31,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // profiles-table lookup, which every page that wants it does on its own.
   const fullName = typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : "";
 
+  // Two cheap RPC counts (both auth.uid()-scoped anti-joins, see migration
+  // 0017), fetched in parallel because neither depends on the other, and
+  // fetched HERE rather than in each bar because this layout renders once per
+  // request while MobileTopBar is mounted by every page's own PageShell.
+  // Either failing resolves to 0 inside the action rather than throwing — the
+  // header must render even when a count doesn't.
+  const [unreadNotifications, unreadSupport] = await Promise.all([
+    getUnreadNotificationCount(),
+    getUnreadSupportCount(),
+  ]);
+
   return (
     // h-screen-dvh (height: 100dvh), not min-h-screen-dvh: this shell's
     // height is CAPPED to the viewport on purpose, so the sidebar — a flex
@@ -39,25 +53,31 @@ export default async function DashboardLayout({ children }: { children: React.Re
     // the outer shell plus overflow-y-auto on the content column below is
     // what actually does the pinning; the cap just makes that possible.
     <PageTitleProvider>
-      <div className="flex h-screen-dvh flex-col overflow-hidden bg-background">
-        <TopBar userName={fullName} />
+      {/* Wraps children too, not just TopBar: the mobile bar is rendered by
+          each page's PageShell, which is inside children. */}
+      <UnreadCountsProvider
+        counts={{ notifications: unreadNotifications, support: unreadSupport }}
+      >
+        <div className="flex h-screen-dvh flex-col overflow-hidden bg-background">
+          <TopBar userName={fullName} />
 
-        <div className="flex min-h-0 flex-1">
-          <Sidebar isAdmin={isAdminEmail(user.email)} />
+          <div className="flex min-h-0 flex-1">
+            <Sidebar isAdmin={isAdminEmail(user.email)} />
 
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
-            {/* The bottom padding is the tab bar's own height plus the safe area.
-                Without it the last row of every scrolling page is permanently
-                hidden behind the bar — which is the single most common bug in a
-                bottom-tab layout. Dropped at sm, where there is no bar. */}
-            <main className="min-w-0 flex-1 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] sm:pb-0">
-              {children}
-            </main>
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
+              {/* The bottom padding is the tab bar's own height plus the safe area.
+                  Without it the last row of every scrolling page is permanently
+                  hidden behind the bar — which is the single most common bug in a
+                  bottom-tab layout. Dropped at sm, where there is no bar. */}
+              <main className="min-w-0 flex-1 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] sm:pb-0">
+                {children}
+              </main>
+            </div>
           </div>
-        </div>
 
-        <BottomTabBar />
-      </div>
+          <BottomTabBar />
+        </div>
+      </UnreadCountsProvider>
     </PageTitleProvider>
   );
 }
