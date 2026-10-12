@@ -1,0 +1,157 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdminUser } from "@/lib/auth/admin";
+import type { Notification } from "@/lib/types/database";
+
+/**
+ * In-app notifications.
+ *
+ * Read state is per-user (notification_reads), not a column on the row, so a
+ * broadcast is "read" by the people who have actually read it rather than by
+ * everyone once the first person opens it. See supabase/migrations/0017 for
+ * why that mattered enough to diverge from the original.
+ *
+ * Users have SELECT on notifications and nothing else — no insert, no update.
+ * Composing is admin-only and goes through the service role.
+ */
+
+export interface NotificationListItem extends Notification {
+  read: boolean;
+}
+
+/** The dropdown's payload: the newest notifications plus whether each is read. */
+export async function listNotifications(limit = 15): Promise<NotificationListItem[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  // Two reads rather than an embedded join: notification_reads has no FK
+  // relationship PostgREST would follow from this direction (it is keyed by
+  // notification_id, and the rows a user can see include broadcasts they have
+  // no read row for at all), so a left join here would silently drop exactly
+  // the unread ones the bell exists to show.
+  const [{ data: rows }, { data: reads }] = await Promise.all([
+    supabase
+      .from("notifications")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(limit),
+    supabase.from("notification_reads").select("notification_id"),
+  ]);
+
+  const readIds = new Set((reads ?? []).map((r) => r.notification_id));
+  return (rows ?? []).map((row) => ({ ...row, read: readIds.has(row.id) }));
+}
+
+export async function getUnreadNotificationCount(): Promise<number> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return 0;
+
+  const { data, error } = await supabase.rpc("unread_notification_count");
+  if (error) {
+    // A failed count must not break the header it renders in.
+    console.error("[notifications.getUnreadNotificationCount] failed", error);
+    return 0;
+  }
+  return data ?? 0;
+}
+
+/** Called when the dropdown opens. Idempotent. */
+export async function markAllNotificationsRead(): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { error } = await supabase.rpc("mark_all_notifications_read");
+  if (error) {
+    console.error("[notifications.markAllNotificationsRead] failed", error);
+    return;
+  }
+  // The badge lives in the layout chrome, which is rendered on the server.
+  revalidatePath("/", "layout");
+}
+
+export interface SendNotificationState {
+  error?: string;
+  ok?: boolean;
+  /** How many users it reached, for the admin's confirmation line. */
+  recipients?: number;
+}
+
+/**
+ * Admin compose. Either a broadcast (no target) or one user.
+ *
+ * Targeting is by EMAIL in the form, resolved to an id server-side, because an
+ * admin typing a uuid is a transcription error waiting to happen and the
+ * failure mode is sending someone else's account notice to the wrong person.
+ */
+export async function sendNotification(
+  _prevState: SendNotificationState,
+  formData: FormData,
+): Promise<SendNotificationState> {
+  // Gates the ACTION, not just the page that renders its form — a server
+  // action is reachable by POST whether or not that page was gated.
+  const admin = await requireAdminUser();
+
+  const title = String(formData.get("title") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+  const href = String(formData.get("href") ?? "").trim();
+  const audience = String(formData.get("audience") ?? "broadcast");
+  const targetEmail = String(formData.get("targetEmail") ?? "").trim().toLowerCase();
+
+  if (!title) return { error: "Give it a title." };
+  if (!body) return { error: "Write the message." };
+  if (href && !/^\/[A-Za-z0-9/_?=&.-]*$/.test(href)) {
+    // Mirrors the check constraint. An external link in an in-app notification
+    // is a phishing primitive, so it is refused in both places.
+    return { error: "The link must be a path inside the app, starting with /." };
+  }
+
+  const service = createAdminClient();
+  let targetUserId: string | null = null;
+
+  if (audience === "user") {
+    if (!targetEmail) return { error: "Enter the email of the user to notify." };
+    const { data: profile } = await service
+      .from("profiles")
+      .select("id")
+      .eq("email", targetEmail)
+      .maybeSingle();
+    if (!profile) return { error: `No account found for ${targetEmail}.` };
+    targetUserId = profile.id;
+  }
+
+  const { error } = await service.rpc("admin_send_notification", {
+    p_user_id: targetUserId,
+    p_title: title,
+    p_body: body,
+    p_href: href || null,
+    p_created_by: admin.id,
+  });
+
+  if (error) {
+    console.error("[notifications.sendNotification] failed", error);
+    return { error: "Couldn't send that notification." };
+  }
+
+  let recipients = 1;
+  if (!targetUserId) {
+    const { count } = await service
+      .from("profiles")
+      .select("id", { count: "exact", head: true });
+    recipients = count ?? 0;
+  }
+
+  revalidatePath("/admin/notifications");
+  return { ok: true, recipients };
+}

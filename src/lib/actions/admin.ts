@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { Currency } from "@/lib/types/database";
 import { SETTING_KEYS } from "@/lib/settings";
 import { isCurrency } from "@/lib/currencies";
+import { sendKycApprovedEmail, sendKycRejectedEmail } from "@/lib/email";
 
 /**
  * Admin actions.
@@ -25,13 +26,26 @@ export async function approveKyc(
   _prevState: AdminActionState,
   formData: FormData,
 ): Promise<AdminActionState> {
-  await requireAdminUser();
+  const actor = await requireAdminUser();
   const userId = String(formData.get("userId") ?? "");
 
   const admin = createAdminClient();
   const { error } = await admin.rpc("admin_approve_kyc", { p_user_id: userId });
 
   if (error) return { error: error.message };
+
+  // The decision is already made and committed by this point, so neither the
+  // notification nor the email is allowed to fail it — a user whose KYC was
+  // approved must not be told the approval failed because an email provider
+  // was down.
+  await notifyUser(admin, userId, {
+    title: "You're verified",
+    body: "Your identity check is approved. Withdrawals are now open.",
+    href: "/withdraw",
+    actedBy: actor.id,
+    email: (to) => sendKycApprovedEmail({ to }),
+  });
+
   revalidatePath("/admin/kyc");
   return { ok: true };
 }
@@ -40,7 +54,7 @@ export async function rejectKyc(
   _prevState: AdminActionState,
   formData: FormData,
 ): Promise<AdminActionState> {
-  await requireAdminUser();
+  const actor = await requireAdminUser();
   const userId = String(formData.get("userId") ?? "");
   const reason = String(formData.get("reason") ?? "").trim();
 
@@ -56,8 +70,67 @@ export async function rejectKyc(
   });
 
   if (error) return { error: error.message };
+
+  await notifyUser(admin, userId, {
+    title: "We need another look at your documents",
+    body: reason,
+    href: "/onboarding/kyc/status",
+    actedBy: actor.id,
+    email: (to) => sendKycRejectedEmail({ to, reason }),
+  });
+
   revalidatePath("/admin/kyc");
   return { ok: true };
+}
+
+/**
+ * Shared "tell the user" step for an admin decision that has already been
+ * committed.
+ *
+ * NEVER THROWS, and never changes the caller's result. Both channels are
+ * best-effort by design: the authoritative action is the RPC that already
+ * succeeded, and a failed notification insert or a dead email provider must not
+ * turn a completed approval into a reported failure. Failures are logged so a
+ * persistently broken channel is visible rather than silent.
+ */
+async function notifyUser(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  params: {
+    title: string;
+    body: string;
+    href?: string;
+    /** The acting admin, recorded on the notification row. */
+    actedBy: string;
+    email?: (to: string) => Promise<boolean>;
+  },
+): Promise<void> {
+  try {
+    const { error } = await admin.rpc("admin_send_notification", {
+      p_user_id: userId,
+      p_title: params.title,
+      p_body: params.body,
+      p_href: params.href ?? null,
+      p_created_by: params.actedBy,
+    });
+    if (error) {
+      console.error("[admin.notifyUser] notification insert failed", { userId, error });
+    }
+
+    if (params.email) {
+      const { data: profile } = await admin
+        .from("profiles")
+        .select("email")
+        .eq("id", userId)
+        .maybeSingle();
+      if (profile?.email) await params.email(profile.email);
+    }
+  } catch (err) {
+    console.error("[admin.notifyUser] threw", {
+      userId,
+      error: err instanceof Error ? err.message : err,
+    });
+  }
 }
 
 export async function completeWithdrawal(

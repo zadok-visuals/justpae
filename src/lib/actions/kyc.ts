@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { kycIdFieldFor, kycIdPattern } from "@/lib/countries";
 import { verifyOwnedUpload } from "@/lib/storage/verifyUpload";
+import { adminNotificationRecipients, sendKycSubmittedEmail } from "@/lib/email";
 
 export interface KycActionState {
   error?: string;
@@ -157,6 +158,19 @@ export async function submitIndividualKyc(
       p_phone: phone,
     });
     if (profileError) throw profileError;
+
+    // Tell the ops team there is something to review. Best effort and
+    // deliberately after the authoritative writes: a submission that landed
+    // must not be reported as failed because an email provider was down, and
+    // the admin queue is the real source of truth either way.
+    const admins = adminNotificationRecipients();
+    if (admins.length > 0) {
+      await sendKycSubmittedEmail({
+        to: admins,
+        userEmail: user.email ?? user.id,
+        kycType: "individual",
+      });
+    }
   } catch (err) {
     console.error("[kyc.submitIndividualKyc] failed", err);
     return {
@@ -247,6 +261,19 @@ export async function submitBusinessKyc(
       p_business_name: businessName,
     });
     if (profileError) throw profileError;
+
+    // Tell the ops team there is something to review. Best effort and
+    // deliberately after the authoritative writes: a submission that landed
+    // must not be reported as failed because an email provider was down, and
+    // the admin queue is the real source of truth either way.
+    const admins = adminNotificationRecipients();
+    if (admins.length > 0) {
+      await sendKycSubmittedEmail({
+        to: admins,
+        userEmail: user.email ?? user.id,
+        kycType: "business",
+      });
+    }
   } catch (err) {
     console.error("[kyc.submitBusinessKyc] failed", err);
     return {

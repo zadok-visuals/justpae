@@ -166,6 +166,48 @@ export type WithdrawalPin = {
   updated_at: string;
 };
 
+/**
+ * In-app notification. `user_id` null means a broadcast to every user.
+ *
+ * There is deliberately no `read_at` on this row: read state lives in
+ * notification_reads, one row per (notification, user). A single column here
+ * would make a broadcast's read state shared — the first person to open it
+ * would mark it read for everyone — which is the flaw the ported original
+ * carried. See supabase/migrations/0017.
+ */
+export type Notification = {
+  id: string;
+  user_id: string | null;
+  title: string;
+  body: string;
+  /** Relative in-app path only, enforced by a check constraint. */
+  href: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type NotificationRead = {
+  notification_id: string;
+  user_id: string;
+  read_at: string;
+};
+
+export type SupportSender = "user" | "admin";
+
+/** One thread per user. `body` is nullable because an image-only message has
+ *  no text; a check constraint requires one or the other. */
+export type SupportMessage = {
+  id: string;
+  user_id: string;
+  sender: SupportSender;
+  body: string | null;
+  /** Path into the private support-attachments bucket. */
+  attachment_ref: string | null;
+  /** Stamped when the OTHER side has seen it. Not writable by users. */
+  read_at: string | null;
+  created_at: string;
+};
+
 /** See the conversion_quotes table entry below for why this exists. */
 export type ConversionQuoteRow = {
   id: string;
@@ -367,6 +409,21 @@ export type Database = {
        * settles at must come from a row the server wrote, never from a
        * function argument. See supabase/migrations/0010.
        */
+      notifications: {
+        Row: Notification;
+        Insert: Partial<Notification> & { title: string; body: string };
+        Update: Partial<Notification>; Relationships: [];
+      };
+      notification_reads: {
+        Row: NotificationRead;
+        Insert: { notification_id: string; user_id: string; read_at?: string };
+        Update: Partial<NotificationRead>; Relationships: [];
+      };
+      support_messages: {
+        Row: SupportMessage;
+        Insert: Partial<SupportMessage> & { user_id: string; sender: SupportSender };
+        Update: Partial<SupportMessage>; Relationships: [];
+      };
       conversion_quotes: {
         Row: ConversionQuoteRow;
         Insert: Partial<ConversionQuoteRow> & {
@@ -530,6 +587,30 @@ export type Database = {
         };
         Returns: string;
       };
+
+      // ── Notifications and support chat (0017) ───────────────────────────
+      // The four user-facing ones take no arguments at all: each derives its
+      // subject from auth.uid(), so none can be asked about anybody else.
+      unread_notification_count: { Args: Record<string, never>; Returns: number };
+      mark_all_notifications_read: { Args: Record<string, never>; Returns: undefined };
+      unread_support_count: { Args: Record<string, never>; Returns: number };
+      mark_support_thread_read: { Args: Record<string, never>; Returns: undefined };
+      /** Service-role only. p_user_id null is a broadcast to every user. */
+      admin_send_notification: {
+        Args: {
+          p_user_id: string | null;
+          p_title: string;
+          p_body: string;
+          p_href: string | null;
+          p_created_by: string;
+        };
+        Returns: string;
+      };
+      admin_send_support_message: {
+        Args: { p_user_id: string; p_body: string | null; p_attachment_ref?: string | null };
+        Returns: string;
+      };
+      admin_mark_support_thread_read: { Args: { p_user_id: string }; Returns: undefined };
 
       /** Server-only (0011). The ONLY path to kyc_status = 'pending', and it
        *  can reach no other value — approval stays in admin_approve_kyc. */
