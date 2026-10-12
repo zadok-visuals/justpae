@@ -110,13 +110,13 @@ export function TopBar({ userName }: { userName: string }) {
 
   return (
     <div className="hidden shrink-0 items-center border-b border-sidebar-border sm:flex">
-      <div className="flex w-60 shrink-0 items-center px-5 py-3">
+      <div className="flex w-60 shrink-0 items-center self-stretch border-r border-sidebar-border bg-sidebar px-5 py-3">
         <Link href="/home" aria-label="justpae home" className="inline-flex min-h-11 items-center">
           <Wordmark />
         </Link>
       </div>
 
-      <h1 className="min-w-0 flex-1 truncate font-display text-xl font-semibold text-foreground">
+      <h1 className="min-w-0 flex-1 truncate px-6 font-display text-xl font-semibold text-foreground">
         {title}
       </h1>
 
