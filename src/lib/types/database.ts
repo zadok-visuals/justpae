@@ -111,6 +111,10 @@ export type Transaction = {
   needs_manual_review: boolean;
   manual_review_reason: string | null;
   decline_reason: string | null;
+  /** When the user was told this transaction reached a terminal state. The
+   *  exactly-once marker from 0018 — completed and failed are mutually
+   *  exclusive, so one stamp per row covers both. */
+  notified_at: string | null;
   created_at: string;
 };
 
@@ -133,6 +137,9 @@ export type Deposit = {
   provider: TransactionProvider;
   provider_reference: string | null;
   decline_reason: string | null;
+  /** When the user was told this deposit was credited. See 0018 and
+   *  claim_deposit_notification — null means nobody has announced it yet. */
+  notified_at: string | null;
   created_at: string;
 };
 
@@ -458,6 +465,16 @@ export type Database = {
         Returns: undefined;
       };
       fail_conversion: { Args: { p_transaction_id: string; p_reason?: string | null }; Returns: undefined };
+
+      /**
+       * The exactly-once gate for money-event notifications (0018). Returns
+       * true to the FIRST caller for a given row and false to every caller
+       * after it, so the several paths that can complete the same transaction
+       * or deposit between them send exactly one email and one bell entry.
+       * Service-role only. See src/lib/notify/events.ts.
+       */
+      claim_transaction_notification: { Args: { p_transaction_id: string }; Returns: boolean };
+      claim_deposit_notification: { Args: { p_deposit_id: string }; Returns: boolean };
 
       create_withdrawal_request: {
         Args: { p_currency: Currency; p_amount: number; p_pin: string };

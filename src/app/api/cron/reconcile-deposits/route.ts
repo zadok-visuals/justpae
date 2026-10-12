@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getTransfer } from "@/lib/busha/client";
 import { requireCronSecret, staleCutoff } from "@/lib/cron/auth";
+import { notifyDepositCredited } from "@/lib/notify/events";
 
 /**
  * Safety net for deposits that are still pending long after they should have
@@ -60,6 +61,10 @@ export async function GET(request: Request) {
           console.warn("[reconcile-deposits] credited a deposit the webhook missed", {
             depositId: deposit.id,
           });
+          // This path matters MORE than the webhook's, not less: the user
+          // closed the tab, the webhook never arrived, and this notification
+          // is the only way they find out the money landed.
+          await notifyDepositCredited(deposit.id);
           results.push({ depositId: deposit.id, outcome: "credited" });
         }
       } else if (transfer.status === "cancelled" || transfer.status === "funds_not_delivered") {

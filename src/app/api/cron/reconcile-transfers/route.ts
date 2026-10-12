@@ -3,6 +3,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getTransfer } from "@/lib/busha/client";
 import { requireCronSecret, staleCutoff } from "@/lib/cron/auth";
 import { verifyTransferMatchesRow } from "@/lib/transfers/verify";
+import {
+  notifyConversionCompleted,
+  notifyWithdrawalCompleted,
+  notifyWithdrawalFailed,
+} from "@/lib/notify/events";
 
 /**
  * Safety net for `transactions` rows waiting on a provider transfer — the
@@ -77,6 +82,10 @@ export async function GET(request: Request) {
           console.warn("[reconcile-transfers] completed a transfer the webhook missed", {
             transactionId: tx.id,
           });
+          // As with reconcile-deposits: this is the path where the webhook
+          // never came, so it is the only notification the user will get.
+          if (isWithdrawal) await notifyWithdrawalCompleted(tx.id);
+          else await notifyConversionCompleted(tx.id);
           results.push({ transactionId: tx.id, outcome: "completed" });
         }
       } else if (transfer.status === "cancelled" || transfer.status === "funds_not_delivered") {
@@ -93,6 +102,10 @@ export async function GET(request: Request) {
             transactionId: tx.id,
             error,
           });
+        } else if (isWithdrawal) {
+          // Withdrawals only — that is the path that refunds the wallet, and
+          // the refund is the whole point of the message.
+          await notifyWithdrawalFailed(tx.id, reason);
         }
         results.push({ transactionId: tx.id, outcome: `marked failed (${transfer.status})` });
       } else {

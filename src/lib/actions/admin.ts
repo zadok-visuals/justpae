@@ -7,6 +7,7 @@ import type { Currency } from "@/lib/types/database";
 import { SETTING_KEYS } from "@/lib/settings";
 import { isCurrency } from "@/lib/currencies";
 import { sendKycApprovedEmail, sendKycRejectedEmail } from "@/lib/email";
+import { notifyWithdrawalCompleted, notifyWithdrawalFailed } from "@/lib/notify/events";
 
 /**
  * Admin actions.
@@ -146,6 +147,13 @@ export async function completeWithdrawal(
   });
 
   if (error) return { error: error.message };
+
+  // The customer was told nothing at all when an admin paid out by hand, which
+  // is the one path where they are LEAST likely to already know: an automated
+  // payout settles in seconds while they are still on the screen, whereas a
+  // manual one happens hours later with nobody watching.
+  await notifyWithdrawalCompleted(transactionId);
+
   revalidatePath("/admin/withdrawals");
   return { ok: true };
 }
@@ -167,6 +175,13 @@ export async function rejectWithdrawal(
   });
 
   if (error) return { error: error.message };
+
+  // admin_reject_withdrawal has already refunded the wallet, and the refund is
+  // the headline of the message. A rejected withdrawal the customer is never
+  // told about looks, from their side, exactly like money that vanished for
+  // several hours and then reappeared with no explanation.
+  await notifyWithdrawalFailed(transactionId, reason || null);
+
   revalidatePath("/admin/withdrawals");
   return { ok: true };
 }

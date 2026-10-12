@@ -4,6 +4,7 @@ import { getPayoutChannel, createBushaRecipient, createPayoutTransfer } from "@/
 import { MINIMUM_WITHDRAWAL_USDT_THRESHOLD } from "@/lib/busha/limits";
 import { evaluateWithdrawalRouting } from "@/lib/withdrawals/threshold";
 import { RECIPIENT_CHANGE_HOLD_HOURS } from "@/lib/withdrawals/rules";
+import { notifyWithdrawalCompleted } from "@/lib/notify/events";
 
 /**
  * Server-only. Attempts the automated payout for a withdrawal that
@@ -171,6 +172,10 @@ export async function attemptAutomatedPayout(
     // provider's terminal status for payouts specifically.
     if (transfer.status === "funds_delivered") {
       await admin.rpc("complete_withdrawal_payout", { p_transaction_id: transactionId });
+      // Claimed exactly once across this path, the webhook and the reconciler
+      // — see src/lib/notify/events.ts. Never throws, so it cannot break this
+      // function's own invariant of not throwing past itself.
+      await notifyWithdrawalCompleted(transactionId);
     }
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);

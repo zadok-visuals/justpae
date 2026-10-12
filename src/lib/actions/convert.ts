@@ -12,6 +12,7 @@ import { getMinimumConversionAmount } from "@/lib/busha/limits";
 import { toCustomerError } from "@/lib/provider-error";
 import { CURRENCY_CODES, formatAmount } from "@/lib/currencies";
 import { isPinLockedError, isWrongPinError, resolvePinError } from "@/lib/pin";
+import { notifyConversionCompleted } from "@/lib/notify/events";
 
 /**
  * /convert's server side.
@@ -307,6 +308,9 @@ export async function executeConversion(
     (transfer.status === "funds_converted" || transfer.status === "funds_delivered")
   ) {
     await admin.rpc("complete_conversion", { p_transaction_id: transactionId });
+    // Claimed, so the webhook and the reconciler cannot also announce this
+    // one — see src/lib/notify/events.ts.
+    await notifyConversionCompleted(transactionId);
   }
 
   revalidatePath("/home");
@@ -368,6 +372,11 @@ export async function checkConversionStatus(
             error: completeError,
           });
         } else {
+          // The poll is often the ONLY path that settles a conversion for this
+          // provider (see this function's own comment on why), so it has to
+          // notify too — the claim is what stops that from doubling up with
+          // the webhook or the reconciler on the occasions they do fire.
+          await notifyConversionCompleted(transactionId);
           revalidatePath("/home");
           revalidatePath("/transactions");
           return { status: "completed" };

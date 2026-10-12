@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptBody } from "@/lib/klasha/client";
 import { KLASHA_GHS_DEPOSIT_ENABLED } from "@/lib/flags";
+import { notifyDepositCredited } from "@/lib/notify/events";
 
 /**
  * Secondary provider webhook — GHS deposit collection only.
@@ -130,6 +131,10 @@ export async function POST(request: Request) {
           depositId: deposit.id,
           error,
         });
+      } else {
+        // After the credit and only on success. Never throws, so it cannot
+        // make this handler return non-2xx and earn a provider retry.
+        await notifyDepositCredited(deposit.id);
       }
     } else if (!deposit) {
       console.error("[klasha webhook] no matching deposit row", {

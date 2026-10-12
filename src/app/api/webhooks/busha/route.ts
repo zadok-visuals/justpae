@@ -3,6 +3,12 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getTransfer } from "@/lib/busha/client";
 import { verifyTransferMatchesRow } from "@/lib/transfers/verify";
+import {
+  notifyDepositCredited,
+  notifyConversionCompleted,
+  notifyWithdrawalCompleted,
+  notifyWithdrawalFailed,
+} from "@/lib/notify/events";
 
 /**
  * Provider webhook receiver.
@@ -192,6 +198,12 @@ async function handleDeposit(
         depositId: deposit.id,
         error,
       });
+    } else {
+      // Only on success, and only after it: the notification says the money is
+      // in the wallet, so it must not be sent when the credit didn't happen.
+      // notifyDepositCredited never throws, so this cannot turn a successful
+      // credit into a non-2xx that gets the whole webhook retried.
+      await notifyDepositCredited(deposit.id);
     }
   } else if (transferStatus === "cancelled" || transferStatus === "funds_not_delivered") {
     const { error } = await admin.rpc("fail_deposit", {
@@ -279,6 +291,10 @@ async function handleTransfer(
           transactionId: transaction.id,
           error,
         });
+      } else if (isWithdrawal) {
+        await notifyWithdrawalCompleted(transaction.id);
+      } else {
+        await notifyConversionCompleted(transaction.id);
       }
     } else if (transfer.status === "cancelled" || transfer.status === "funds_not_delivered") {
       const reason = `Provider reported ${transfer.status}`;
@@ -297,6 +313,12 @@ async function handleTransfer(
           transactionId: transaction.id,
           error,
         });
+      } else if (isWithdrawal) {
+        // Withdrawals only. fail_withdrawal_payout refunds the wallet, which is
+        // the fact this tells the user about. A failed conversion leaves the
+        // balance where it was, so there is nothing to reassure them about and
+        // no email for it — see src/lib/email.ts on not inventing messages.
+        await notifyWithdrawalFailed(transaction.id, reason);
       }
     } else {
       // The payload claimed a terminal status and the provider's own API
