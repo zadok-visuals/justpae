@@ -17,9 +17,12 @@ export default async function OnboardingLayout({ children }: { children: React.R
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  if (!user.email_confirmed_at) {
-    redirect(`/auth/verify?email=${encodeURIComponent(user.email ?? "")}`);
-  }
+  // No email in the URL. /auth/verify resolves it from the session (which
+  // this branch is holding) or from the pending-email cookie — see
+  // resolvePendingVerificationEmail. The proxy and the auth actions were both
+  // moved off URL-carried email; this layout and the dashboard's were the two
+  // that still put a user's address into history and any referrer.
+  if (!user.email_confirmed_at) redirect("/auth/verify");
 
   return (
     <div className="flex min-h-screen-dvh flex-col bg-background">

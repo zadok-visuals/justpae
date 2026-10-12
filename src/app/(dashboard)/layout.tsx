@@ -49,9 +49,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // Same reasoning for the confirmation gate the proxy also applies: an
   // unconfirmed session should never render the dashboard, proxy matcher
   // notwithstanding.
-  if (!user.email_confirmed_at) {
-    redirect(`/auth/verify?email=${encodeURIComponent(user.email ?? "")}`);
-  }
+  // No email in the URL — /auth/verify reads it from this very session (see
+  // resolvePendingVerificationEmail, which prefers the session over the
+  // cookie), so carrying it as a query parameter leaked the address into
+  // history and any referrer for no benefit at all.
+  if (!user.email_confirmed_at) redirect("/auth/verify");
 
   // user_metadata.full_name is set at signup (see signUp in lib/actions/auth)
   // and costs nothing extra to read — it's already on the session, unlike a
