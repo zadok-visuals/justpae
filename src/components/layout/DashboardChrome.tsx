@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { Wordmark } from "@/components/layout/Mark";
 import { logOut } from "@/lib/actions/auth";
 import { useCurrentPageTitle } from "@/components/layout/PageTitleContext";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 import {
   HomeIcon,
   ActivityIcon,
@@ -14,6 +15,7 @@ import {
   ProfileIcon,
   AdminIcon,
   LogOutIcon,
+  SupportIcon,
 } from "@/components/layout/NavIcons";
 
 /**
@@ -105,7 +107,15 @@ function initialsFor(name: string): string {
  * mounted, via PageTitleContext — means there is one row and one rule, not
  * a logo strip stacked on top of a page header that happens to look similar.
  */
-export function TopBar({ userName }: { userName: string }) {
+export function TopBar({
+  userName,
+  unreadNotifications = 0,
+  unreadSupport = 0,
+}: {
+  userName: string;
+  unreadNotifications?: number;
+  unreadSupport?: number;
+}) {
   const title = useCurrentPageTitle();
 
   return (
@@ -120,16 +130,45 @@ export function TopBar({ userName }: { userName: string }) {
         {title}
       </h1>
 
-      <div className="flex shrink-0 items-center px-5">
+      <div className="flex shrink-0 items-center gap-1 px-5">
+        <SupportLink unread={unreadSupport} />
+        <NotificationBell initialUnreadCount={unreadNotifications} />
         <Link
           href="/profile"
           aria-label="Profile"
-          className="flex size-10 items-center justify-center rounded-full bg-sidebar-accent text-sm font-semibold text-foreground"
+          className="ml-1 flex size-10 items-center justify-center rounded-full bg-sidebar-accent text-sm font-semibold text-foreground"
         >
           {initialsFor(userName)}
         </Link>
       </div>
     </div>
+  );
+}
+
+/**
+ * Support reachable from the header, not only from Profile.
+ *
+ * Someone who needs help is, by definition, already struggling with the
+ * interface — making them find Settings first is the wrong moment to add a
+ * navigation puzzle.
+ */
+function SupportLink({ unread }: { unread: number }) {
+  return (
+    <Link
+      href="/support"
+      aria-label={unread > 0 ? `Support, ${unread} unread` : "Support"}
+      className="relative flex size-10 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+    >
+      <SupportIcon className="size-5" />
+      {unread > 0 && (
+        <span
+          aria-hidden="true"
+          className="absolute right-1 top-1 min-w-4 rounded-full bg-primary px-1 text-[0.625rem] font-semibold leading-4 text-primary-foreground"
+        >
+          {unread > 9 ? "9+" : unread}
+        </span>
+      )}
+    </Link>
   );
 }
 
@@ -207,16 +246,35 @@ export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
  * destination lives in the bottom bar, so there is nothing to hide behind a
  * hamburger.
  */
-export function MobileTopBar({ title }: { title?: string }) {
+export function MobileTopBar({
+  title,
+  unreadNotifications = 0,
+  unreadSupport = 0,
+}: {
+  title?: string;
+  unreadNotifications?: number;
+  unreadSupport?: number;
+}) {
   return (
     <header className="sticky top-0 z-30 flex min-h-14 items-center justify-between gap-3 border-b border-border bg-background/95 px-4 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md sm:hidden">
       {title ? (
-        <h1 className="truncate text-base font-semibold text-foreground">{title}</h1>
+        <h1 className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">{title}</h1>
       ) : (
-        <Link href="/home" aria-label="justpae home" className="inline-flex min-h-11 items-center">
+        <Link
+          href="/home"
+          aria-label="justpae home"
+          className="inline-flex min-h-11 flex-1 items-center"
+        >
           <Wordmark />
         </Link>
       )}
+
+      {/* The bell's dropdown is viewport-anchored below sm, which is why it
+          can live in a header this narrow at all — see NotificationBell. */}
+      <div className="flex shrink-0 items-center gap-0.5">
+        <SupportLink unread={unreadSupport} />
+        <NotificationBell initialUnreadCount={unreadNotifications} />
+      </div>
     </header>
   );
 }

@@ -118,6 +118,25 @@ export function AdminIcon(props: IconProps) {
   );
 }
 
+export function BellIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M18 8.5a6 6 0 1 0-12 0c0 4.5-2 5.5-2 5.5h16s-2-1-2-5.5" />
+      <path d="M10.3 18a2 2 0 0 0 3.4 0" />
+    </Icon>
+  );
+}
+
+export function SupportIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M20 12a8 8 0 1 0-3.2 6.4L21 20l-1.1-3.4A7.9 7.9 0 0 0 20 12Z" />
+      <path d="M9.6 9.6a2.5 2.5 0 1 1 3.6 2.3c-.7.4-1.2 1-1.2 1.8" />
+      <path d="M12 16.2h.01" />
+    </Icon>
+  );
+}
+
 export function LogOutIcon(props: IconProps) {
   return (
     <Icon {...props}>
