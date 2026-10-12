@@ -2,81 +2,135 @@ import Link from "next/link";
 import { requireAdminUser } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card } from "@/components/ui/Primitives";
+import type { AdminDashboardStats } from "@/lib/types/database";
 
 export const metadata = { title: "Admin" };
 export const dynamic = "force-dynamic";
 
 /**
- * The admin landing page: counts of the things waiting on a human.
+ * The admin landing page.
  *
- * Deliberately only counts of work-in-progress, not aggregate volume. The
- * question this page answers is "what needs me right now", and a total-volume
- * dashboard buries that.
+ * TWO SECTIONS, IN THIS ORDER, because they answer two different questions and
+ * only one of them is urgent. "What needs me right now" comes first and is the
+ * only part with links; "how is the product doing" is below it and is
+ * deliberately not actionable. A dashboard that mixes a queue depth with a
+ * seven-day signup count teaches the reader to skim both.
+ *
+ * EVERY NUMBER IS COUNTED FROM THE DATABASE, by admin_dashboard_stats() in
+ * migration 0019 — one round trip instead of fifteen separate head-count
+ * requests. There is no seeded, illustrative or placeholder figure anywhere on
+ * this page. A made-up number on an operations dashboard is worse than a
+ * missing one, because somebody will make a decision on it.
  */
+
+const ZERO: AdminDashboardStats = {
+  users_total: 0,
+  users_new_7d: 0,
+  users_suspended: 0,
+  kyc_pending: 0,
+  kyc_approved: 0,
+  withdrawals_queued: 0,
+  withdrawals_flagged: 0,
+  automation_failed: 0,
+  manual_review: 0,
+  deposits_pending: 0,
+  transactions_7d: 0,
+  transactions_completed_7d: 0,
+  support_unread: 0,
+  support_threads: 0,
+  admins_active: 0,
+};
+
 export default async function AdminPage() {
   await requireAdminUser();
   const admin = createAdminClient();
 
-  const [pendingKyc, pendingWithdrawals, flaggedWithdrawals, brokenAutomation] = await Promise.all([
-    admin.from("profiles").select("*", { count: "exact", head: true }).eq("kyc_status", "pending"),
-    admin
-      .from("transactions")
-      .select("*", { count: "exact", head: true })
-      .eq("type", "withdrawal")
-      .in("status", ["pending", "processing"]),
-    admin
-      .from("transactions")
-      .select("*", { count: "exact", head: true })
-      .eq("type", "withdrawal")
-      .eq("requires_extra_verification", true)
-      .is("extra_verification_confirmed_at", null),
-    // Withdrawals whose automation broke BEFORE a provider transfer existed.
-    // These are invisible to the reconcile cron and look identical in the
-    // queue to a legitimately-manual above-threshold withdrawal, which is
-    // exactly why they get their own count.
-    admin
-      .from("transactions")
-      .select("*", { count: "exact", head: true })
-      .eq("type", "withdrawal")
-      .eq("status", "pending")
-      .not("automated_payout_attempt_failed_reason", "is", null),
-  ]);
+  const { data, error } = await admin.rpc("admin_dashboard_stats");
+  if (error) console.error("[admin] dashboard stats failed", error);
+  // Zeroes rather than a crash, and the banner below says so — a dashboard
+  // that renders zeroes while claiming they are real is the one failure mode
+  // worse than not rendering.
+  const stats = (data as AdminDashboardStats | null) ?? ZERO;
+  const unavailable = !!error || !data;
 
-  const tiles = [
-    { href: "/admin/kyc", label: "Waiting on verification", count: pendingKyc.count ?? 0 },
-    {
-      href: "/admin/withdrawals",
-      label: "Withdrawals in the queue",
-      count: pendingWithdrawals.count ?? 0,
-    },
+  const queues = [
+    { href: "/admin/kyc", label: "Waiting on verification", count: stats.kyc_pending },
+    { href: "/admin/withdrawals", label: "Withdrawals in the queue", count: stats.withdrawals_queued },
     {
       href: "/admin/withdrawals?filter=flagged",
       label: "Need extra verification",
-      count: flaggedWithdrawals.count ?? 0,
+      count: stats.withdrawals_flagged,
     },
     {
       href: "/admin/withdrawals?filter=broken",
       label: "Automation failed",
-      count: brokenAutomation.count ?? 0,
+      count: stats.automation_failed,
     },
+    { href: "/admin/support", label: "Unread support messages", count: stats.support_unread },
+  ];
+
+  const health = [
+    { label: "Accounts", value: stats.users_total },
+    { label: "New this week", value: stats.users_new_7d },
+    { label: "Verified", value: stats.kyc_approved },
+    { label: "Suspended", value: stats.users_suspended },
+    { label: "Transactions this week", value: stats.transactions_7d },
+    { label: "Completed this week", value: stats.transactions_completed_7d },
+    { label: "Deposits pending", value: stats.deposits_pending },
+    { label: "Flagged for review", value: stats.manual_review },
+    { label: "Support threads", value: stats.support_threads },
+    { label: "Active admins", value: stats.admins_active },
   ];
 
   return (
-    <div className="space-y-5">
-      <h1 className="font-display text-2xl font-semibold text-foreground">What needs you</h1>
+    <div className="space-y-7">
+      {unavailable && (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4">
+          <p className="text-sm font-semibold text-foreground">These numbers didn&apos;t load</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Everything below is showing zero because the query failed, not because there is nothing
+            there. Reload, and check the logs if it persists.
+          </p>
+        </div>
+      )}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        {tiles.map((tile) => (
-          <Link key={tile.href} href={tile.href}>
-            <Card className="flex items-baseline justify-between gap-3">
-              <span className="text-sm text-muted-foreground">{tile.label}</span>
-              <span className="font-display text-2xl font-semibold tabular-nums text-foreground">
-                {tile.count}
-              </span>
+      <section>
+        <h1 className="mb-3 font-display text-2xl font-semibold text-foreground">What needs you</h1>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {queues.map((tile) => (
+            <Link key={tile.href} href={tile.href}>
+              <Card className="flex items-baseline justify-between gap-3">
+                <span className="text-sm text-muted-foreground">{tile.label}</span>
+                <span
+                  className={`font-display text-2xl font-semibold tabular-nums ${
+                    tile.count > 0 ? "text-primary" : "text-foreground"
+                  }`}
+                >
+                  {tile.count}
+                </span>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          The last seven days
+        </h2>
+        {/* Not links. These are for reading, and making them clickable would
+            invite the reader to treat them as a queue. */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {health.map((tile) => (
+            <Card key={tile.label} className="space-y-0.5">
+              <p className="font-display text-xl font-semibold tabular-nums text-foreground">
+                {tile.value.toLocaleString("en-GB")}
+              </p>
+              <p className="text-xs text-muted-foreground">{tile.label}</p>
             </Card>
-          </Link>
-        ))}
-      </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

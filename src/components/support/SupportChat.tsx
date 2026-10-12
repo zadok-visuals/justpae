@@ -153,6 +153,8 @@ export function SupportChat({
   const [body, setBody] = useState("");
   const [attachment, setAttachment] = useState<{ path: string; name: string } | null>(null);
   const [uploading, setUploading] = useState(false);
+  // Survives the optimistic clear, so a failed send is recoverable.
+  const draftRef = useRef("");
 
   // Mark the admin's messages read as a side effect of the thread being on
   // screen. Done from the client, not the server page, because the action
@@ -169,12 +171,19 @@ export function SupportChat({
     endRef.current?.scrollIntoView({ block: "end" });
   }, [messages.length]);
 
+  // The composer is cleared when the message is SENT (in handleSubmit below),
+  // not here once the server confirms — a chat whose text sits in the box for
+  // a round trip after you press send feels broken. The cost of clearing
+  // optimistically is that a failed send would throw away what someone typed,
+  // which for a support message could be several paragraphs; so the draft is
+  // kept in a ref and the failure toast offers it back.
   useEffect(() => {
-    if (state.error) toast.error(state.error);
-    if (state.ok) {
-      setBody("");
-      setAttachment(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+    if (state.error) {
+      toast.error(state.error, {
+        action: draftRef.current
+          ? { label: "Restore draft", onClick: () => setBody(draftRef.current) }
+          : undefined,
+      });
     }
   }, [state]);
 
@@ -222,6 +231,18 @@ export function SupportChat({
 
   const canSend = (body.trim().length > 0 || attachment !== null) && !uploading;
 
+  // Wraps formAction so the clearing happens in an event handler rather than
+  // in an effect reacting to the result. FormData is read by React before this
+  // returns, so emptying the controlled state here cannot strip the body from
+  // the request.
+  function handleSubmit(formData: FormData) {
+    draftRef.current = body;
+    setBody("");
+    setAttachment(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    formAction(formData);
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {messages.length === 0 ? (
@@ -247,7 +268,7 @@ export function SupportChat({
       )}
       <div ref={endRef} />
 
-      <form ref={formRef} action={formAction} className="sticky bottom-0 bg-background pb-1 pt-2">
+      <form ref={formRef} action={handleSubmit} className="sticky bottom-0 bg-background pb-1 pt-2">
         {attachment && (
           <div className="mb-2 flex items-center gap-2 rounded-lg border border-border bg-secondary px-3 py-2">
             <PaperclipIcon className="size-4 shrink-0 text-muted-foreground" />

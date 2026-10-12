@@ -1,11 +1,38 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { isAdminEmail } from "@/lib/auth/admin";
+import { isAdmin } from "@/lib/auth/admin";
+import { Banner } from "@/components/ui/Primitives";
 import { BottomTabBar, Sidebar, TopBar } from "@/components/layout/DashboardChrome";
 import { PageTitleProvider } from "@/components/layout/PageTitleContext";
 import { UnreadCountsProvider } from "@/components/layout/UnreadCountsContext";
 import { getUnreadNotificationCount } from "@/lib/actions/notifications";
 import { getUnreadSupportCount } from "@/lib/actions/support";
+
+/**
+ * The user's own suspension state, read under their own RLS — the existing
+ * "profiles: read own" policy already covers it, so this needs no service-role
+ * client and no new grant.
+ *
+ * This banner is PURELY the explanation, never the enforcement. What actually
+ * stops a suspended account moving money is a BEFORE INSERT trigger on
+ * transactions, bill_payments and deposits (migration 0019), which fires for
+ * the service role and inside every security-definer money function alike. The
+ * banner exists so a suspended user reads a reason here instead of opening a
+ * support thread whose first line is "my app is broken".
+ */
+async function suspensionFor(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<{ at: string; reason: string | null } | null> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("suspended_at, suspended_reason")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (!data?.suspended_at) return null;
+  return { at: data.suspended_at, reason: data.suspended_reason };
+}
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -37,9 +64,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // request while MobileTopBar is mounted by every page's own PageShell.
   // Either failing resolves to 0 inside the action rather than throwing — the
   // header must render even when a count doesn't.
-  const [unreadNotifications, unreadSupport] = await Promise.all([
+  const [unreadNotifications, unreadSupport, admin, suspension] = await Promise.all([
     getUnreadNotificationCount(),
     getUnreadSupportCount(),
+    isAdmin(user.id, user.email),
+    suspensionFor(supabase, user.id),
   ]);
 
   return (
@@ -62,7 +91,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <TopBar userName={fullName} />
 
           <div className="flex min-h-0 flex-1">
-            <Sidebar isAdmin={isAdminEmail(user.email)} />
+            <Sidebar isAdmin={admin} />
 
             <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
               {/* The bottom padding is the tab bar's own height plus the safe area.
@@ -70,6 +99,21 @@ export default async function DashboardLayout({ children }: { children: React.Re
                   hidden behind the bar — which is the single most common bug in a
                   bottom-tab layout. Dropped at sm, where there is no bar. */}
               <main className="min-w-0 flex-1 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] sm:pb-0">
+                {suspension && (
+                  // Inside main and above children, so it is the first thing
+                  // read on every page rather than something only the home
+                  // screen mentions.
+                  <div className="mx-auto w-full max-w-2xl px-4 pt-5 sm:px-6 sm:pt-8">
+                    <Banner
+                      tone="danger"
+                      title="Your account is suspended"
+                      action={{ href: "/support", label: "Message support" }}
+                    >
+                      {suspension.reason ??
+                        "Deposits, conversions, bill payments and withdrawals are paused on this account."}
+                    </Banner>
+                  </div>
+                )}
                 {children}
               </main>
             </div>

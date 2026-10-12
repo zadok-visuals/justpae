@@ -48,6 +48,10 @@ a no-op rather than a re-apply.
 | `0007_admin_kyc.sql` | `admin_approve_kyc`, `admin_reject_kyc` |
 | `0008_bills.sql` | `bill_payments`, `bill_beneficiaries`, create/complete/refund |
 | `0009_usd_collection.sql` | `usd_collection_accounts`, upsert |
+| `0010`–`0016` | Phase 1 security work (server-authoritative amounts, locked KYC columns, PIN hardening, password-gated functions, the standing invariants) and the Phase 2 bug-fix ports |
+| `0017_notifications_and_support_chat.sql` | `notifications`, `notification_reads`, `support_messages`, their RPCs, the private attachments bucket |
+| `0018_event_notification_claim.sql` | `notified_at` on `transactions`/`deposits` plus the two claim functions — the exactly-once gate for money-event notifications |
+| `0019_admin_roles_ledger_suspension.sql` | `admin_users`, `admin_activity_log`, suspension columns and triggers, `admin_dashboard_stats` |
 
 0003 must precede 0005, 0006 and 0008 — all three call
 `verify_transaction_pin`. 0002 must precede 0006, which reads
@@ -72,13 +76,29 @@ that module. Nothing else enumerates currencies.
 Auth emails are **not** synced from this repo by the CLI — Supabase has no
 mechanism for it. See `supabase/email-templates/README.md`.
 
+## Admin roles
+
+`0019` moved admin from an email allowlist to a database role, so this file no
+longer lists it as deliberately absent. `ADMIN_EMAILS` survives as a
+**bootstrap only**: the first sign-in by a listed address creates its own
+`admin_users` row as `superadmin`, marked `bootstrapped` so the ledger never
+claims a human granted it. After that the database is the authority, grants and
+revocations are logged, and — the part that matters — the bootstrap will **not**
+resurrect a revoked row. An admin removed through the UI does not come back at
+their next sign-in because their address is still sitting in an env var nobody
+edited.
+
+Admin pages and actions additionally require `aal2`: a session that has
+presented a TOTP code, not merely one belonging to someone who owns a factor.
+See `src/lib/auth/admin.ts`.
+
 ## What is deliberately absent
 
-* **Admin roles.** Admin is an email allowlist (`ADMIN_EMAILS`) checked in
-  `src/lib/auth/admin.ts`, not a database role. Every `admin_*` function is
-  revoked from `anon` and `authenticated` and reached only through the
-  service-role client from an already-gated server action.
 * **Any `update wallets set balance = ...` outside a function.** Every balance
   change in this schema happens inside a `security definer` function that locks
   the wallet row first. There is no RLS policy that lets a session write a
   balance at all.
+* **Any update or delete path on `admin_activity_log`.** The ledger is
+  append-only, and `assert_phase4_invariants` fails the migration if a function
+  appears that mutates it. The entries most worth deleting are exactly the ones
+  somebody will want deleted.

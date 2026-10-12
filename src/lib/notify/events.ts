@@ -58,15 +58,30 @@ type AdminClient = ReturnType<typeof createAdminClient>;
  * On an RPC error this returns FALSE, deliberately: if we cannot establish that
  * we are the first, we must assume we are not. A missing notification is a
  * support ticket; a duplicate one about someone's money is a scare.
+ *
+ * Two functions rather than one that takes the RPC name, because the two RPCs
+ * name their arguments differently: a single signature would have to widen
+ * them to Record<string, string> and would lose exactly the check that catches
+ * a misspelled parameter — the one mistake here that fails silently and sends
+ * every notification four times.
  */
-async function claim(
-  admin: AdminClient,
-  rpc: "claim_transaction_notification" | "claim_deposit_notification",
-  args: Record<string, string>,
-): Promise<boolean> {
-  const { data, error } = await admin.rpc(rpc, args);
+async function claimTransaction(admin: AdminClient, transactionId: string): Promise<boolean> {
+  const { data, error } = await admin.rpc("claim_transaction_notification", {
+    p_transaction_id: transactionId,
+  });
   if (error) {
-    console.error("[notify.claim] failed", { rpc, args, error });
+    console.error("[notify.claimTransaction] failed", { transactionId, error });
+    return false;
+  }
+  return data === true;
+}
+
+async function claimDeposit(admin: AdminClient, depositId: string): Promise<boolean> {
+  const { data, error } = await admin.rpc("claim_deposit_notification", {
+    p_deposit_id: depositId,
+  });
+  if (error) {
+    console.error("[notify.claimDeposit] failed", { depositId, error });
     return false;
   }
   return data === true;
@@ -134,7 +149,7 @@ export async function notifyDepositCredited(depositId: string): Promise<void> {
       .maybeSingle();
     if (!deposit) return;
 
-    if (!(await claim(admin, "claim_deposit_notification", { p_deposit_id: depositId }))) return;
+    if (!(await claimDeposit(admin, depositId))) return;
 
     // confirmed_amount is what actually arrived and is the only honest figure
     // to quote: a crypto deposit routinely settles a little under the amount
@@ -175,11 +190,7 @@ export async function notifyConversionCompleted(transactionId: string): Promise<
     // described is still a row that has been handled — releasing the claim so
     // the next path can retry a description that will fail identically just
     // trades one silent miss for four.
-    if (
-      !(await claim(admin, "claim_transaction_notification", { p_transaction_id: transactionId }))
-    ) {
-      return;
-    }
+    if (!(await claimTransaction(admin, transactionId))) return;
 
     const fromAmount = formatAmount(tx.currency as Currency, tx.amount);
     // actual_target_amount first: when the provider delivered something other
@@ -216,11 +227,7 @@ export async function notifyWithdrawalCompleted(transactionId: string): Promise<
       .maybeSingle();
     if (!tx) return;
 
-    if (
-      !(await claim(admin, "claim_transaction_notification", { p_transaction_id: transactionId }))
-    ) {
-      return;
-    }
+    if (!(await claimTransaction(admin, transactionId))) return;
 
     const currency = tx.currency as Currency;
     const amount = formatAmount(currency, tx.amount);
@@ -276,11 +283,7 @@ export async function notifyWithdrawalFailed(
     // Completed and failed are mutually exclusive terminal states, so one claim
     // per transaction covers both: whichever of the two happened is the one
     // thing the user is told about this row.
-    if (
-      !(await claim(admin, "claim_transaction_notification", { p_transaction_id: transactionId }))
-    ) {
-      return;
-    }
+    if (!(await claimTransaction(admin, transactionId))) return;
 
     const amount = formatAmount(tx.currency as Currency, tx.amount);
     // The caller's reason wins when it has one — it is the immediate cause.

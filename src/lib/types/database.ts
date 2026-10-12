@@ -47,7 +47,73 @@ export type Profile = {
   kyc_status: KycStatus;
   kyc_rejection_reason: string | null;
   country: CountryCode | null;
+  /**
+   * Phase 4 suspension. Not writable from a user session at any privilege: the
+   * column grants exclude all three, and profiles_guard_protected_columns
+   * refuses the change however the write arrived. Enforcement is a BEFORE
+   * INSERT trigger on transactions, bill_payments and deposits — see 0019 for
+   * why that rather than a check inside each money function.
+   */
+  suspended_at: string | null;
+  suspended_reason: string | null;
+  suspended_by: string | null;
   created_at: string;
+};
+
+/** Phase 4. 'superadmin' additionally grants and revokes admin access. */
+export type AdminRole = "admin" | "superadmin";
+
+/**
+ * The admin roster (0019). No RLS policy and no grants to any user session:
+ * it is a list of the highest-value accounts in the system. Revoked grants
+ * stay as rows with revoked_at set, because "X was an admin between these
+ * dates" is a fact an investigation needs.
+ */
+export type AdminUser = {
+  user_id: string;
+  role: AdminRole;
+  granted_by: string | null;
+  granted_at: string;
+  revoked_at: string | null;
+  revoked_by: string | null;
+  /** True when the row came from the ADMIN_EMAILS bootstrap rather than a
+   *  superadmin's grant, so the ledger never claims a human granted it. */
+  bootstrapped: boolean;
+};
+
+/** The audit ledger (0019). Append-only — there is no update or delete path. */
+export type AdminActivityLogEntry = {
+  id: number;
+  admin_id: string | null;
+  /** Denormalised at write time so the entry still names the actor after the
+   *  account is gone. */
+  admin_email: string | null;
+  /** A short stable verb, e.g. 'kyc.approve', 'user.suspend', 'role.grant'. */
+  action: string;
+  target_type: string | null;
+  target_id: string | null;
+  detail: Record<string, unknown> | null;
+  created_at: string;
+};
+
+/** The shape admin_dashboard_stats() returns. Every figure is counted from the
+ *  tables — there is no placeholder number in it. */
+export type AdminDashboardStats = {
+  users_total: number;
+  users_new_7d: number;
+  users_suspended: number;
+  kyc_pending: number;
+  kyc_approved: number;
+  withdrawals_queued: number;
+  withdrawals_flagged: number;
+  automation_failed: number;
+  manual_review: number;
+  deposits_pending: number;
+  transactions_7d: number;
+  transactions_completed_7d: number;
+  support_unread: number;
+  support_threads: number;
+  admins_active: number;
 };
 
 export type Wallet = {
@@ -333,6 +399,16 @@ export type Database = {
     Views: { [_ in never]: never };
     Tables: {
       profiles: { Row: Profile; Insert: Partial<Profile> & { id: string; email: string }; Update: Partial<Profile>; Relationships: [] };
+      admin_users: {
+        Row: AdminUser;
+        Insert: Partial<AdminUser> & { user_id: string };
+        Update: Partial<AdminUser>; Relationships: [];
+      };
+      admin_activity_log: {
+        Row: AdminActivityLogEntry;
+        Insert: Partial<AdminActivityLogEntry> & { action: string };
+        Update: Partial<AdminActivityLogEntry>; Relationships: [];
+      };
       wallets: { Row: Wallet; Insert: Partial<Wallet> & { user_id: string; currency: Currency }; Update: Partial<Wallet>; Relationships: [] };
       kyc_documents: {
         Row: KycDocument;
@@ -475,6 +551,35 @@ export type Database = {
        */
       claim_transaction_notification: { Args: { p_transaction_id: string }; Returns: boolean };
       claim_deposit_notification: { Args: { p_deposit_id: string }; Returns: boolean };
+
+      // ── Phase 4 (0019). All service-role only. ──
+      /** The caller's active role, or null. Resolved by requireAdminUser. */
+      admin_role_for: { Args: { p_user_id: string }; Returns: AdminRole | null };
+      /** The ADMIN_EMAILS bootstrap. No-op once a row exists, including a
+       *  REVOKED one — revocation beats a stale env var. */
+      admin_bootstrap_role: { Args: { p_user_id: string }; Returns: AdminRole | null };
+      admin_grant_role: {
+        Args: { p_user_id: string; p_role: AdminRole; p_granted_by: string };
+        Returns: undefined;
+      };
+      admin_revoke_role: { Args: { p_user_id: string; p_revoked_by: string }; Returns: undefined };
+      admin_suspend_user: {
+        Args: { p_user_id: string; p_reason: string; p_suspended_by: string };
+        Returns: undefined;
+      };
+      admin_unsuspend_user: { Args: { p_user_id: string; p_by: string }; Returns: undefined };
+      admin_log_activity: {
+        Args: {
+          p_admin_id: string;
+          p_action: string;
+          p_target_type?: string | null;
+          p_target_id?: string | null;
+          p_detail?: Record<string, unknown> | null;
+        };
+        Returns: number;
+      };
+      admin_dashboard_stats: { Args: Record<string, never>; Returns: AdminDashboardStats };
+      assert_phase4_invariants: { Args: Record<string, never>; Returns: boolean };
 
       create_withdrawal_request: {
         Args: { p_currency: Currency; p_amount: number; p_pin: string };
@@ -619,7 +724,13 @@ export type Database = {
           p_title: string;
           p_body: string;
           p_href: string | null;
-          p_created_by: string;
+          /**
+           * Nullable, matching the column and the function signature in 0017.
+           * Null means a SYSTEM event — a deposit landing, a payout settling —
+           * which has no acting admin. Stamping those with whichever admin
+           * happened to be in the room would be a false audit trail.
+           */
+          p_created_by: string | null;
         };
         Returns: string;
       };

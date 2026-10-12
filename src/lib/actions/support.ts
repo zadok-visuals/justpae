@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireAdminUser } from "@/lib/auth/admin";
+import { requireAdminUser, logAdminActivity } from "@/lib/auth/admin";
 import { verifyOwnedUpload } from "@/lib/storage/verifyUpload";
 import { sendSupportMessageEmail, adminNotificationRecipients } from "@/lib/email";
 import { SUPPORT_BUCKET, SUPPORT_MESSAGE_MAX_LENGTH } from "@/lib/support/constants";
@@ -273,7 +273,7 @@ export async function replyToSupportThread(
   _prevState: SendSupportMessageState,
   formData: FormData,
 ): Promise<SendSupportMessageState> {
-  await requireAdminUser();
+  const actor = await requireAdminUser();
 
   const userId = String(formData.get("userId") ?? "");
   const body = String(formData.get("body") ?? "").trim();
@@ -307,6 +307,16 @@ export async function replyToSupportThread(
       forAdmin: false,
     });
   }
+
+  // The reply body itself is NOT put in the ledger. The thread already holds
+  // it verbatim, and copying customer correspondence into a table every admin
+  // reads is a second place for it to leak from.
+  await logAdminActivity({
+    adminId: actor.id,
+    action: "support.reply",
+    targetType: "user",
+    targetId: userId,
+  });
 
   revalidatePath(`/admin/support/${userId}`);
   revalidatePath("/admin/support");

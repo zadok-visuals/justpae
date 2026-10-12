@@ -7,7 +7,7 @@ import { SubmitButton } from "@/components/ui/Button";
 import { TransactionPinCard } from "@/components/settings/TransactionPinCard";
 import { RecipientCard } from "@/components/settings/RecipientCard";
 import { logOut } from "@/lib/actions/auth";
-import { isAdminEmail } from "@/lib/auth/admin";
+import { isAdmin } from "@/lib/auth/admin";
 import { getBanks, type BushaBank } from "@/lib/busha/client";
 import { countryName } from "@/lib/countries";
 import type { Currency, Wallet, WithdrawalRecipient } from "@/lib/types/database";
@@ -29,8 +29,13 @@ export default async function ProfilePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: profile }, { data: wallets }, { data: recipients }, { data: hasPin }] =
-    await Promise.all([
+  const [
+    { data: profile },
+    { data: wallets },
+    { data: recipients },
+    { data: hasPin },
+    showAdmin,
+  ] = await Promise.all([
       supabase
         .from("profiles")
         .select("full_name, email, phone, business_name, kyc_status, kyc_type, country")
@@ -42,6 +47,9 @@ export default async function ProfilePage() {
       // select policy that allowed that also allowed selecting pin_hash, so it
       // was dropped in 0012. This asks the only question the card needs.
       supabase.rpc("has_transaction_pin"),
+      // Admin is a database role now, not an email match, so this is a query
+      // rather than a string compare — hence its place in this batch.
+      isAdmin(user.id, user.email),
     ]);
 
   // The bank list comes from the provider, which expects its OWN codes rather
@@ -138,7 +146,7 @@ export default async function ProfilePage() {
           />
         )}
 
-        {isAdminEmail(user.email) && (
+        {showAdmin && (
           <Card>
             <h2 className="text-base font-semibold text-foreground">Admin</h2>
             <p className="mt-1 text-sm text-muted-foreground">

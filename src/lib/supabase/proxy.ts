@@ -85,6 +85,32 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // ── Phase 4: the second factor, at the routing layer ────────────────────
+  //
+  // NOT the gate. requireAdminUser inside every admin page and every admin
+  // action is the gate, because a server action is reachable by POST whether
+  // or not this ever ran, and this matcher is one edit away from not running.
+  // What this adds is that an admin who signed in with a password alone never
+  // SEES an admin page start to render before being bounced — the difference
+  // between a clean redirect and a flash of a layout.
+  //
+  // /admin/security is exempt, necessarily: it is where the code is entered.
+  // A non-admin who follows this redirect lands on a page whose own role check
+  // sends them to /home, so the exemption leaks nothing.
+  //
+  // The assurance level is read from the session's own JWT claim, not from a
+  // cookie or a flag the app sets — a forged `aal2` would have to be a forged
+  // token.
+  if (user && pathname.startsWith("/admin") && !pathname.startsWith("/admin/security")) {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal?.currentLevel !== "aal2") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin/security";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
+
   if (user && (pathname === "/login" || pathname === "/signup" || pathname === "/")) {
     const url = request.nextUrl.clone();
     url.pathname = "/home";

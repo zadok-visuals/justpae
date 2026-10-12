@@ -34,8 +34,14 @@ export function NotificationComposer() {
               state.recipients === 1 ? "person" : "people"
             }.`,
       );
+      // reset() on the form clears the text inputs, which are uncontrolled.
+      // The audience radios are controlled and so are untouched by it — left
+      // deliberately where the admin put them rather than snapped back to
+      // "Everyone", because sending a second notice to the same person is the
+      // common follow-up and re-picking them every time is friction. (It also
+      // keeps this effect free of setState, which is the rule the rest of this
+      // codebase follows.)
       formRef.current?.reset();
-      setAudience("broadcast");
     }
   }, [state]);
 

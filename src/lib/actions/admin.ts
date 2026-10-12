@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdminUser } from "@/lib/auth/admin";
+import { requireAdminUser, logAdminActivity } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Currency } from "@/lib/types/database";
 import { SETTING_KEYS } from "@/lib/settings";
@@ -35,10 +35,17 @@ export async function approveKyc(
 
   if (error) return { error: error.message };
 
-  // The decision is already made and committed by this point, so neither the
-  // notification nor the email is allowed to fail it — a user whose KYC was
-  // approved must not be told the approval failed because an email provider
-  // was down.
+  // The decision is already made and committed by this point, so none of the
+  // three steps below is allowed to fail it — a user whose KYC was approved
+  // must not be told the approval failed because an email provider was down,
+  // and an unwritten ledger line is not a reason to un-approve someone.
+  await logAdminActivity({
+    adminId: actor.id,
+    action: "kyc.approve",
+    targetType: "user",
+    targetId: userId,
+  });
+
   await notifyUser(admin, userId, {
     title: "You're verified",
     body: "Your identity check is approved. Withdrawals are now open.",
@@ -71,6 +78,14 @@ export async function rejectKyc(
   });
 
   if (error) return { error: error.message };
+
+  await logAdminActivity({
+    adminId: actor.id,
+    action: "kyc.reject",
+    targetType: "user",
+    targetId: userId,
+    detail: { reason },
+  });
 
   await notifyUser(admin, userId, {
     title: "We need another look at your documents",
@@ -138,7 +153,7 @@ export async function completeWithdrawal(
   _prevState: AdminActionState,
   formData: FormData,
 ): Promise<AdminActionState> {
-  await requireAdminUser();
+  const actor = await requireAdminUser();
   const transactionId = String(formData.get("transactionId") ?? "");
 
   const admin = createAdminClient();
@@ -154,6 +169,15 @@ export async function completeWithdrawal(
   // manual one happens hours later with nobody watching.
   await notifyWithdrawalCompleted(transactionId);
 
+  // Releasing money by hand is the single most sensitive thing an admin does
+  // here, so it is the entry the ledger most needs.
+  await logAdminActivity({
+    adminId: actor.id,
+    action: "withdrawal.complete",
+    targetType: "transaction",
+    targetId: transactionId,
+  });
+
   revalidatePath("/admin/withdrawals");
   return { ok: true };
 }
@@ -162,7 +186,7 @@ export async function rejectWithdrawal(
   _prevState: AdminActionState,
   formData: FormData,
 ): Promise<AdminActionState> {
-  await requireAdminUser();
+  const actor = await requireAdminUser();
   const transactionId = String(formData.get("transactionId") ?? "");
   const reason = String(formData.get("reason") ?? "").trim();
 
@@ -181,6 +205,14 @@ export async function rejectWithdrawal(
   // told about looks, from their side, exactly like money that vanished for
   // several hours and then reappeared with no explanation.
   await notifyWithdrawalFailed(transactionId, reason || null);
+
+  await logAdminActivity({
+    adminId: actor.id,
+    action: "withdrawal.reject",
+    targetType: "transaction",
+    targetId: transactionId,
+    detail: { reason: reason || null },
+  });
 
   revalidatePath("/admin/withdrawals");
   return { ok: true };
@@ -209,6 +241,17 @@ export async function confirmWithdrawalVerification(
   });
 
   if (error) return { error: error.message };
+
+  // The mechanism is out-of-band by design (see the comment above), so this
+  // ledger entry is the ONLY record that the check was ever claimed to have
+  // happened, and who claimed it.
+  await logAdminActivity({
+    adminId: adminUser.id,
+    action: "withdrawal.confirm_verification",
+    targetType: "transaction",
+    targetId: transactionId,
+  });
+
   revalidatePath("/admin/withdrawals");
   return { ok: true };
 }
@@ -244,6 +287,15 @@ export async function setRateMarkup(
   });
 
   if (error) return { error: error.message };
+
+  await logAdminActivity({
+    adminId: adminUser.id,
+    action: "rate_markup.set",
+    targetType: "pair",
+    targetId: `${base}/${quote}`,
+    detail: { markupPercent },
+  });
+
   revalidatePath("/admin/rates");
   revalidatePath("/convert");
   return { ok: true };
@@ -290,6 +342,17 @@ export async function setAppSetting(
   });
 
   if (error) return { error: error.message };
+
+  // The payout threshold and the fee rate change how money moves for every
+  // user, with no other trace than this.
+  await logAdminActivity({
+    adminId: adminUser.id,
+    action: "setting.set",
+    targetType: "setting",
+    targetId: key,
+    detail: { value },
+  });
+
   revalidatePath("/admin/rates");
   return { ok: true };
 }

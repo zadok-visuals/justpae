@@ -33,7 +33,19 @@ export function NotificationBell({ initialUnreadCount }: { initialUnreadCount: n
 
   // Keep the badge honest when the server re-renders the chrome with a new
   // count (e.g. after navigating).
-  useEffect(() => setUnread(initialUnreadCount), [initialUnreadCount]);
+  //
+  // Adjusted DURING RENDER against a remembered copy of the prop, not in an
+  // effect. This is React's documented pattern for "reset some state when a
+  // prop changes" and it is better than the effect it replaces in a way that
+  // is visible: an effect runs AFTER paint, so the badge would render one
+  // frame with the stale count and then flip. React re-runs this render
+  // immediately, before anything is committed to the screen, so there is no
+  // intermediate frame.
+  const [lastServerCount, setLastServerCount] = useState(initialUnreadCount);
+  if (initialUnreadCount !== lastServerCount) {
+    setLastServerCount(initialUnreadCount);
+    setUnread(initialUnreadCount);
+  }
 
   // Click-outside and Escape. Both, because a dropdown that only closes on
   // Escape is unusable with a thumb and one that only closes on outside-click
