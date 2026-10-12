@@ -10,7 +10,7 @@
 # [auth] or [api] blocks — the remote project's own dashboard settings govern
 # there. They are kept so `supabase start` produces a local stack that behaves
 # like production.
-project_id = "justpae"
+project_id = "Justpae"
 
 [api]
 enabled = true

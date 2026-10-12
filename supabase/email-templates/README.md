@@ -2,7 +2,7 @@
 
 ## Checklist for a new project
 
-All four dashboard-only — none of this is covered by `supabase db push`:
+All dashboard-only — none of this is covered by `supabase db push`:
 
 1. **Authentication → Providers → Email → "Confirm email": ON.** With it off,
    GoTrue signs new accounts straight in with no verification step at all —
@@ -14,7 +14,13 @@ All four dashboard-only — none of this is covered by `supabase db push`:
    Supabase's built-in sender is low-volume and rate-limited; fine for
    development, not for real signups.
 4. **Authentication → URL Configuration: Site URL and Redirect URLs** — see
-   "Before pasting" below.
+   "Before pasting" below. Production Site URL is `https://justpae.com`.
+5. **Authentication → Providers → Google: client ID and secret**, with
+   `https://<project-ref>.supabase.co/auth/v1/callback` added as an
+   Authorized redirect URI on the Google Cloud OAuth client — this is
+   Supabase's own callback, keyed to the project ref, not to `APP_URL` or
+   the app's `/auth/callback` route. It changes every time the project does,
+   even though the app's domain doesn't.
 
 **These are not applied by `supabase db push`, and the CLI cannot sync them to a
 remote project.** They have to be pasted into the dashboard once per project:
@@ -66,13 +72,12 @@ project's **Site URL**, so set that first:
 
 Dashboard → **Authentication → URL Configuration**
 
-- **Site URL** — the deployed origin, e.g. `https://justpae.example`. Every
-  link in these emails is built from it. Leaving it at `http://localhost:3000`
-  sends production users confirmation links to their own laptops.
-- **Redirect URLs** — add `https://<your-domain>/auth/callback` and
-  `https://<your-domain>/auth/confirm`, plus the Vercel preview pattern if
-  previews need working auth:
-  `https://<project>-*.vercel.app/auth/callback`.
+- **Site URL** — the deployed origin: `https://justpae.com`. Every link in
+  these emails is built from it. Leaving it at `http://localhost:3000` sends
+  production users confirmation links to their own laptops.
+- **Redirect URLs** — add `https://justpae.com/auth/callback` and
+  `https://justpae.com/auth/confirm`, plus the Vercel preview pattern if
+  previews need working auth: `https://<project>-*.vercel.app/auth/callback`.
 
 This must match `APP_URL` in the app's environment. They are two separate
 settings in two separate systems that have to agree.
