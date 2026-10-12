@@ -9,6 +9,111 @@
 export const MINIMUM_USDT_EQUIVALENT = 10;
 
 /**
+ * Round, friendly CONVERSION minimums shown to the user instead of "the
+ * minimum is about 10 USDT in NGN". Nobody about to spend naira thinks in
+ * USDT, and a message the user has to convert in their head to act on is a
+ * message that gets ignored.
+ *
+ * Each figure sits just above the 10 USDT equivalent at the rates in effect on
+ * 2026-10-10 (roughly USDT/NGN 1480, USDT/GHS 14.5, USDT/KES 130). They are
+ * deliberately static and dated rather than computed live: a round number is
+ * the point. getMinimumConversionAmount below is what keeps them honest if real
+ * rates drift against them.
+ */
+export const MINIMUM_CONVERSION_AMOUNT: Record<
+  "USD" | "NGN" | "GHS" | "KES" | "USDT",
+  number
+> = {
+  USD: 10,
+  NGN: 15000,
+  GHS: 150,
+  KES: 1500,
+  USDT: 10,
+};
+
+/**
+ * The step a currency's minimum rounds UP to when the configured figure above
+ * no longer clears the real floor. Keeps the adjusted number looking chosen
+ * rather than like an exchange-rate artefact.
+ */
+const MINIMUM_ROUNDING_STEP: Record<"USD" | "NGN" | "GHS" | "KES" | "USDT", number> = {
+  USD: 1,
+  NGN: 500,
+  GHS: 10,
+  KES: 100,
+  USDT: 1,
+};
+
+/**
+ * The single source of truth for conversion-minimum messaging AND gating,
+ * called with the same currency and the same live rate on the client and the
+ * server so the two can never disagree about where the line is.
+ *
+ * `usdtPerUnit` is USDT per 1 unit of that currency. Omit it only while no live
+ * rate is available; the configured figure is then returned as-is.
+ *
+ * Returns the configured round figure unless that figure would now fall UNDER
+ * the real MINIMUM_USDT_EQUIVALENT floor — in which case it computes the exact
+ * amount that clears the floor at the current rate and rounds up to the next
+ * sensible step. So the provider's own minimum cannot be violated even if the
+ * dated figures above go stale, and the user is never shown a minimum that the
+ * server would then reject.
+ */
+export function getMinimumConversionAmount(
+  currency: "USD" | "NGN" | "GHS" | "KES" | "USDT",
+  usdtPerUnit?: number | null,
+): number {
+  const configured = MINIMUM_CONVERSION_AMOUNT[currency];
+  if (!usdtPerUnit || usdtPerUnit <= 0) return configured;
+
+  if (configured * usdtPerUnit >= MINIMUM_USDT_EQUIVALENT) return configured;
+
+  const exactRequired = MINIMUM_USDT_EQUIVALENT / usdtPerUnit;
+  const step = MINIMUM_ROUNDING_STEP[currency];
+  return Math.ceil(exactRequired / step) * step;
+}
+
+/**
+ * Per-currency fiat DEPOSIT minimums, in the currency's own units.
+ *
+ * Below these the provider rejects — or, for KES, previously just silently
+ * failed — the deposit after the user has already been through the quote step
+ * and, on the bank-transfer path, possibly after they have already sent the
+ * money. Enforced client-side (submit disabled with an inline reason) and
+ * server-side in both getDepositQuote and initiateDeposit, so calling either
+ * action directly cannot bypass it.
+ *
+ * KES 200 comes from confirmed live testing: deposits below it silently failed.
+ *
+ * NGN and GHS are deliberately UNSET rather than guessed. An invented number
+ * here either blocks legitimate small deposits or lets through ones that still
+ * fail — both worse than today's behaviour, which is simply no client-side
+ * minimum. A currency absent from this map is not enforced at all. Set each one
+ * once its real minimum is confirmed with the provider.
+ *
+ * Partial<Record<…>> on purpose: the lookup resolves to undefined for any
+ * currency without a confirmed figure (USDT included, which has no fee or
+ * minimum on this account today), and undefined means "do not enforce".
+ */
+export const FIAT_MINIMUM_DEPOSIT: Partial<Record<"NGN" | "GHS" | "KES", number>> = {
+  KES: 200,
+  // NGN: confirm with the provider before setting.
+  // GHS: confirm before setting — and note GHS deposits route through the
+  // secondary provider, so its minimum needs confirming there, not here.
+};
+
+/**
+ * Safe lookup. Keyed only by the fiat currencies that can have a minimum, so a
+ * currency outside that set always resolves to undefined instead of being cast
+ * into the map and silently picking up a wrong figure.
+ */
+export function fiatMinimumDeposit(currency: string): number | undefined {
+  return currency === "NGN" || currency === "GHS" || currency === "KES"
+    ? FIAT_MINIMUM_DEPOSIT[currency]
+    : undefined;
+}
+
+/**
  * Busha support confirmed there is a minimum payout amount on their side too —
  * a withdrawal below it fails with the same generic "Request validation
  * failed". 5 USDT is the figure support suggested testing with, not an official

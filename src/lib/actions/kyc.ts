@@ -5,38 +5,44 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { kycIdFieldFor, kycIdPattern } from "@/lib/countries";
+import { verifyOwnedUpload } from "@/lib/storage/verifyUpload";
 
 export interface KycActionState {
   error?: string;
 }
 
-/** Accepted uploads. Anything else is a user mistake worth catching early. */
-const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "application/pdf"];
-const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const KYC_BUCKET = "kyc-documents";
 
-async function uploadKycFile(
+/**
+ * FILES NO LONGER ARRIVE HERE.
+ *
+ * This action used to take File objects out of its own FormData and upload them
+ * server-side. That failed in production for anyone using a phone: a camera
+ * photo is routinely 3-8MB, Next's server-action body limit is 1MB, and the
+ * request was rejected BEFORE this function ran — so every careful error
+ * message below was unreachable and the user saw the framework's generic error
+ * page instead. See src/lib/storage/clientUpload.ts for the full account.
+ *
+ * UploadField now uploads straight to the private bucket from the browser,
+ * under the policy that already confines a user to their own `${userId}/…`
+ * folder, and this action receives only the resulting path strings.
+ *
+ * Those paths are untrusted client input, so each one is re-verified before it
+ * is written into a row a reviewer will open — see verifyOwnedUpload. Without
+ * that check a user could submit a path into someone else's folder and have
+ * that person's ID reviewed as their own.
+ */
+async function requireOwnedUpload(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
-  file: File,
-  prefix: string,
+  path: string,
+  documentLabel: string,
 ): Promise<string> {
-  if (file.size > MAX_FILE_BYTES) {
-    throw new Error(`${prefix.replace(/-/g, " ")} must be under 10MB.`);
+  if (!path) throw new Error(`${documentLabel} is required.`);
+  const ok = await verifyOwnedUpload(supabase, KYC_BUCKET, userId, path);
+  if (!ok) {
+    throw new Error(`We couldn't find your ${documentLabel.toLowerCase()}. Please upload it again.`);
   }
-  if (file.type && !ACCEPTED_TYPES.includes(file.type)) {
-    throw new Error("Upload a JPG, PNG, HEIC or PDF.");
-  }
-
-  // The user id is the FIRST path segment on purpose: the storage policies
-  // match on storage.foldername(name)[1], so this is what confines a user to
-  // their own folder.
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const path = `${userId}/${prefix}-${Date.now()}-${safeName}`;
-
-  const { error } = await supabase.storage
-    .from("kyc-documents")
-    .upload(path, file, { upsert: true });
-  if (error) throw error;
   return path;
 }
 
@@ -71,9 +77,10 @@ export async function submitIndividualKyc(
   const fullName = String(formData.get("fullName") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const idNumber = String(formData.get("idNumber") ?? "").trim();
-  const selfie = formData.get("selfie") as File | null;
-  const idDocument = formData.get("idDocument") as File | null;
-  const proofOfAddress = formData.get("proofOfAddress") as File | null;
+  // Storage paths, not Files. See requireOwnedUpload above.
+  const selfiePath = String(formData.get("selfie") ?? "").trim();
+  const idDocumentPath = String(formData.get("idDocument") ?? "").trim();
+  const proofOfAddressPath = String(formData.get("proofOfAddress") ?? "").trim();
 
   if (!fullName) return { error: "Enter your full name as it appears on your ID." };
   if (!phone) return { error: "Phone number is required." };
@@ -82,8 +89,6 @@ export async function submitIndividualKyc(
   if (idPattern && !idPattern.test(idNumber)) {
     return { error: idField.hint };
   }
-  if (!selfie || selfie.size === 0) return { error: "A selfie is required." };
-  if (!idDocument || idDocument.size === 0) return { error: "A photo of your ID is required." };
 
   try {
     const documents: DocumentRow[] = [
@@ -92,20 +97,30 @@ export async function submitIndividualKyc(
       {
         tier: "individual_tier_2",
         document_type: "selfie",
-        file_ref: await uploadKycFile(supabase, user.id, selfie, "selfie"),
+        file_ref: await requireOwnedUpload(supabase, user.id, selfiePath, "A photo of you"),
       },
       {
         tier: "individual_tier_2",
         document_type: "id_document",
-        file_ref: await uploadKycFile(supabase, user.id, idDocument, "id-document"),
+        file_ref: await requireOwnedUpload(
+          supabase,
+          user.id,
+          idDocumentPath,
+          `A photo of your ${idField.label}`,
+        ),
       },
     ];
 
-    if (proofOfAddress && proofOfAddress.size > 0) {
+    if (proofOfAddressPath) {
       documents.push({
         tier: "individual_tier_3",
         document_type: "proof_of_address",
-        file_ref: await uploadKycFile(supabase, user.id, proofOfAddress, "proof-of-address"),
+        file_ref: await requireOwnedUpload(
+          supabase,
+          user.id,
+          proofOfAddressPath,
+          "Proof of address",
+        ),
       });
     }
 
@@ -166,17 +181,11 @@ export async function submitBusinessKyc(
   const businessName = String(formData.get("businessName") ?? "").trim();
   const tin = String(formData.get("tin") ?? "").trim();
   const ownershipStructure = String(formData.get("ownershipStructure") ?? "").trim();
-  const registrationCertificate = formData.get("registrationCertificate") as File | null;
-  const directorId = formData.get("directorId") as File | null;
-  const proofOfBusinessAddress = formData.get("proofOfBusinessAddress") as File | null;
+  const certificatePath = String(formData.get("registrationCertificate") ?? "").trim();
+  const directorIdPath = String(formData.get("directorId") ?? "").trim();
+  const businessAddressPath = String(formData.get("proofOfBusinessAddress") ?? "").trim();
 
   if (!businessName || !tin) return { error: "Business name and TIN are required." };
-  if (!registrationCertificate || registrationCertificate.size === 0) {
-    return { error: "Your business registration certificate is required." };
-  }
-  if (!directorId || directorId.size === 0) {
-    return { error: "A director's ID is required." };
-  }
 
   try {
     const documents: DocumentRow[] = [
@@ -184,17 +193,22 @@ export async function submitBusinessKyc(
       {
         tier: "business",
         document_type: "registration_certificate",
-        file_ref: await uploadKycFile(
+        file_ref: await requireOwnedUpload(
           supabase,
           user.id,
-          registrationCertificate,
-          "registration-certificate",
+          certificatePath,
+          "Your business registration certificate",
         ),
       },
       {
         tier: "business",
         document_type: "director_id",
-        file_ref: await uploadKycFile(supabase, user.id, directorId, "director-id"),
+        file_ref: await requireOwnedUpload(
+          supabase,
+          user.id,
+          directorIdPath,
+          "A director's ID",
+        ),
       },
     ];
 
@@ -205,15 +219,15 @@ export async function submitBusinessKyc(
         value: ownershipStructure,
       });
     }
-    if (proofOfBusinessAddress && proofOfBusinessAddress.size > 0) {
+    if (businessAddressPath) {
       documents.push({
         tier: "business",
         document_type: "proof_of_business_address",
-        file_ref: await uploadKycFile(
+        file_ref: await requireOwnedUpload(
           supabase,
           user.id,
-          proofOfBusinessAddress,
-          "proof-of-business-address",
+          businessAddressPath,
+          "Proof of business address",
         ),
       });
     }

@@ -27,6 +27,10 @@ export default async function KycStatusPage() {
   ]);
 
   const status = profile?.kyc_status ?? "not_started";
+  const resubmitHref =
+    profile?.kyc_type === "business"
+      ? "/onboarding/kyc/business"
+      : "/onboarding/kyc/individual";
 
   return (
     <div className="space-y-5">
@@ -50,16 +54,34 @@ export default async function KycStatusPage() {
       )}
 
       {status === "rejected" && (
-        <Banner
-          tone="danger"
-          title="We couldn't verify your details"
-          action={{ href: "/onboarding/kyc", label: "Submit again" }}
-        >
-          {/* The actual reason. A generic "please resubmit" guarantees the
-              second attempt fails for the same thing as the first. */}
-          {profile?.kyc_rejection_reason ??
-            "Please check your documents are clear and readable, then submit again."}
-        </Banner>
+        <>
+          <Banner
+            tone="danger"
+            title="We couldn't verify your details"
+            // Straight to the form for the type they already chose, not the
+            // generic chooser — they have answered that question once.
+            action={{ href: resubmitHref, label: "Fix and resubmit" }}
+          >
+            Have another look at what you sent and send it again. Nothing else about your account
+            has changed.
+          </Banner>
+
+          {/* The reason gets its OWN block rather than being squeezed into the
+              banner body. It is the single most important thing on this page —
+              it is the difference between a second attempt that works and one
+              that gets rejected for exactly the same thing — and a reviewer's
+              note can easily run longer than a banner line. */}
+          {profile?.kyc_rejection_reason && (
+            <Card className="border-destructive/30">
+              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Reason from our team
+              </h2>
+              <p className="text-sm leading-relaxed text-foreground">
+                {profile.kyc_rejection_reason}
+              </p>
+            </Card>
+          )}
+        </>
       )}
 
       {status === "not_started" && (

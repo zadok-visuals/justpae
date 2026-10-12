@@ -21,25 +21,43 @@ import { BushaError } from "@/lib/busha/client";
  * USDT balance at all.
  */
 export async function probeFiatToUsdtRate(fiatCurrency: string): Promise<number> {
-  async function quoteAt(amount: string) {
+  async function quoteAt(amount: string, quiet = false) {
     const quote = await busha.createQuote({
       sourceCurrency: fiatCurrency,
       targetCurrency: "USDT",
       sourceAmount: amount,
+      quiet,
     });
     return Number(quote.target_amount) / Number(quote.source_amount);
   }
 
   try {
-    return await quoteAt("1");
+    // QUIET, on purpose. Confirmed live: this 1-unit probe is rejected with a
+    // "minimum … amount is X" message for very nearly every pair — that
+    // rejection IS the mechanism by which the real minimum is discovered, so it
+    // is routine control flow, not a failure. Logged as an error on every call
+    // it produced a steady stream of "[busha.request] error response" lines on
+    // every rate refresh, which is the kind of noise that makes a genuine
+    // provider outage invisible in the logs.
+    return await quoteAt("1", true);
   } catch (err) {
     if (err instanceof BushaError) {
       // Busha's wording varies ("minimum sale amount", "Minimum trade amount")
       // depending on the pair — confirmed live for both — so match loosely on
       // "minimum ... amount is X".
       const match = err.message.match(/minimum .*?amount is ([\d.]+)/i);
+      // The retry at the real minimum is NOT quiet: a failure there is no
+      // longer the expected case and logs through the client's normal path.
       if (match) return await quoteAt(match[1]);
     }
+    // Fell through, so the quiet probe failed with something OTHER than the
+    // expected minimum-amount message. That call suppressed its own log, so it
+    // is logged here instead — suppressing routine noise must never mean
+    // swallowing a real failure.
+    console.error("[busha.rate] probeFiatToUsdtRate failed", {
+      fiatCurrency,
+      error: err instanceof Error ? err.message : err,
+    });
     throw err;
   }
 }

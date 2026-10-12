@@ -14,7 +14,7 @@ import {
   type ConversionQuote,
   type RouteAvailability,
 } from "@/lib/actions/convert";
-import { MINIMUM_USDT_EQUIVALENT } from "@/lib/busha/limits";
+import { getMinimumConversionAmount } from "@/lib/busha/limits";
 import { currencyMeta, formatAmount, formatNumber, formatRate } from "@/lib/currencies";
 import type { Currency, Wallet } from "@/lib/types/database";
 
@@ -163,6 +163,11 @@ function ConvertFormFields({
   const activeQuote = typedAmount > 0 ? quote : null;
   const activeUnavailable = typedAmount > 0 ? unavailable : null;
   const belowMinimum = activeQuote?.belowMinimum ?? false;
+  // Resolved server-side with the live rate and carried on the quote, rather
+  // than recomputed here — the client and the server must agree on the number,
+  // and only the server has the rate the gate will actually use.
+  const minimumSourceAmount =
+    activeQuote?.minimumSourceAmount ?? getMinimumConversionAmount(from);
   const expired = activeQuote != null && secondsLeft === 0;
 
   const blocked =
@@ -224,7 +229,11 @@ function ConvertFormFields({
             insufficient
               ? `That's more than your ${from} balance.`
               : belowMinimum
-                ? `The minimum is about ${MINIMUM_USDT_EQUIVALENT} USDT in ${from}.`
+                ? // In the currency being spent, from the figure the server
+                  // resolved on the same live rate it will gate on — not "about
+                  // 10 USDT in NGN", which asks the user to do the conversion
+                  // themselves to find out what to type.
+                  `The minimum conversion is ${formatAmount(from, minimumSourceAmount)}.`
                 : null
           }
         />

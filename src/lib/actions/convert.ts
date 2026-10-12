@@ -8,9 +8,9 @@ import type { Currency } from "@/lib/types/database";
 import * as busha from "@/lib/busha/client";
 import { resolveRoute, resolveRoutesFrom, type ConversionRoute } from "@/lib/rates/routes";
 import { applyMarkupToAmount } from "@/lib/rates/markup";
-import { MINIMUM_USDT_EQUIVALENT } from "@/lib/busha/limits";
+import { getMinimumConversionAmount } from "@/lib/busha/limits";
 import { toCustomerError } from "@/lib/provider-error";
-import { CURRENCY_CODES } from "@/lib/currencies";
+import { CURRENCY_CODES, formatAmount } from "@/lib/currencies";
 import { isPinLockedError, isWrongPinError, resolvePinError } from "@/lib/pin";
 
 /**
@@ -57,9 +57,16 @@ export interface ConversionQuote {
   customerRate: number;
   /** ISO timestamp the countdown counts down to. */
   expiresAt: string;
-  /** USDT-equivalent of the source amount, for the minimum message. */
+  /** USDT-equivalent of the source amount, for diagnostics. */
   sourceUsdtEquivalent: number;
   belowMinimum: boolean;
+  /**
+   * The minimum in the SOURCE currency's own units, resolved server-side from
+   * the same live rate the quote used. The client renders this rather than
+   * recomputing, so the message and the server's gate are always the same
+   * number.
+   */
+  minimumSourceAmount: number;
 }
 
 export interface QuoteState {
@@ -97,6 +104,7 @@ export async function quoteConversion(params: {
   const sourceAmount = field === "source" ? amount : amount / route.customerRate;
   const targetAmount = field === "source" ? amount * route.customerRate : amount;
   const sourceUsdtEquivalent = sourceAmount * route.sourceUsdtRate;
+  const minimumSourceAmount = getMinimumConversionAmount(from, route.sourceUsdtRate);
 
   return {
     quote: {
@@ -109,7 +117,8 @@ export async function quoteConversion(params: {
       customerRate: route.customerRate,
       expiresAt: new Date(Date.now() + QUOTE_TTL_SECONDS * 1000).toISOString(),
       sourceUsdtEquivalent,
-      belowMinimum: sourceUsdtEquivalent < MINIMUM_USDT_EQUIVALENT,
+      belowMinimum: sourceAmount < minimumSourceAmount,
+      minimumSourceAmount,
     },
   };
 }
@@ -182,11 +191,13 @@ export async function executeConversion(
   }
   if (!route.available) return { error: route.reason };
 
-  const sourceUsdtEquivalent = amount * route.sourceUsdtRate;
-  if (sourceUsdtEquivalent < MINIMUM_USDT_EQUIVALENT) {
-    return {
-      error: `The minimum conversion is about ${MINIMUM_USDT_EQUIVALENT} USDT in ${from}.`,
-    };
+  // Expressed in the currency the user is actually spending, from the same
+  // helper the client uses with the same live rate — so the two can never
+  // disagree about where the line is, and the message is a figure the user can
+  // act on without doing an exchange-rate calculation in their head.
+  const minimum = getMinimumConversionAmount(from, route.sourceUsdtRate);
+  if (amount < minimum) {
+    return { error: `The minimum conversion is ${formatAmount(from, minimum)}.` };
   }
 
   // The provider executes at its own real, unmarked rate. The customer is only

@@ -42,7 +42,7 @@ export default async function HomePage() {
   const [{ data: profile }, { data: wallets }, recent, rates] = await Promise.all([
     supabase
       .from("profiles")
-      .select("full_name, kyc_status, kyc_rejection_reason, country")
+      .select("full_name, kyc_status, kyc_rejection_reason, kyc_type, country")
       .eq("id", user.id)
       .maybeSingle(),
     supabase.from("wallets").select("*").eq("user_id", user.id),
@@ -55,7 +55,13 @@ export default async function HomePage() {
   return (
     <PageShell title={firstName ? `Hello, ${firstName}` : "Home"}>
       <div className="space-y-6">
-        {profile?.kyc_status !== "approved" && <KycBanner status={profile?.kyc_status} reason={profile?.kyc_rejection_reason} />}
+        {profile?.kyc_status !== "approved" && (
+          <KycBanner
+            status={profile?.kyc_status}
+            reason={profile?.kyc_rejection_reason}
+            kycType={profile?.kyc_type}
+          />
+        )}
 
         <section>
           <SectionHeader title="Your wallets" />
@@ -92,10 +98,20 @@ export default async function HomePage() {
 function KycBanner({
   status,
   reason,
+  kycType,
 }: {
   status: string | undefined;
   reason: string | null | undefined;
+  kycType: string | null | undefined;
 }) {
+  // Straight back to the form they already filled in, not to the generic
+  // chooser. A rejected user has already told us whether they are an
+  // individual or a business; making them answer that again before they can
+  // reach the one field they need to fix is the kind of friction that turns a
+  // resubmission into an abandonment.
+  const resubmitHref =
+    kycType === "business" ? "/onboarding/kyc/business" : "/onboarding/kyc/individual";
+
   if (status === "pending") {
     return (
       <Banner tone="info" title="We're reviewing your details">
@@ -110,7 +126,7 @@ function KycBanner({
       <Banner
         tone="danger"
         title="We couldn't verify your details"
-        action={{ href: "/onboarding/kyc", label: "Try again" }}
+        action={{ href: resubmitHref, label: "Fix and resubmit" }}
       >
         {/* The specific reason, not a generic "please resubmit" — without it
             the next attempt is a guess and gets rejected for the same thing. */}

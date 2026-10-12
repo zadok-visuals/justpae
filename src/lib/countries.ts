@@ -202,6 +202,28 @@ export function isKnownCountry(code: string): boolean {
 }
 
 /**
+ * E.164 dialling prefixes for the supported markets, used to give the phone
+ * field a placeholder that matches the user's own country.
+ *
+ * A Ghanaian being shown "+234…" is the same category of mistake as asking
+ * them for a BVN: small, and exactly the kind of thing that tells a user the
+ * product was built for somewhere else. Deliberately only the three markets
+ * with a real presence — a half-right guess for a fourth country is worse than
+ * the neutral placeholder phoneHintFor falls back to.
+ */
+const DIAL_PREFIXES: Record<string, string> = {
+  NG: "+234",
+  GH: "+233",
+  KE: "+254",
+};
+
+/** A phone placeholder for this country, or a neutral one when unknown. */
+export function phoneHintFor(country: string | null | undefined): string {
+  const prefix = country ? DIAL_PREFIXES[country] : undefined;
+  return prefix ? `${prefix}…` : "Include your country code";
+}
+
+/**
  * The identity document each supported country actually uses. Asking a
  * Ghanaian for a BVN, or a Kenyan for a NIN, is the kind of detail that makes
  * an onboarding form feel like it was built for somewhere else.

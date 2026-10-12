@@ -34,6 +34,15 @@ import type { UnifiedActivity } from "@/lib/transactions";
 import type { Wallet, WithdrawalRecipient } from "@/lib/types/database";
 
 /**
+ * The KYC forms need a user id because their uploads go direct to the user's
+ * own storage folder. In the gallery nothing is ever uploaded — picking a file
+ * here would attempt a write this fixture id has no session for, and fail with
+ * the form's own friendly error, which is itself a state worth being able to
+ * look at.
+ */
+const GALLERY_USER_ID = "00000000-0000-0000-0000-000000000000";
+
+/**
  * A development-only component gallery.
  *
  * Why it exists: every screen in this app is behind a session, a KYC status and
@@ -265,11 +274,13 @@ export default function DevGallery() {
                 defaultFullName=""
                 defaultPhone=""
                 rejectionReason="The photo of your ID was too blurry to read. Try again in daylight."
+                userId={GALLERY_USER_ID}
+                phoneHint="+234…"
               />
             </Section>
 
             <Section title="Verification — business">
-              <BusinessKycForm defaultBusinessName="" rejectionReason={null} />
+              <BusinessKycForm defaultBusinessName="" rejectionReason={null} userId={GALLERY_USER_ID} />
             </Section>
 
             <Section title="Transaction PIN">

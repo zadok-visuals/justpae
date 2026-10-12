@@ -10,6 +10,7 @@ import { CopyField } from "@/components/ui/CopyButton";
 import { SelectField } from "@/components/ui/Field";
 import { getDepositQuote, initiateDeposit, checkDepositStatus } from "@/lib/actions/deposits";
 import type { DepositAvailability } from "@/lib/deposits/availability";
+import { fiatMinimumDeposit } from "@/lib/busha/limits";
 import { currencyMeta, formatAmount } from "@/lib/currencies";
 import type { Currency, Wallet } from "@/lib/types/database";
 
@@ -48,6 +49,11 @@ export function DepositForm({
   const current = availability[currency];
   const amount = parseAmount(amountText);
 
+  // Mirrored server-side in getDepositQuote AND initiateDeposit, so this is
+  // only here to say so before the round trip — it is not the enforcement.
+  const minimum = fiatMinimumDeposit(currency);
+  const belowMinimum = minimum != null && amount > 0 && amount < minimum;
+
   useEffect(() => {
     if (depositState.redirectUrl) {
       // The secondary provider's GHS path hands back a hosted payment page.
@@ -64,7 +70,23 @@ export function DepositForm({
         currency={currency}
         bankDetails={depositState.bankDetails}
         cryptoAddress={depositState.cryptoAddress}
-        onDone={() => router.push("/home")}
+        // router.refresh() on the way out too, not just on the completion
+        // poll: the user may close this screen while the deposit is still
+        // pending and have it credited by the webhook or the cron a moment
+        // later, and /home would otherwise still be showing the balance from
+        // whenever it was first rendered.
+        // The quote survives into this screen in this component's own state —
+        // nothing clears it — so the fee breakdown can be shown here too. It
+        // previously appeared only at the review step and then vanished at
+        // exactly the moment the user was about to send real money, which is
+        // the moment they most need to see what will actually land.
+        grossAmount={quoteState.grossAmount}
+        fee={quoteState.fee}
+        netAmount={quoteState.netAmount}
+        onDone={() => {
+          router.refresh();
+          router.push("/home");
+        }}
       />
     );
   }
@@ -109,13 +131,21 @@ export function DepositForm({
             />
           </Card>
 
+          {belowMinimum && (
+            <Banner tone="info" title={`Minimum ${currency} deposit`}>
+              The smallest {currency} deposit we can process is{" "}
+              {formatAmount(currency, minimum!)}. Anything less is rejected by the time it
+              reaches us.
+            </Banner>
+          )}
+
           {quoteState.error && (
             <Banner tone="danger" title="Couldn't price that">
               {quoteState.error}
             </Banner>
           )}
 
-          <SubmitButton disabled={amount <= 0} pendingLabel="Checking…">
+          <SubmitButton disabled={amount <= 0 || belowMinimum} pendingLabel="Checking…">
             Continue
           </SubmitButton>
         </form>
@@ -131,11 +161,16 @@ export function DepositForm({
             <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Review
             </h2>
-            <DetailRow label="You send">
-              {formatAmount(currency, Number(quoteState.amount ?? 0))}
+            {/* The provider's own quoted source_amount, NOT the typed amount.
+                For a percentage-fee currency the two differ — the provider
+                grosses the transfer up to cover its fee — and showing the
+                typed figure here is what made these three numbers fail to add
+                up. See quoteForDesiredNetDeposit in actions/deposits.ts. */}
+            <DetailRow label="You transfer">
+              {formatAmount(currency, Number(quoteState.grossAmount ?? quoteState.amount ?? 0))}
             </DetailRow>
-            <DetailRow label="Provider fee">
-              {formatAmount(currency, Number(quoteState.fee ?? 0))}
+            <DetailRow label="Deposit fee">
+              −{formatAmount(currency, Number(quoteState.fee ?? 0))}
             </DetailRow>
             <DetailRow label="Lands in your wallet">
               <strong>{formatAmount(currency, Number(quoteState.netAmount ?? 0))}</strong>
@@ -160,15 +195,22 @@ function DepositInstructions({
   currency,
   bankDetails,
   cryptoAddress,
+  grossAmount,
+  fee,
+  netAmount,
   onDone,
 }: {
   depositId: string;
   currency: Currency;
   bankDetails?: { accountName: string; accountNumber: string; bankName: string; expiresAt: string };
   cryptoAddress?: { address: string; network: string; expiresAt: string };
+  grossAmount?: string;
+  fee?: string;
+  netAmount?: string;
   onDone: () => void;
 }) {
   const [status, setStatus] = useState<"pending" | "processing" | "completed" | "failed">("pending");
+  const router = useRouter();
 
   useEffect(() => {
     if (status === "completed" || status === "failed") return;
@@ -179,12 +221,23 @@ function DepositInstructions({
     const interval = setInterval(async () => {
       const result = await checkDepositStatus(depositId);
       if (result.status) setStatus(result.status);
-      if (result.status === "completed") toast.success("Deposit received");
+      if (result.status === "completed") {
+        toast.success("Deposit received");
+        // THE STALE BALANCE FIX. checkDepositStatus calls revalidatePath on the
+        // server, but that only marks the cached data stale — it does not make
+        // an already-mounted client tree re-fetch. And a Server Action invoked
+        // as a plain function from a setInterval callback, rather than
+        // dispatched through a form or a transition, carries no router update
+        // of its own either. So /home kept rendering the balances from the
+        // payload it was first given, and the user saw their old balance after
+        // being told the money had arrived.
+        router.refresh();
+      }
       if (result.status === "failed") toast.error("That deposit didn't go through");
     }, 8000);
 
     return () => clearInterval(interval);
-  }, [depositId, status]);
+  }, [depositId, status, router]);
 
   return (
     <div className="space-y-4">
@@ -198,9 +251,29 @@ function DepositInstructions({
         </Banner>
       ) : (
         <Banner tone="info" title="Waiting for your transfer">
-          Send the exact amount to the details below. This page updates itself the moment the
-          money arrives — you can leave it open.
+          Send the exact amount shown below. This page updates itself the moment the money
+          arrives — you can leave it open.
         </Banner>
+      )}
+
+      {/* The breakdown, repeated HERE. This is the screen the user is looking
+          at while they actually make the transfer, and the amount they must
+          send is the provider's grossed-up figure, not what they typed. Showing
+          it only at the review step and then hiding it is how a transfer goes
+          out for the wrong amount. */}
+      {grossAmount && status !== "completed" && status !== "failed" && (
+        <Card>
+          <div className="pb-3">
+            <CopyField
+              label={`Send exactly this ${currency} amount`}
+              value={Number(grossAmount).toFixed(2)}
+            />
+          </div>
+          <DetailRow label="Deposit fee">−{formatAmount(currency, Number(fee ?? 0))}</DetailRow>
+          <DetailRow label="You will receive">
+            <strong>{formatAmount(currency, Number(netAmount ?? 0))}</strong>
+          </DetailRow>
+        </Card>
       )}
 
       {cryptoAddress && (

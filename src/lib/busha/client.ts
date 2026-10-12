@@ -42,8 +42,16 @@ async function request<T>(
    * endpoint that wants one (getBanks). Omitted everywhere else so every
    * mutating or time-sensitive call — quotes, transfers, recipients — stays
    * fully uncached, as it must.
+   *
+   * quiet: set by a caller that EXPECTS this particular call may fail as part
+   * of routine, intended control flow — today only probeFiatToUsdtRate's first
+   * 1-unit probe, whose rejection is how the real per-pair minimum gets
+   * discovered. It suppresses the console.error below and NOTHING else: the
+   * same BushaError is still thrown, so the caller still sees and acts on the
+   * real failure. Never set it on a call whose failure would be genuine news;
+   * the point is to stop routine noise from burying exactly those.
    */
-  options: { method: "GET" | "POST"; body?: unknown; revalidate?: number },
+  options: { method: "GET" | "POST"; body?: unknown; revalidate?: number; quiet?: boolean },
 ): Promise<T> {
   const apiKey = process.env.BUSHA_API_KEY;
   if (!apiKey) throw new BushaError("BUSHA_API_KEY is not configured", 500);
@@ -64,11 +72,13 @@ async function request<T>(
     // no top-level `message` on an error response, so reading json.message
     // directly always falls through to the generic fallback.
     const message = json?.error?.message ?? json?.message ?? `Busha request failed (${res.status})`;
-    console.error("[busha.request] error response", {
-      path,
-      status: res.status,
-      error: json?.error ?? json,
-    });
+    if (!options.quiet) {
+      console.error("[busha.request] error response", {
+        path,
+        status: res.status,
+        error: json?.error ?? json,
+      });
+    }
     // A bare "Request validation failed" is useless; the offending field is
     // usually under one of these keys. Append whichever is present.
     const detail = json?.error?.details ?? json?.error?.errors ?? json?.error?.fields;
@@ -156,6 +166,9 @@ export function createQuote(params: {
    * So recipientId is optional and only sent when present.
    */
   payOut?: { type: string; recipientId?: string; address?: string; network?: string };
+  /** Passed straight through to request() — see its comment. Used only by
+   *  probeFiatToUsdtRate's routinely-rejected first probe. */
+  quiet?: boolean;
 }): Promise<BushaQuote> {
   const currency = params.sourceCurrency.toUpperCase();
   const payIn = params.isDeposit
@@ -176,6 +189,7 @@ export function createQuote(params: {
 
   return request("/v1/quotes", {
     method: "POST",
+    quiet: params.quiet,
     body: {
       source_currency: currency,
       target_currency: params.targetCurrency.toUpperCase(),

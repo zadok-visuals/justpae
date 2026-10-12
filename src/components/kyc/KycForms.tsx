@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
-import { TextField, TextAreaField, FileField } from "@/components/ui/Field";
+import { useActionState, useState } from "react";
+import { TextField, TextAreaField } from "@/components/ui/Field";
+import { UploadField } from "@/components/ui/UploadField";
 import { SubmitButton } from "@/components/ui/Button";
 import { Banner, Card } from "@/components/ui/Primitives";
 import { submitIndividualKyc, submitBusinessKyc } from "@/lib/actions/kyc";
@@ -14,19 +15,41 @@ import type { KycIdField } from "@/lib/countries";
  * at in the client: Nigeria uses a BVN or NIN, Ghana a Ghana Card number,
  * Kenya a national ID. Asking a Ghanaian for a BVN is the kind of detail that
  * makes an onboarding form feel built for somewhere else entirely.
+ *
+ * FILES DO NOT GO THROUGH THE SERVER ACTION. They are uploaded direct to
+ * private storage by UploadField and the action receives only path strings.
+ * Posting a phone photo inside the action's FormData exceeded the body limit
+ * before the action ran, so the user got the framework's generic error page
+ * with no explanation — see src/lib/storage/clientUpload.ts. `userId` is here
+ * for exactly that reason: it is the first segment of the storage path, which
+ * is what the bucket policy confines a user to.
  */
+const KYC_BUCKET = "kyc-documents";
+
 export function IndividualKycForm({
   idField,
   defaultFullName,
   defaultPhone,
   rejectionReason,
+  userId,
+  phoneHint,
 }: {
   idField: KycIdField;
   defaultFullName: string;
   defaultPhone: string;
   rejectionReason: string | null;
+  userId: string;
+  /** Resolved server-side from the user's own country — see phoneHintFor. */
+  phoneHint: string;
 }) {
   const [state, formAction] = useActionState(submitIndividualKyc, {});
+
+  // Submit waits for the two required uploads to SUCCEED, not merely for files
+  // to have been picked. A hidden input's `required` is inert by spec, so this
+  // is the gate.
+  const [selfie, setSelfie] = useState<string | null>(null);
+  const [idDocument, setIdDocument] = useState<string | null>(null);
+  const uploadsReady = Boolean(selfie && idDocument);
 
   return (
     <form action={formAction} className="space-y-4">
@@ -61,7 +84,7 @@ export function IndividualKycForm({
           enterKeyHint="next"
           required
           defaultValue={defaultPhone}
-          placeholder="+234…"
+          placeholder={phoneHint}
         />
 
         <TextField
@@ -77,28 +100,37 @@ export function IndividualKycForm({
       </Card>
 
       <Card className="space-y-4">
-        <FileField
+        <UploadField
           name="selfie"
           label="A photo of you"
           hint="Required"
           accept="image/*"
           capture="user"
-          required
+          bucket={KYC_BUCKET}
+          userId={userId}
+          prefix="selfie"
+          onUploadedChange={setSelfie}
         />
 
-        <FileField
+        <UploadField
           name="idDocument"
           label={`A photo of your ${idField.label}`}
           hint="Required"
           accept="image/*,application/pdf"
-          required
+          bucket={KYC_BUCKET}
+          userId={userId}
+          prefix="id-document"
+          onUploadedChange={setIdDocument}
         />
 
-        <FileField
+        <UploadField
           name="proofOfAddress"
           label="Proof of address"
           hint="Optional — raises your limits"
           accept="image/*,application/pdf"
+          bucket={KYC_BUCKET}
+          userId={userId}
+          prefix="proof-of-address"
         />
       </Card>
 
@@ -108,7 +140,14 @@ export function IndividualKycForm({
         </Banner>
       )}
 
-      <SubmitButton pendingLabel="Uploading…">Submit for review</SubmitButton>
+      <SubmitButton disabled={!uploadsReady} pendingLabel="Submitting…">
+        Submit for review
+      </SubmitButton>
+      {!uploadsReady && (
+        <p className="text-center text-xs text-muted-foreground">
+          Add your photo and your {idField.label} to continue.
+        </p>
+      )}
     </form>
   );
 }
@@ -116,11 +155,17 @@ export function IndividualKycForm({
 export function BusinessKycForm({
   defaultBusinessName,
   rejectionReason,
+  userId,
 }: {
   defaultBusinessName: string;
   rejectionReason: string | null;
+  userId: string;
 }) {
   const [state, formAction] = useActionState(submitBusinessKyc, {});
+
+  const [certificate, setCertificate] = useState<string | null>(null);
+  const [directorId, setDirectorId] = useState<string | null>(null);
+  const uploadsReady = Boolean(certificate && directorId);
 
   return (
     <form action={formAction} className="space-y-4">
@@ -157,27 +202,36 @@ export function BusinessKycForm({
       </Card>
 
       <Card className="space-y-4">
-        <FileField
+        <UploadField
           name="registrationCertificate"
           label="Business registration certificate"
           hint="Required"
           accept="image/*,application/pdf"
-          required
+          bucket={KYC_BUCKET}
+          userId={userId}
+          prefix="registration-certificate"
+          onUploadedChange={setCertificate}
         />
 
-        <FileField
+        <UploadField
           name="directorId"
           label="A director's ID"
           hint="Required"
           accept="image/*,application/pdf"
-          required
+          bucket={KYC_BUCKET}
+          userId={userId}
+          prefix="director-id"
+          onUploadedChange={setDirectorId}
         />
 
-        <FileField
+        <UploadField
           name="proofOfBusinessAddress"
           label="Proof of business address"
           hint="Optional"
           accept="image/*,application/pdf"
+          bucket={KYC_BUCKET}
+          userId={userId}
+          prefix="proof-of-business-address"
         />
       </Card>
 
@@ -187,7 +241,14 @@ export function BusinessKycForm({
         </Banner>
       )}
 
-      <SubmitButton pendingLabel="Uploading…">Submit for review</SubmitButton>
+      <SubmitButton disabled={!uploadsReady} pendingLabel="Submitting…">
+        Submit for review
+      </SubmitButton>
+      {!uploadsReady && (
+        <p className="text-center text-xs text-muted-foreground">
+          Add your registration certificate and a director&apos;s ID to continue.
+        </p>
+      )}
     </form>
   );
 }

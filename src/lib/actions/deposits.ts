@@ -10,6 +10,8 @@ import * as busha from "@/lib/busha/client";
 import * as klasha from "@/lib/klasha/client";
 import { depositAvailability } from "@/lib/deposits/availability";
 import { toCustomerError } from "@/lib/provider-error";
+import { fiatMinimumDeposit } from "@/lib/busha/limits";
+import { formatAmount } from "@/lib/currencies";
 
 /**
  * Deposits.
@@ -31,10 +33,75 @@ export interface DepositQuoteState {
   quoteId?: string;
   /** Provider fee, which is deducted from what lands in the wallet. */
   fee?: string;
-  /** What will actually be credited, net of fee. */
+  /**
+   * The provider's own quoted target_amount — the exact figure the deposit will
+   * credit. NOT `grossAmount - fee` recomputed here, so the payment screen can
+   * never show a net that drifts from what actually lands.
+   */
   netAmount?: string;
+  /**
+   * The provider's own quoted source_amount — the real figure the user must
+   * transfer, which can legitimately differ from what they typed. See
+   * quoteForDesiredNetDeposit below.
+   */
+  grossAmount?: string;
+  /**
+   * What the user typed. Kept separate from gross and net so the minimum
+   * re-check in initiateDeposit keeps applying to what they asked to have
+   * credited, rather than to a grossed-up transfer figure.
+   */
   amount?: string;
   currency?: Currency;
+}
+
+/**
+ * Quotes a deposit so that the NET credited equals what the user asked for.
+ *
+ * THE BUG THIS FIXES. Confirmed by live testing against the real provider
+ * account, not assumed: a same-currency deposit quote behaves differently per
+ * currency depending on that currency's fee TYPE.
+ *
+ *   KES (percentage fee) — source_amount is treated as the desired NET. The
+ *     response's source_amount comes back already grossed up to cover the fee,
+ *     and target_amount equals what was asked for.
+ *   NGN (fixed fee) — source_amount is echoed back unchanged, a true forward
+ *     quote, and target_amount = source_amount - fee, i.e. LESS than asked.
+ *   USDT — no fee on this account today, so the two are equal either way.
+ *
+ * The visible symptom was three figures that did not add up: "Transfer exactly
+ * KSh200 / fee KSh2 / you will receive KSh200". The cause was displaying the
+ * user's own typed amount as the transfer figure rather than the provider's
+ * quoted source_amount — which coincided for NGN (echoed back) and did not for
+ * KES (grossed up).
+ *
+ * This does NOT hardcode which currency behaves which way. It re-quotes with
+ * (desiredNet + fee) only when the first quote's target_amount does not already
+ * match the desired net. That is correct for both behaviours observed live, and
+ * self-corrects if the provider's fee model for any currency changes — whereas
+ * a per-currency table would silently go stale.
+ */
+async function quoteForDesiredNetDeposit(
+  currency: Currency,
+  desiredNet: number,
+): Promise<busha.BushaQuote> {
+  const first = await busha.createQuote({
+    sourceCurrency: currency,
+    targetCurrency: currency,
+    sourceAmount: desiredNet.toString(),
+    isDeposit: true,
+  });
+
+  // Already a net-denominated quote (the percentage-fee behaviour). Nothing to
+  // correct — a second call would only cost a round trip and a new quote id.
+  if (Math.abs(Number(first.target_amount) - desiredNet) < 0.01) return first;
+
+  const fee = first.fees.reduce((sum, f) => sum + Number(f.amount.amount), 0);
+  return busha.createQuote({
+    sourceCurrency: currency,
+    targetCurrency: currency,
+    sourceAmount: (desiredNet + fee).toString(),
+    isDeposit: true,
+  });
 }
 
 /** Real pricing preview — a same-currency quote against the live endpoint. */
@@ -57,18 +124,19 @@ export async function getDepositQuote(
     return { error: "Enter a valid amount." };
   }
 
+  const minimum = fiatMinimumDeposit(currency);
+  if (minimum != null && Number(amount) < minimum) {
+    return { error: `The minimum ${currency} deposit is ${formatAmount(currency, minimum)}.` };
+  }
+
   try {
-    const quote = await busha.createQuote({
-      sourceCurrency: currency,
-      targetCurrency: currency,
-      sourceAmount: amount,
-      isDeposit: true,
-    });
+    const quote = await quoteForDesiredNetDeposit(currency, Number(amount));
     const fee = quote.fees.reduce((sum, f) => sum + Number(f.amount.amount), 0);
     return {
       quoteId: quote.id,
       fee: fee.toFixed(2),
       netAmount: Number(quote.target_amount).toFixed(2),
+      grossAmount: Number(quote.source_amount).toFixed(2),
       amount,
       currency,
     };
@@ -121,6 +189,17 @@ export async function initiateDeposit(
   const quoteId = String(formData.get("quoteId") ?? "");
   if (!quoteId) return { error: "Missing quote." };
 
+  // Re-checked here, not only in getDepositQuote. This is the point of no
+  // return — the provider's transfer exists once createTransfer succeeds, and
+  // on the bank-transfer path the user then sends real money against it. It
+  // must not rely on whatever called this with a quote id having enforced the
+  // minimum upstream.
+  const requestedAmount = Number(formData.get("amount"));
+  const minimum = fiatMinimumDeposit(currency);
+  if (minimum != null && Number.isFinite(requestedAmount) && requestedAmount < minimum) {
+    return { error: `The minimum ${currency} deposit is ${formatAmount(currency, minimum)}.` };
+  }
+
   let transfer: busha.BushaTransfer;
   try {
     transfer = await busha.createTransfer(quoteId);
@@ -145,7 +224,18 @@ export async function initiateDeposit(
     .select("id")
     .single();
 
-  if (insertError) return { error: insertError.message };
+  // Never the raw database message. A constraint name or a column list tells
+  // the user nothing they can act on and tells anyone else more about the
+  // schema than they should have. The detail goes to the logs instead, where
+  // it is actually useful.
+  if (insertError) {
+    console.error("[deposits.initiateDeposit] deposit row insert failed", {
+      userId: user.id,
+      transferId: transfer.id,
+      error: insertError,
+    });
+    return { error: "We couldn't record that deposit. Please contact support before sending any money." };
+  }
 
   if (transfer.pay_in.address) {
     return {
@@ -224,7 +314,14 @@ async function initiateKlashaGhsDeposit(
     .select("id")
     .single();
 
-  if (insertError) return { error: insertError.message };
+  if (insertError) {
+    console.error("[deposits.initiateKlashaGhsDeposit] deposit row insert failed", {
+      userId,
+      txRef,
+      error: insertError,
+    });
+    return { error: "We couldn't record that deposit. Please contact support before sending any money." };
+  }
 
   return { depositId: deposit.id, redirectUrl: result.meta.authorization.redirect };
 }
@@ -259,7 +356,10 @@ export async function checkDepositStatus(depositId: string): Promise<DepositStat
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[deposits.checkDepositStatus] deposit lookup failed", { depositId, error });
+    return { error: "We couldn't check that deposit just now." };
+  }
   if (!data) return { error: "Deposit not found." };
 
   if (data.status === "pending" && data.provider === "busha" && data.provider_reference) {
