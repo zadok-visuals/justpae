@@ -8,6 +8,7 @@ import { SETTING_KEYS } from "@/lib/settings";
 import { isCurrency } from "@/lib/currencies";
 import { sendKycApprovedEmail, sendKycRejectedEmail } from "@/lib/email";
 import { notifyWithdrawalCompleted, notifyWithdrawalFailed } from "@/lib/notify/events";
+import { toRpcError } from "@/lib/provider-error";
 
 /**
  * Admin actions.
@@ -33,7 +34,7 @@ export async function approveKyc(
   const admin = createAdminClient();
   const { error } = await admin.rpc("admin_approve_kyc", { p_user_id: userId });
 
-  if (error) return { error: error.message };
+  if (error) return { error: toRpcError(error, "admin") };
 
   // The decision is already made and committed by this point, so none of the
   // three steps below is allowed to fail it — a user whose KYC was approved
@@ -77,7 +78,7 @@ export async function rejectKyc(
     p_reason: reason,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: toRpcError(error, "admin") };
 
   await logAdminActivity({
     adminId: actor.id,
@@ -161,7 +162,7 @@ export async function completeWithdrawal(
     p_transaction_id: transactionId,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: toRpcError(error, "admin") };
 
   // The customer was told nothing at all when an admin paid out by hand, which
   // is the one path where they are LEAST likely to already know: an automated
@@ -198,7 +199,7 @@ export async function rejectWithdrawal(
     p_reason: reason || null,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: toRpcError(error, "admin") };
 
   // admin_reject_withdrawal has already refunded the wallet, and the refund is
   // the headline of the message. A rejected withdrawal the customer is never
@@ -240,7 +241,7 @@ export async function confirmWithdrawalVerification(
     p_admin_id: adminUser.id,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: toRpcError(error, "admin") };
 
   // The mechanism is out-of-band by design (see the comment above), so this
   // ledger entry is the ONLY record that the check was ever claimed to have
@@ -286,7 +287,7 @@ export async function setRateMarkup(
     p_set_by: adminUser.id,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: toRpcError(error, "admin") };
 
   await logAdminActivity({
     adminId: adminUser.id,
@@ -341,7 +342,7 @@ export async function setAppSetting(
     p_set_by: adminUser.id,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: toRpcError(error, "admin") };
 
   // The payout threshold and the fee rate change how money moves for every
   // user, with no other trace than this.
