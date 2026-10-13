@@ -260,12 +260,12 @@ function BillFormFields({
         )}
 
         {activeLookup?.customerName && (
-          <Banner tone="success" title={activeLookup.customerName}>
+          <Banner live tone="success" title={activeLookup.customerName}>
             That&apos;s who this payment will credit.
           </Banner>
         )}
         {activeLookup?.error && (
-          <Banner tone="danger" title="We couldn't find that">
+          <Banner live tone="danger" title="We couldn't find that">
             {activeLookup.error}
           </Banner>
         )}
@@ -352,7 +352,7 @@ function BillFormFields({
       </label>
 
       {error && (
-        <Banner tone="danger" title="Couldn't complete that">
+        <Banner live tone="danger" title="Couldn't complete that">
           {error}
         </Banner>
       )}

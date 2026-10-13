@@ -58,7 +58,7 @@ export function TransactionPinCard({ hasPin }: { hasPin: boolean }) {
           </p>
         </div>
 
-        {setState.ok && <Banner tone="success" title="PIN set" />}
+        {setState.ok && <Banner live tone="success" title="PIN set" />}
 
         <form ref={formRef} action={setAction} onSubmit={askThenSubmit("set")} className="space-y-3">
           <PinField label="New PIN" value={pin} onValueChange={setPin} />
@@ -98,7 +98,7 @@ export function TransactionPinCard({ hasPin }: { hasPin: boolean }) {
         <Pill tone="success">Set</Pill>
       </div>
 
-      {changeState.ok && <Banner tone="success" title="PIN changed" />}
+      {changeState.ok && <Banner live tone="success" title="PIN changed" />}
 
       {changing ? (
         <form

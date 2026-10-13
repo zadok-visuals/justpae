@@ -344,7 +344,7 @@ function WithdrawFormFields({
       )}
 
       {state.error && (
-        <Banner tone="danger" title="Couldn't submit that">
+        <Banner live tone="danger" title="Couldn't submit that">
           {state.error}
         </Banner>
       )}
@@ -370,7 +370,7 @@ function WithdrawFormFields({
       </p>
 
       {belowMinimum && minimumAmount !== null && (
-        <Banner tone="warning" title="That's below the minimum">
+        <Banner live tone="warning" title="That's below the minimum">
           Withdraw at least {formatAmount(currency, minimumAmount)}.
         </Banner>
       )}

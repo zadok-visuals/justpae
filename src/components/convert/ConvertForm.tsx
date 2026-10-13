@@ -305,7 +305,7 @@ function ConvertFormFields({
       )}
 
       {activeUnavailable && currentRoute?.available && (
-        <Banner tone="info" title="Couldn't price that">
+        <Banner live tone="info" title="Couldn't price that">
           {activeUnavailable}
         </Banner>
       )}

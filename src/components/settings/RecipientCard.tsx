@@ -255,11 +255,11 @@ function NewRecipient({ currency, banks }: { currency: Currency; banks: BushaBan
         <RecipientFields currency={currency} banks={banks} />
 
         {(fieldError ?? state.error) && (
-          <Banner tone="danger" title="Check this before we save it">
+          <Banner live tone="danger" title="Check this before we save it">
             {fieldError ?? state.error}
           </Banner>
         )}
-        {state.ok && <Banner tone="success" title="Destination saved" />}
+        {state.ok && <Banner live tone="success" title="Destination saved" />}
 
         <SubmitButton pendingLabel="Saving…">Save destination</SubmitButton>
       </form>
@@ -324,11 +324,11 @@ function ExistingRecipient({
       </div>
 
       {requestError && (
-        <Banner tone="danger" title="Couldn't start that change">
+        <Banner live tone="danger" title="Couldn't start that change">
           {requestError}
         </Banner>
       )}
-      {state.ok && <Banner tone="success" title="Destination updated" />}
+      {state.ok && <Banner live tone="success" title="Destination updated" />}
 
       {changing ? (
         <form ref={formRef} action={formAction} onSubmit={onSubmit} className="space-y-3">
@@ -336,7 +336,7 @@ function ExistingRecipient({
           <RecipientFields currency={currency} banks={banks} defaults={recipient} />
 
           {fieldError && (
-            <Banner tone="danger" title="Check this before we save it">
+            <Banner live tone="danger" title="Check this before we save it">
               {fieldError}
             </Banner>
           )}

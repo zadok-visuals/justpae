@@ -214,11 +214,27 @@ export function Banner({
   title,
   children,
   action,
+  live = false,
 }: {
   tone?: "info" | "warning" | "danger" | "success";
   title: string;
   children?: React.ReactNode;
   action?: { href: string; label: string };
+  /**
+   * Announce this banner when it appears.
+   *
+   * OPT-IN, not automatic. Most banners here are standing page furniture — the
+   * KYC gate on /withdraw, "bill payments are coming soon" — and marking those
+   * live would have a screen reader read the page's static chrome aloud on
+   * every render. What this is for is the banner that appears as the RESULT of
+   * something the user just did: a failed withdrawal, a biller's name lookup,
+   * a destination saved. Those are currently announced to nobody, which is the
+   * whole of audit finding 10.1.
+   *
+   * A danger tone gets role="alert" (interrupting, because a money action just
+   * failed); everything else gets a polite region that waits for a pause.
+   */
+  live?: boolean;
 }) {
   const tones = {
     info: "border-border bg-secondary",
@@ -228,7 +244,11 @@ export function Banner({
   } as const;
 
   return (
-    <div className={`rounded-xl border p-4 ${tones[tone]}`}>
+    <div
+      role={live ? (tone === "danger" ? "alert" : "status") : undefined}
+      aria-live={live ? (tone === "danger" ? "assertive" : "polite") : undefined}
+      className={`rounded-xl border p-4 ${tones[tone]}`}
+    >
       <p className="text-sm font-semibold text-foreground">{title}</p>
       {children && <div className="mt-1 text-sm text-muted-foreground">{children}</div>}
       {action && (
