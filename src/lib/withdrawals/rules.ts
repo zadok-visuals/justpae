@@ -52,6 +52,69 @@ export function pinFormatError(pin: string): string | null {
 }
 
 /**
+ * The withdrawal fee, to the minor unit.
+ *
+ * Mirrors create_withdrawal_request exactly — `round(amount * rate, 2)` — and
+ * exists so the figure shown on /withdraw before confirming and the figure the
+ * database actually charges come from one expression rather than two that
+ * agree today. The one that moves money is still the SQL; this is what the
+ * screen promises, and a drift between them is a customer being quoted a fee
+ * they were not charged.
+ */
+export function withdrawalFee(amount: number, feeRate: number): number {
+  return Math.round(amount * feeRate * 100) / 100;
+}
+
+/**
+ * Whether a withdrawal goes out automatically, and if not, what to tell the
+ * customer.
+ *
+ * Pulled out of evaluateWithdrawalRouting as a pure function so the rule can
+ * be read — and tested — without a database, a settings lookup and a live rate
+ * probe standing in front of it. The caller gathers the four numbers; this
+ * decides.
+ *
+ * ORDER MATTERS and is deliberate. An unsupported corridor is checked first
+ * because no amount of it is automatable; the single-request limit next; the
+ * rolling window last, because its message only makes sense once the request
+ * itself is known to be under the limit.
+ */
+export function decideWithdrawalRouting(input: {
+  /** False when this currency has no automated payout channel at all. */
+  hasPayoutChannel: boolean;
+  currency: string;
+  thresholdUsd: number;
+  windowHours: number;
+  /** USD-equivalent of this request alone. */
+  requestUsd: number;
+  /** USD-equivalent of the user's other withdrawals inside the window. */
+  windowUsd: number;
+}): { automated: boolean; reason: string | null } {
+  if (!input.hasPayoutChannel) {
+    return {
+      automated: false,
+      reason: `${input.currency} payouts are reviewed by our team before they go out.`,
+    };
+  }
+
+  if (input.requestUsd > input.thresholdUsd) {
+    return {
+      automated: false,
+      reason: "Withdrawals above our instant limit are reviewed by our team first.",
+    };
+  }
+
+  if (input.requestUsd + input.windowUsd > input.thresholdUsd) {
+    return {
+      automated: false,
+      reason: `This takes your withdrawals in the last ${input.windowHours} hours past our instant limit, so it will be reviewed first.`,
+    };
+  }
+
+  return { automated: true, reason: null };
+}
+
+/**
  * The shape of a payout destination, per corridor. Returns a message naming the
  * field, or null.
  *

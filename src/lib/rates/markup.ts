@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Currency } from "@/lib/types/database";
+import { DEFAULT_MARKUP_RATE, applyMarkupToRate } from "@/lib/rates/markupMath";
 
 /**
  * Server-only. The markup engine.
@@ -21,8 +22,10 @@ import type { Currency } from "@/lib/types/database";
  * raw_target_amount) so /admin/pnl can report profit per order.
  */
 
-/** Used when no row exists for a pair yet — 0.5%, the figure the operator confirmed. */
-export const DEFAULT_MARKUP_RATE = 0.005;
+// The arithmetic itself lives in ./markupMath, which has no imports — this
+// module reaches for the service-role client at module scope, and testing a
+// multiplication should not require a database connection.
+export { DEFAULT_MARKUP_RATE, applyMarkupToAmount } from "@/lib/rates/markupMath";
 
 export interface MarkupQuote {
   providerRate: number;
@@ -64,13 +67,8 @@ export async function quoteWithMarkup(
   return {
     providerRate,
     markupRate,
-    customerRate: providerRate * (1 - markupRate),
+    customerRate: applyMarkupToRate(providerRate, markupRate),
   };
-}
-
-/** Applies a markup to a target amount directly, for provider-delivered figures. */
-export function applyMarkupToAmount(rawTargetAmount: number, markupRate: number): number {
-  return rawTargetAmount * (1 - markupRate);
 }
 
 /** All markups, for /admin/rates and the Home rate strip. */

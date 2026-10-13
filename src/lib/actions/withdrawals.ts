@@ -20,6 +20,7 @@ import {
   RECIPIENT_CHANGE_HOLD_HOURS,
   pinFormatError,
   recipientFieldError,
+  withdrawalFee,
 } from "@/lib/withdrawals/rules";
 import { sendRecipientChangedEmail } from "@/lib/email";
 
@@ -329,11 +330,10 @@ export async function previewWithdrawalRouting(currency: Currency, amount: numbe
       getWithdrawalFeeRate(),
     ]);
 
-    // Mirrors create_withdrawal_request exactly — round(amount * rate, 2),
-    // then amount - fee. Computed here ONLY to show the user what is about to
-    // happen; the figures that actually move money are still derived inside
-    // the function, from app_settings, under a locked row.
-    const fee = Math.round(amount * feeRate * 100) / 100;
+    // Mirrors create_withdrawal_request exactly. Computed here ONLY to show the
+    // user what is about to happen; the figures that actually move money are
+    // still derived inside the function, from app_settings, under a locked row.
+    const fee = withdrawalFee(amount, feeRate);
 
     // routing.requestUsd is this amount already converted, so the per-unit
     // rate falls out of it with no second probe.

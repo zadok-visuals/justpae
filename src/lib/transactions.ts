@@ -131,20 +131,40 @@ export async function fetchActivityPage(
       : Promise.resolve([] as UnifiedActivity[]),
   ]);
 
-  const merged = [...transactions, ...deposits, ...bills].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-  );
+  return paginateMergedActivity([transactions, deposits, bills], { page, pageSize, single });
+}
 
-  if (single) {
-    return {
-      rows: merged.slice(0, pageSize),
-      hasMore: merged.length > pageSize,
-      page,
-      pageSize,
-    };
-  }
+/**
+ * The merge: interleave rows from several tables by time, then cut the page out
+ * of the result.
+ *
+ * Separated from the queries above so it can be tested without a database. It
+ * is the part most worth testing and the part least obviously correct — it has
+ * two modes that slice differently, and getting either wrong shows a user
+ * somebody's activity in the wrong order or silently drops a row off the end of
+ * a page.
+ *
+ * WHY THE TWO MODES. When only one table is in play the DATABASE already did
+ * the paging with `range(offset, …)`, so what comes back is already this page
+ * and slicing from `page * pageSize` would skip into nothing. When several are,
+ * each was asked for the first `(page + 1) * pageSize + 1` rows — the smallest
+ * window that can possibly contain this page after merging — so the offset is
+ * applied here.
+ *
+ * Either way one extra row beyond the page is what answers "is there more",
+ * rather than a second count query that can disagree with the page describing
+ * it.
+ */
+export function paginateMergedActivity(
+  sources: UnifiedActivity[][],
+  { page, pageSize, single }: { page: number; pageSize: number; single: boolean },
+): ActivityPage {
+  const merged = sources
+    .flat()
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-  const start = page * pageSize;
+  const start = single ? 0 : page * pageSize;
+
   return {
     rows: merged.slice(start, start + pageSize),
     hasMore: merged.length > start + pageSize,

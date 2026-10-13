@@ -6,6 +6,7 @@ import {
   getAutomatedPayoutWindowHours,
 } from "@/lib/settings";
 import { getPayoutChannel } from "@/lib/busha/payout";
+import { decideWithdrawalRouting } from "@/lib/withdrawals/rules";
 
 /**
  * Server-only. Decides whether a withdrawal is paid out automatically or waits
@@ -84,31 +85,20 @@ export async function evaluateWithdrawalRouting(params: {
 
   const base = { thresholdUsd, windowHours, requestUsd, windowUsd };
 
-  if (!getPayoutChannel(currency)) {
-    return {
-      ...base,
-      automated: false,
-      reason: `${currency} payouts are reviewed by our team before they go out.`,
-    };
-  }
-
-  if (requestUsd > thresholdUsd) {
-    return {
-      ...base,
-      automated: false,
-      reason: "Withdrawals above our instant limit are reviewed by our team first.",
-    };
-  }
-
-  if (requestUsd + windowUsd > thresholdUsd) {
-    return {
-      ...base,
-      automated: false,
-      reason: `This takes your withdrawals in the last ${windowHours} hours past our instant limit, so it will be reviewed first.`,
-    };
-  }
-
-  return { ...base, automated: true, reason: null };
+  // The decision itself is a pure function in ../rules, so the rule can be read
+  // and tested without a database, a settings read and a live rate probe in
+  // front of it. Everything above this line is gathering the four numbers.
+  return {
+    ...base,
+    ...decideWithdrawalRouting({
+      hasPayoutChannel: Boolean(getPayoutChannel(currency)),
+      currency,
+      thresholdUsd,
+      windowHours,
+      requestUsd,
+      windowUsd,
+    }),
+  };
 }
 
 /**
