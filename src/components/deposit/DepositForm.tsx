@@ -11,6 +11,7 @@ import { SelectField } from "@/components/ui/Field";
 import { getDepositQuote, initiateDeposit, checkDepositStatus } from "@/lib/actions/deposits";
 import type { DepositAvailability } from "@/lib/deposits/availability";
 import { fiatMinimumDeposit } from "@/lib/busha/limits";
+import { usePolling, isFinalStatus } from "@/lib/hooks/usePolling";
 import { currencyMeta, formatAmount } from "@/lib/currencies";
 import type { Currency, Wallet } from "@/lib/types/database";
 
@@ -212,13 +213,12 @@ function DepositInstructions({
   const [status, setStatus] = useState<"pending" | "processing" | "completed" | "failed">("pending");
   const router = useRouter();
 
-  useEffect(() => {
-    if (status === "completed" || status === "failed") return;
-
-    // Every poll re-checks the provider server-side and credits immediately if
-    // funds have landed. Eight seconds is frequent enough to feel live without
-    // hammering the provider for a transfer that may take minutes.
-    const interval = setInterval(async () => {
+  // Every poll re-checks the provider server-side and credits immediately if
+  // funds have landed. Shared with the withdrawal and conversion detail views
+  // through usePolling, so all three stop on a final status by the same rule
+  // rather than three hand-rolled intervals each remembering to.
+  usePolling(
+    async () => {
       const result = await checkDepositStatus(depositId);
       if (result.status) setStatus(result.status);
       if (result.status === "completed") {
@@ -226,18 +226,17 @@ function DepositInstructions({
         // THE STALE BALANCE FIX. checkDepositStatus calls revalidatePath on the
         // server, but that only marks the cached data stale — it does not make
         // an already-mounted client tree re-fetch. And a Server Action invoked
-        // as a plain function from a setInterval callback, rather than
-        // dispatched through a form or a transition, carries no router update
-        // of its own either. So /home kept rendering the balances from the
-        // payload it was first given, and the user saw their old balance after
-        // being told the money had arrived.
+        // as a plain function from an interval callback, rather than dispatched
+        // through a form or a transition, carries no router update of its own
+        // either. So /home kept rendering the balances from the payload it was
+        // first given, and the user saw their old balance after being told the
+        // money had arrived.
         router.refresh();
       }
       if (result.status === "failed") toast.error("That deposit didn't go through");
-    }, 8000);
-
-    return () => clearInterval(interval);
-  }, [depositId, status, router]);
+    },
+    { active: !isFinalStatus(status) },
+  );
 
   return (
     <div className="space-y-4">

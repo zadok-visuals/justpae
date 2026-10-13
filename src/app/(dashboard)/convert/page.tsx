@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { ConvertForm } from "@/components/convert/ConvertForm";
 import { EmptyState } from "@/components/ui/Primitives";
+import { LiveRefresh } from "@/components/ui/LiveRefresh";
 import { listRoutesFrom } from "@/lib/actions/convert";
 import type { Wallet } from "@/lib/types/database";
 
@@ -52,6 +53,13 @@ export default async function ConvertPage() {
       back={{ href: "/home", label: "Home" }}
     >
       <ConvertForm wallets={list} routes={routes} hasPin={hasPin === true} />
+      {/* Re-resolves route availability while the screen is open, so a pair
+          that came back (or went away) is not still being advertised as it was
+          on first load. Longer than Home's interval and with no timestamp: the
+          number that actually binds is the server-issued quote, which carries
+          its own countdown. router.refresh() keeps client state, so a
+          half-typed amount survives. */}
+      <LiveRefresh intervalMs={120_000} />
     </PageShell>
   );
 }

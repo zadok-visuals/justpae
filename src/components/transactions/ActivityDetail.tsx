@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { SheetPanel } from "@/components/ui/SheetPanel";
+import { usePolling, isFinalStatus } from "@/lib/hooks/usePolling";
 import { DetailRow, SkeletonText, StatusPill } from "@/components/ui/Primitives";
 import { CopyButton, CopyField } from "@/components/ui/CopyButton";
 import { Button } from "@/components/ui/Button";
@@ -29,6 +31,7 @@ export function ActivityDetail({
 }) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     let cancelled = false;
@@ -43,6 +46,23 @@ export function ActivityDetail({
       cancelled = true;
     };
   }, [source, id]);
+
+  // While it is still pending, keep asking. Deposits were the only thing that
+  // polled; a withdrawal or conversion sat on "pending" until the user
+  // reloaded the page to find out it had finished half an hour ago.
+  const pending = detail !== null && !isFinalStatus(detail.status);
+  usePolling(
+    async () => {
+      const result = await getActivityDetail(source, id);
+      if (result.error || !result.detail) return;
+      setDetail(result.detail);
+
+      // Reaching a final state means a balance moved, and this sheet is
+      // rendered over a server-rendered page holding the old one.
+      if (isFinalStatus(result.detail.status)) router.refresh();
+    },
+    { active: pending },
+  );
 
   return (
     <SheetPanel

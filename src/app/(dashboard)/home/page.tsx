@@ -6,6 +6,7 @@ import { QuickActions } from "@/components/home/QuickActions";
 import { RatesStrip, type StripRate } from "@/components/home/RatesStrip";
 import { ActivityRows } from "@/components/transactions/ActivityRows";
 import { SectionHeader, EmptyState } from "@/components/ui/Primitives";
+import { LiveRefresh } from "@/components/ui/LiveRefresh";
 import { KycStatusBanner } from "@/components/kyc/KycStatusBanner";
 import { fetchRecentActivity } from "@/lib/transactions";
 import { resolveRoute } from "@/lib/rates/routes";
@@ -76,6 +77,12 @@ export default async function HomePage() {
         <section>
           <SectionHeader title="Today's rates" />
           <RatesStrip rates={rates} />
+          {/* The strip used to be rendered once and left there. Leave this
+              screen open for an hour and the rate was an hour old, looking
+              exactly as authoritative as a live one. */}
+          <div className="mt-1.5">
+            <LiveRefresh showTimestamp label="Rates updated" />
+          </div>
         </section>
 
         <section>
