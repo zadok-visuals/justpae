@@ -11,6 +11,7 @@ import {
   usesBvnOrNin,
 } from "@/lib/countries";
 import { verifyOwnedUpload } from "@/lib/storage/verifyUpload";
+import { KYC_BUCKET } from "@/lib/kyc/constants";
 import { adminNotificationRecipients, sendKycSubmittedEmail } from "@/lib/email";
 
 export interface KycActionState {
@@ -20,8 +21,6 @@ export interface KycActionState {
 export interface OnboardingBasicsState {
   error?: string;
 }
-
-const KYC_BUCKET = "kyc-documents";
 
 const ACCOUNT_TYPES = new Set(["individual", "business"]);
 

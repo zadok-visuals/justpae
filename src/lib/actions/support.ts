@@ -160,7 +160,7 @@ export async function sendSupportMessage(
   // Tell the team out of band. Not fatal: the message IS sent, and reporting
   // failure would make the user send it twice.
   const admins = adminNotificationRecipients();
-  if (admins.length > 0) {
+  if (admins.length > 0 && (await shouldAlertAdmins(supabase, user.id))) {
     await sendSupportMessageEmail({
       to: admins,
       fromName: user.email ?? "A customer",
@@ -171,6 +171,56 @@ export async function sendSupportMessage(
 
   revalidatePath("/support");
   return { ok: true };
+}
+
+/** One admin alert per thread per ten minutes. */
+const SUPPORT_ALERT_WINDOW_MS = 10 * 60 * 1000;
+
+/**
+ * Whether this new customer message should email the team.
+ *
+ * WHAT IT FIXES: every inbound message sent an email, so a customer typing
+ * five short lines — which is how most people type — sent five. A team that
+ * gets five emails for one question learns to ignore the alert, which costs
+ * more than the noise does.
+ *
+ * DERIVED FROM THE MESSAGES, with no new column and no migration: look at this
+ * thread in the last ten minutes, ignoring the message just inserted.
+ *
+ *   · nothing there        → first contact in a while, alert.
+ *   · last one from the    → the team was already alerted about this burst and
+ *     customer               has not answered yet. Stay quiet.
+ *   · last one from an     → somebody picked this up and the customer has come
+ *     admin                  back. That is new information. Alert.
+ *
+ * The third case is why this is not a flat rate limit. A reply arriving 30
+ * seconds after an admin answered is the most time-sensitive message in the
+ * thread, and a naive ten-minute window would swallow exactly that one.
+ */
+async function shouldAlertAdmins(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<boolean> {
+  const since = new Date(Date.now() - SUPPORT_ALERT_WINDOW_MS).toISOString();
+
+  const { data, error } = await supabase
+    .from("support_messages")
+    .select("sender, created_at")
+    .eq("user_id", userId)
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .range(0, 1);
+
+  // Fail towards alerting. A missed support email is worse than a duplicate.
+  if (error) {
+    console.error("[support.shouldAlertAdmins] failed", error);
+    return true;
+  }
+
+  // [0] is the message just inserted; [1] is what came before it.
+  const previous = (data ?? [])[1];
+  if (!previous) return true;
+  return previous.sender !== "user";
 }
 
 // ── Admin side ─────────────────────────────────────────────────────────────

@@ -6,9 +6,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { Currency } from "@/lib/types/database";
 import { SETTING_KEYS } from "@/lib/settings";
 import { isCurrency } from "@/lib/currencies";
-import { sendKycApprovedEmail, sendKycRejectedEmail } from "@/lib/email";
+import { sendEmail, sendKycApprovedEmail, sendKycRejectedEmail } from "@/lib/email";
 import { notifyWithdrawalCompleted, notifyWithdrawalFailed } from "@/lib/notify/events";
 import { toRpcError } from "@/lib/provider-error";
+import { KYC_BUCKET } from "@/lib/kyc/constants";
 
 /**
  * Admin actions.
@@ -356,4 +357,119 @@ export async function setAppSetting(
 
   revalidatePath("/admin/rates");
   return { ok: true };
+}
+
+/**
+ * Send a test email to the signed-in admin.
+ *
+ * WHY: there was no way to find out whether email worked short of moving real
+ * money and waiting to see if a receipt arrived. Every send in this codebase
+ * deliberately swallows its failure (an email provider being down must never
+ * fail a withdrawal that has already happened), which is right — and means a
+ * misconfigured sender domain is completely silent until a customer says they
+ * never got anything.
+ *
+ * TO THE ACTOR'S OWN ADDRESS, never to one typed into a box. An admin-only
+ * endpoint that sends mail to an arbitrary address is an open relay with our
+ * domain's reputation attached, and the only address worth testing is one the
+ * person running the test can read.
+ *
+ * The three outcomes are reported separately, because "not configured" and
+ * "configured but rejected" need completely different actions and sendEmail
+ * returns false for both.
+ */
+export async function sendTestEmail(): Promise<AdminActionState> {
+  const actor = await requireAdminUser();
+
+  if (!process.env.RESEND_API_KEY) {
+    return {
+      error:
+        "RESEND_API_KEY isn't set in this environment, so nothing was sent. Email is skipped entirely rather than failing — set the key and try again.",
+    };
+  }
+
+  const delivered = await sendEmail({
+    to: actor.email,
+    subject: "justpae email test",
+    preheader: "If you're reading this, outbound email works.",
+    heading: "Email is working",
+    bodyParagraphs: [
+      "An admin sent this from the justpae admin tools to check that outbound email is configured correctly.",
+      "Nothing about your account changed, and no customer was emailed.",
+    ],
+  });
+
+  if (!delivered) {
+    return {
+      error:
+        "The email provider rejected that. The most common cause is a sending domain that isn't verified yet — the provider's own message is in the server logs.",
+    };
+  }
+
+  await logAdminActivity({
+    adminId: actor.id,
+    action: "email.test",
+    targetType: "admin",
+    targetId: actor.id,
+  });
+
+  return { ok: true };
+}
+
+/**
+ * A short-lived signed URL for one KYC document, so a reviewer can actually
+ * look at what they are approving.
+ *
+ * WHAT THIS REPLACES: the queue printed `file_ref` — a path into a private
+ * bucket, which is neither viewable nor a URL. A reviewer deciding whether to
+ * reject somebody's account was shown a string like
+ * `<uuid>/government-id/1699….jpg` and nothing else, which means the review was
+ * either being done through the Supabase dashboard or not at all.
+ *
+ * SIGNED ON DEMAND, not per row at render time. Most rows are never opened, and
+ * signing every document on every page load would be a storage request per
+ * document per view — plus a page whose HTML contains live URLs to every queued
+ * applicant's identity documents, which is a far worse thing to leave sitting
+ * in a browser history or a proxy cache than a slow page is.
+ *
+ * LOGGED. Opening a customer's identity document is exactly the read the ledger
+ * exists to record: "who looked at this person's passport" is a question an
+ * investigation asks, and a log of only writes cannot answer it.
+ */
+const KYC_SIGNED_URL_TTL_SECONDS = 120;
+
+export async function signKycDocument(
+  userId: string,
+  path: string,
+): Promise<{ url?: string; error?: string }> {
+  const actor = await requireAdminUser();
+
+  // The path must belong to the applicant whose row was clicked. Without this
+  // the action takes an arbitrary bucket path from the client and signs it,
+  // turning an admin page into a read primitive for the entire bucket. Uploads
+  // are stored under `<user_id>/…` (see clientUpload), so the prefix IS the
+  // ownership claim — checked here rather than trusted.
+  if (!userId || !path || !path.startsWith(`${userId}/`)) {
+    return { error: "That document doesn't belong to this applicant." };
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin.storage
+    .from(KYC_BUCKET)
+    .createSignedUrl(path, KYC_SIGNED_URL_TTL_SECONDS);
+
+  if (error || !data?.signedUrl) {
+    console.error("[admin.signKycDocument] failed", error);
+    return { error: "Couldn't open that document. It may have been removed." };
+  }
+
+  await logAdminActivity({
+    adminId: actor.id,
+    action: "kyc.view_document",
+    targetType: "user",
+    targetId: userId,
+    detail: { path },
+  });
+
+  return { url: data.signedUrl };
 }

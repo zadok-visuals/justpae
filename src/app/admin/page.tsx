@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdminUser } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card } from "@/components/ui/Primitives";
+import { formatAmount } from "@/lib/currencies";
 import type { AdminDashboardStats } from "@/lib/types/database";
 
 export const metadata = { title: "Admin" };
@@ -45,8 +46,21 @@ export default async function AdminPage() {
   await requireAdminUser();
   const admin = createAdminClient();
 
-  const { data, error } = await admin.rpc("admin_dashboard_stats");
+  const [{ data, error }, { data: failed }] = await Promise.all([
+    admin.rpc("admin_dashboard_stats"),
+    // A short, deliberate window rather than every failure ever. This is a
+    // "what has just gone wrong" list, and paging it would turn it into an
+    // archive nobody reads.
+    admin
+      .from("deposits")
+      .select("id, user_id, amount, currency, decline_reason, created_at")
+      .eq("status", "failed")
+      .order("created_at", { ascending: false })
+      .range(0, 9),
+  ]);
+
   if (error) console.error("[admin] dashboard stats failed", error);
+  const failedDeposits = failed ?? [];
   // Zeroes rather than a crash, and the banner below says so — a dashboard
   // that renders zeroes while claiming they are real is the one failure mode
   // worse than not rendering.
@@ -113,6 +127,47 @@ export default async function AdminPage() {
           ))}
         </div>
       </section>
+
+      {/* WHY THIS SECTION EXISTS: fail_deposit has always stored
+          decline_reason, and the customer's own transaction detail has always
+          shown it — but no admin screen did, so when a customer wrote in asking
+          why their deposit bounced, the operator had less information than the
+          customer. */}
+      {failedDeposits.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Deposits that didn&apos;t go through
+          </h2>
+          <ul className="space-y-2">
+            {failedDeposits.map((deposit) => (
+              <li key={deposit.id}>
+                <Card className="space-y-1">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="font-medium text-foreground">
+                      {formatAmount(deposit.currency, Number(deposit.amount))}
+                    </span>
+                    <time
+                      dateTime={deposit.created_at}
+                      className="font-mono text-[0.6875rem] text-muted-foreground"
+                    >
+                      {new Date(deposit.created_at).toLocaleString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </time>
+                  </div>
+                  <p className="break-words text-sm text-muted-foreground">
+                    {deposit.decline_reason?.trim() || "No reason was recorded."}
+                  </p>
+                  <p className="font-mono text-xs text-muted-foreground">{deposit.user_id}</p>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">

@@ -7,6 +7,7 @@ import { Button, SubmitButton } from "@/components/ui/Button";
 import { Banner, Card } from "@/components/ui/Primitives";
 import { StepIndicator } from "@/components/ui/StepIndicator";
 import { UnsavedChangesGuard } from "@/components/ui/UnsavedChangesGuard";
+import { KYC_BUCKET } from "@/lib/kyc/constants";
 import { submitIndividualKyc, submitBusinessKyc } from "@/lib/actions/kyc";
 import { GOVERNMENT_ID_TYPES, type KycIdField } from "@/lib/countries";
 
@@ -35,7 +36,7 @@ import { GOVERNMENT_ID_TYPES, type KycIdField } from "@/lib/countries";
  * into private storage and the form carries only path strings. See
  * src/lib/storage/clientUpload.ts for the production crash that caused.
  */
-const KYC_BUCKET = "kyc-documents";
+// Imported rather than redeclared — see src/lib/kyc/constants.ts.
 
 /** Shared chrome: the indicator, the step's own heading, and Back/Continue. */
 function WizardStep({

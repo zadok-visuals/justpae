@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Card } from "@/components/ui/Primitives";
 import { Pager, pageRange, parsePageParam } from "@/components/ui/Pager";
 import { NotificationComposer } from "@/components/admin/NotificationComposer";
+import { TestEmailButton } from "@/components/admin/TestEmailButton";
 
 const PAGE_SIZE = 20;
 
@@ -51,6 +52,13 @@ export default async function AdminNotificationsPage({
 
       <Card>
         <NotificationComposer />
+      </Card>
+
+      {/* Next to the composer because this is the page about getting messages
+          out, and because an in-app notification working says nothing about
+          whether email does — they are two entirely separate transports. */}
+      <Card>
+        <TestEmailButton />
       </Card>
 
       <section>

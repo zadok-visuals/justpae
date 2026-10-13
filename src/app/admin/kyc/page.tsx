@@ -2,6 +2,7 @@ import { requireAdminUser } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, EmptyState, Pill, DetailRow } from "@/components/ui/Primitives";
 import { KycQueueActions } from "@/components/admin/QueueActions";
+import { KycDocumentViewer } from "@/components/admin/KycDocumentViewer";
 import { countryName } from "@/lib/countries";
 
 export const metadata = { title: "Verification queue" };
@@ -77,12 +78,29 @@ export default async function AdminKycPage() {
 
             <div className="rounded-lg border border-border bg-secondary px-3">
               {(byUser.get(profile.id) ?? []).map((doc) => (
-                <DetailRow key={doc.document_type} label={doc.document_type.replace(/_/g, " ")} mono>
-                  {/* A file_ref is a path into the private bucket, not a
-                      viewable URL. It is printed so a reviewer can find the
-                      object; signing a URL per row on every page load would be
-                      a request per document for files most rows never open. */}
-                  {doc.value ?? doc.file_ref ?? "—"}
+                <DetailRow
+                  key={doc.document_type}
+                  label={doc.document_type.replace(/_/g, " ")}
+                  mono={!doc.file_ref}
+                >
+                  {/* A file_ref is a path into a private bucket — not a
+                      viewable URL, and printing it was the whole of the
+                      "review". The URL is signed on demand instead: most rows
+                      are never opened, and a page whose HTML carried live links
+                      to every queued applicant's ID is a worse thing to leave
+                      in a history or a cache than a slow page. */}
+                  {doc.file_ref ? (
+                    <KycDocumentViewer
+                      userId={profile.id}
+                      path={doc.file_ref}
+                      label={`${profile.full_name ?? profile.email} — ${doc.document_type.replace(
+                        /_/g,
+                        " ",
+                      )}`}
+                    />
+                  ) : (
+                    (doc.value ?? "—")
+                  )}
                 </DetailRow>
               ))}
             </div>
