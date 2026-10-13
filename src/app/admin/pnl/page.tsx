@@ -1,8 +1,23 @@
 import { requireAdminUser } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/paging";
 import { Card, Banner, EmptyState } from "@/components/ui/Primitives";
 import { formatAmount, formatNumber } from "@/lib/currencies";
 import type { Currency } from "@/lib/types/database";
+
+/** The columns the margin calculation needs, and no others. */
+type MarginRow = {
+  id: string;
+  created_at: string;
+  currency: Currency;
+  amount: number;
+  target_currency: Currency | null;
+  target_amount: number | null;
+  raw_target_amount: number | null;
+  provider_rate: number | null;
+  markup_rate: number | null;
+  customer_rate: number | null;
+};
 
 export const metadata = { title: "Margin" };
 export const dynamic = "force-dynamic";
@@ -28,18 +43,30 @@ export default async function AdminPnlPage() {
   await requireAdminUser();
   const admin = createAdminClient();
 
-  const { data: conversions } = await admin
-    .from("transactions")
-    .select(
-      "id, created_at, currency, amount, target_currency, target_amount, raw_target_amount, provider_rate, markup_rate, customer_rate",
-    )
-    .eq("type", "convert")
-    .eq("status", "completed")
-    .not("raw_target_amount", "is", null)
-    .order("created_at", { ascending: false })
-    .limit(100);
+  // PAGED, not .limit(100). This page used to sum a hundred rows and print the
+  // result as the margin, so past a hundred completed conversions the figure
+  // on screen was simply wrong — silently, with nothing saying it was partial.
+  // A wrong list inconveniences someone; a wrong total misinforms the operator
+  // about the business.
+  const { rows, truncated, error } = await fetchAllRows<MarginRow>((from, to) =>
+    admin
+      .from("transactions")
+      .select(
+        "id, created_at, currency, amount, target_currency, target_amount, raw_target_amount, provider_rate, markup_rate, customer_rate",
+      )
+      .eq("type", "convert")
+      .eq("status", "completed")
+      .not("raw_target_amount", "is", null)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, to),
+  );
 
-  const rows = conversions ?? [];
+  if (error) console.error("[admin/pnl] read failed", error);
+
+  // The table shows a recent window out of the rows already fetched. The
+  // TOTALS above it are the whole set, which is the entire point.
+  const recent = rows.slice(0, 100);
 
   const byCurrency = new Map<Currency, { margin: number; volume: number; count: number }>();
   for (const row of rows) {
@@ -60,8 +87,19 @@ export default async function AdminPnlPage() {
       <Banner tone="info" title="How this is calculated">
         Margin is what the provider delivered minus what the customer was credited, recorded on
         each order at the moment it was created. Totals are per destination currency — mixing
-        currencies in one figure would be meaningless.
+        currencies in one figure would be meaningless. Every completed conversion is counted,
+        not a recent sample.
       </Banner>
+
+      {/* Said out loud. The whole point of the paging fix is that a partial
+          total is never again presented as a complete one. */}
+      {truncated && (
+        <Banner tone="warning" title="These totals are incomplete">
+          There are more completed conversions than this page will read in one go, so the figures
+          below cover only the most recent {rows.length.toLocaleString("en-US")}. Treat them as a
+          floor, not a total.
+        </Banner>
+      )}
 
       {byCurrency.size === 0 ? (
         <EmptyState
@@ -87,7 +125,7 @@ export default async function AdminPnlPage() {
 
           <Card>
             <h2 className="mb-3 text-base font-semibold text-foreground">
-              Last {rows.length} conversions
+              Last {recent.length} conversions
             </h2>
             <div className="scroll-x">
               <table className="w-full min-w-[40rem] text-sm">
@@ -117,7 +155,7 @@ export default async function AdminPnlPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row) => (
+                  {recent.map((row) => (
                     <tr key={row.id} className="border-b border-border last:border-0">
                       <td className="py-2 text-muted-foreground">
                         {new Date(row.created_at).toLocaleDateString("en-GB")}

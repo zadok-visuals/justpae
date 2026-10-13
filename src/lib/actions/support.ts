@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdminUser, logAdminActivity } from "@/lib/auth/admin";
 import { verifyOwnedUpload } from "@/lib/storage/verifyUpload";
+import { fetchAllRows } from "@/lib/supabase/paging";
 import { sendSupportMessageEmail, adminNotificationRecipients } from "@/lib/email";
 import { SUPPORT_BUCKET, SUPPORT_MESSAGE_MAX_LENGTH } from "@/lib/support/constants";
 import type { SupportMessage } from "@/lib/types/database";
@@ -195,11 +196,23 @@ export async function listSupportThreads(): Promise<AdminSupportThreadSummary[]>
   await requireAdminUser();
   const service = createAdminClient();
 
-  const { data: messages, error } = await service
-    .from("support_messages")
-    .select("user_id, sender, body, attachment_ref, read_at, created_at")
-    .order("created_at", { ascending: false })
-    .limit(2000);
+  // PAGED. This asked for 2000 rows, which PostgREST does not give: this
+  // project's cap is 1000 and it is applied silently, so the inbox was already
+  // dropping threads with nothing on screen admitting it — and the one thing a
+  // support inbox has to guarantee is that nobody is missed.
+  const { rows: messages, error } = await fetchAllRows<
+    Pick<
+      SupportMessage,
+      "user_id" | "sender" | "body" | "attachment_ref" | "read_at" | "created_at"
+    >
+  >((from, to) =>
+    service
+      .from("support_messages")
+      .select("user_id, sender, body, attachment_ref, read_at, created_at")
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, to),
+  );
 
   if (error) {
     console.error("[support.listSupportThreads] failed", error);
@@ -207,7 +220,7 @@ export async function listSupportThreads(): Promise<AdminSupportThreadSummary[]>
   }
 
   const byUser = new Map<string, AdminSupportThreadSummary>();
-  for (const m of messages ?? []) {
+  for (const m of messages) {
     let entry = byUser.get(m.user_id);
     if (!entry) {
       // First time we see this user, and because the read is newest-first this

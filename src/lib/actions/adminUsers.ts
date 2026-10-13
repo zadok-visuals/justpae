@@ -5,6 +5,19 @@ import { requireAdminUser, logAdminActivity } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AdminRole, KycStatus } from "@/lib/types/database";
 import { toRpcError } from "@/lib/provider-error";
+import { fetchAllRows } from "@/lib/supabase/paging";
+
+/**
+ * How many search matches are shown before the admin is told to narrow instead.
+ *
+ * There is deliberately no "load more" here. The page opens with no default
+ * listing precisely because enumerating every account is an exfiltration
+ * surface for one compromised admin session, and a Next button that walks the
+ * whole profiles table reintroduces exactly that. The correct response to 300
+ * matches is a better search term, so that is what it asks for — out loud,
+ * rather than silently showing 25 of them as if that were all.
+ */
+const SEARCH_PAGE_SIZE = 25;
 
 /**
  * Phase 4: the people-shaped admin actions — suspension, reinstatement, and
@@ -49,11 +62,13 @@ export interface AdminUserSearchResult {
  * through the separate call below, because that IS a list someone needs to
  * review.
  */
-export async function searchUsers(query: string): Promise<AdminUserSearchResult[]> {
+export async function searchUsers(
+  query: string,
+): Promise<{ users: AdminUserSearchResult[]; more: boolean }> {
   const actor = await requireAdminUser();
 
   const term = query.trim();
-  if (term.length < 2) return [];
+  if (term.length < 2) return { users: [], more: false };
 
   // READS GET LOGGED TOO, not only writes. The question an investigation asks
   // is usually "who looked up this customer", and a ledger that records only
@@ -74,39 +89,54 @@ export async function searchUsers(query: string): Promise<AdminUserSearchResult[
   // literal text rather than a second filter the admin did not intend.
   const safe = term.replace(/[%_,]/g, (c) => `\\${c}`);
 
+  // One past the page, so "there are more than this" is a fact from the same
+  // query rather than a guess from a full page.
   const { data, error } = await service
     .from("profiles")
     .select("id, email, full_name, kyc_status, country, suspended_at, suspended_reason, created_at")
     .or(`email.ilike.%${safe}%,full_name.ilike.%${safe}%`)
     .order("created_at", { ascending: false })
-    .limit(25);
+    .order("id", { ascending: false })
+    .range(0, SEARCH_PAGE_SIZE);
 
   if (error) {
     console.error("[adminUsers.searchUsers] failed", error);
-    return [];
+    return { users: [], more: false };
   }
 
-  return attachRoles(service, data ?? []);
+  const rows = data ?? [];
+  const more = rows.length > SEARCH_PAGE_SIZE;
+
+  return {
+    users: await attachRoles(service, rows.slice(0, SEARCH_PAGE_SIZE)),
+    more,
+  };
 }
 
-/** Every currently-suspended account. The list exists to be reviewed. */
+/**
+ * Every currently-suspended account. The list exists to be reviewed, so it is
+ * paged to completion rather than cut off at 100 — an account suspended in
+ * error and sitting at position 101 would never have been seen again.
+ */
 export async function listSuspendedUsers(): Promise<AdminUserSearchResult[]> {
   await requireAdminUser();
   const service = createAdminClient();
 
-  const { data, error } = await service
-    .from("profiles")
-    .select("id, email, full_name, kyc_status, country, suspended_at, suspended_reason, created_at")
-    .not("suspended_at", "is", null)
-    .order("suspended_at", { ascending: false })
-    .limit(100);
+  const { rows, error } = await fetchAllRows<ProfileRow>((from, to) =>
+    service
+      .from("profiles")
+      .select(
+        "id, email, full_name, kyc_status, country, suspended_at, suspended_reason, created_at",
+      )
+      .not("suspended_at", "is", null)
+      .order("suspended_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, to),
+  );
 
-  if (error) {
-    console.error("[adminUsers.listSuspendedUsers] failed", error);
-    return [];
-  }
+  if (error) console.error("[adminUsers.listSuspendedUsers] failed", error);
 
-  return attachRoles(service, data ?? []);
+  return attachRoles(service, rows);
 }
 
 type ProfileRow = {

@@ -36,6 +36,7 @@ export function UserAdmin({
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<AdminUserSearchResult[] | null>(null);
+  const [more, setMore] = useState(false);
   const [searching, startSearch] = useTransition();
 
   function runSearch(event: React.FormEvent) {
@@ -45,7 +46,11 @@ export function UserAdmin({
       toast.error("Type at least two characters.");
       return;
     }
-    startSearch(async () => setResults(await searchUsers(term)));
+    startSearch(async () => {
+      const result = await searchUsers(term);
+      setResults(result.users);
+      setMore(result.more);
+    });
   }
 
   return (
@@ -79,6 +84,16 @@ export function UserAdmin({
                   isSelf={user.id === currentAdminId}
                 />
               ))
+            )}
+
+            {/* Said rather than silently truncated. The right answer to too
+                many matches is a narrower term, not a Next button that walks
+                the whole account table. */}
+            {more && (
+              <p className="pt-1 text-sm text-muted-foreground" aria-live="polite">
+                More accounts matched than are shown here. Narrow it down — a full email address
+                is the surest way.
+              </p>
             )}
           </div>
         )}

@@ -1,6 +1,7 @@
 import { requireAdminUser } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, Pill } from "@/components/ui/Primitives";
+import { Pager, pageRange, parsePageParam } from "@/components/ui/Pager";
 import type { AdminActivityLogEntry } from "@/lib/types/database";
 
 export const metadata = { title: "Activity · Admin" };
@@ -64,18 +65,33 @@ function detailText(detail: Record<string, unknown> | null): string | null {
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
-export default async function AdminActivityPage() {
+export default async function AdminActivityPage({ searchParams }: PageProps<"/admin/activity">) {
   await requireAdminUser();
   const service = createAdminClient();
 
+  const page = parsePageParam((await searchParams).page);
+  const { from, to } = pageRange(page, PAGE_SIZE);
+
+  // .range, and one row past the page, so "is there an older page" is answered
+  // by this query rather than by a second count that can disagree with it. The
+  // ledger had a bare .limit() and a line saying older entries exist somewhere
+  // in the database — which is true, and useless to someone trying to read
+  // them.
+  //
+  // created_at is not unique enough to page on alone: two actions logged in the
+  // same millisecond can swap places between pages, which both skips and
+  // duplicates rows. id breaks the tie.
   const { data, error } = await service
     .from("admin_activity_log")
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(PAGE_SIZE);
+    .order("id", { ascending: false })
+    .range(from, to);
 
   if (error) console.error("[admin/activity] read failed", error);
-  const entries = (data ?? []) as AdminActivityLogEntry[];
+  const all = (data ?? []) as AdminActivityLogEntry[];
+  const hasNext = all.length > PAGE_SIZE;
+  const entries = all.slice(0, PAGE_SIZE);
 
   return (
     <div className="space-y-5">
@@ -89,11 +105,15 @@ export default async function AdminActivityPage() {
 
       {entries.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
-          <p className="font-medium text-foreground">Nothing recorded yet</p>
+          {/* Page 2 of an empty result is a different fact from an empty
+              ledger, and must not be reported as one. */}
+          <p className="font-medium text-foreground">
+            {page > 1 ? "Nothing further back than this" : "Nothing recorded yet"}
+          </p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-            The ledger starts from the first admin action after this was switched on. It does not
-            reconstruct history from before then — an audit log that invented its own past would be
-            worth less than an empty one.
+            {page > 1
+              ? "You've reached the start of the ledger."
+              : "The ledger starts from the first admin action after this was switched on. It does not reconstruct history from before then — an audit log that invented its own past would be worth less than an empty one."}
           </p>
         </div>
       ) : (
@@ -143,12 +163,7 @@ export default async function AdminActivityPage() {
         </ul>
       )}
 
-      {entries.length === PAGE_SIZE && (
-        <p className="text-sm text-muted-foreground">
-          Showing the most recent {PAGE_SIZE}. Older entries are in the database and are never
-          deleted.
-        </p>
-      )}
+      <Pager page={page} hasNext={hasNext} basePath="/admin/activity" />
     </div>
   );
 }

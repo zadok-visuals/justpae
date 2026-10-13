@@ -1,7 +1,10 @@
 import { requireAdminUser } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card } from "@/components/ui/Primitives";
+import { Pager, pageRange, parsePageParam } from "@/components/ui/Pager";
 import { NotificationComposer } from "@/components/admin/NotificationComposer";
+
+const PAGE_SIZE = 20;
 
 export const metadata = { title: "Notifications · Admin" };
 export const dynamic = "force-dynamic";
@@ -14,15 +17,28 @@ export const dynamic = "force-dynamic";
  * broadcast cause — and because a send with no record of itself is impossible
  * to audit.
  */
-export default async function AdminNotificationsPage() {
+export default async function AdminNotificationsPage({
+  searchParams,
+}: PageProps<"/admin/notifications">) {
   await requireAdminUser();
   const admin = createAdminClient();
 
-  const { data: recent } = await admin
+  const page = parsePageParam((await searchParams).page);
+  const { from, to } = pageRange(page, PAGE_SIZE);
+
+  // Paged rather than capped at the 20 newest. "Has this already been
+  // announced?" is the question this history exists to answer, and it stops
+  // answering it the moment the announcement in question is the 21st back.
+  const { data } = await admin
     .from("notifications")
     .select("id, user_id, title, body, created_at")
     .order("created_at", { ascending: false })
-    .limit(20);
+    .order("id", { ascending: false })
+    .range(from, to);
+
+  const all = data ?? [];
+  const hasNext = all.length > PAGE_SIZE;
+  const recent = all.slice(0, PAGE_SIZE);
 
   return (
     <div className="space-y-5">
@@ -42,8 +58,10 @@ export default async function AdminNotificationsPage() {
           Recently sent
         </h2>
 
-        {!recent || recent.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nothing sent yet.</p>
+        {recent.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {page > 1 ? "Nothing further back than this." : "Nothing sent yet."}
+          </p>
         ) : (
           <ul className="space-y-2">
             {recent.map((row) => (
@@ -74,6 +92,13 @@ export default async function AdminNotificationsPage() {
             ))}
           </ul>
         )}
+
+        <Pager
+          page={page}
+          hasNext={hasNext}
+          basePath="/admin/notifications"
+          className="mt-3"
+        />
       </section>
     </div>
   );
