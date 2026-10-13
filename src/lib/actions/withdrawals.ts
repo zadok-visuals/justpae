@@ -8,8 +8,13 @@ import type { Currency } from "@/lib/types/database";
 import { attemptAutomatedPayout } from "@/lib/withdrawals/automated-payout";
 import { evaluateWithdrawalRouting, usdEquivalent } from "@/lib/withdrawals/threshold";
 import { getBanks } from "@/lib/busha/client";
-import { MINIMUM_WITHDRAWAL_USDT_THRESHOLD } from "@/lib/busha/limits";
-import { toCustomerError } from "@/lib/provider-error";
+import {
+  MINIMUM_WITHDRAWAL_USDT_THRESHOLD,
+  getMinimumWithdrawalAmount,
+} from "@/lib/busha/limits";
+import { getWithdrawalFeeRate } from "@/lib/settings";
+import { formatAmount } from "@/lib/currencies";
+import { toCustomerError, toRpcError } from "@/lib/provider-error";
 import { isPinLockedError, isWrongPinError, resolvePinError } from "@/lib/pin";
 import { RECIPIENT_CHANGE_HOLD_HOURS, pinFormatError } from "@/lib/withdrawals/rules";
 import { sendRecipientChangedEmail } from "@/lib/email";
@@ -122,7 +127,7 @@ export async function setWithdrawalRecipient(
     p_network: parsed.network,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: toRpcError(error, "withdrawals") };
   revalidatePath("/profile");
   revalidatePath("/withdraw");
   return { ok: true };
@@ -157,7 +162,7 @@ export async function requestRecipientChange(
     p_user_id: user.id,
     p_currency: currency,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: toRpcError(error, "withdrawals") };
   return { requested: true };
 }
 
@@ -205,7 +210,7 @@ export async function confirmRecipientChange(
     p_network: parsed.network,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: toRpcError(error, "withdrawals") };
 
   // Tell the account holder, every time, out of band. A password re-check stops
   // a stolen session; it does not stop a stolen password, and this email plus
@@ -249,7 +254,7 @@ export async function setTransactionPin(
   // already exists, so the worst it can do is set the first PIN on an account
   // that has none — the owner's own first run, which moves no money.
   const { error } = await supabase.rpc("set_withdrawal_pin", { p_pin: pin });
-  if (error) return { error: error.message };
+  if (error) return { error: toRpcError(error, "withdrawals") };
   revalidatePath("/profile");
   return { ok: true };
 }
@@ -288,7 +293,7 @@ export async function changeTransactionPin(
     p_user_id: user.id,
     p_pin: pin,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: toRpcError(error, "withdrawals") };
   revalidatePath("/profile");
   return { ok: true };
 }
@@ -308,12 +313,31 @@ export async function previewWithdrawalRouting(currency: Currency, amount: numbe
   if (!Number.isFinite(amount) || amount <= 0) return null;
 
   try {
-    const routing = await evaluateWithdrawalRouting({ userId: user.id, currency, amount });
+    const [routing, feeRate] = await Promise.all([
+      evaluateWithdrawalRouting({ userId: user.id, currency, amount }),
+      getWithdrawalFeeRate(),
+    ]);
+
+    // Mirrors create_withdrawal_request exactly — round(amount * rate, 2),
+    // then amount - fee. Computed here ONLY to show the user what is about to
+    // happen; the figures that actually move money are still derived inside
+    // the function, from app_settings, under a locked row.
+    const fee = Math.round(amount * feeRate * 100) / 100;
+
+    // routing.requestUsd is this amount already converted, so the per-unit
+    // rate falls out of it with no second probe.
+    const usdPerUnit = amount > 0 ? routing.requestUsd / amount : null;
+
     return {
       automated: routing.automated,
       reason: routing.reason,
       thresholdUsd: routing.thresholdUsd,
       windowHours: routing.windowHours,
+      fee,
+      netAmount: amount - fee,
+      /** The 5 USD floor, in the currency the user is holding. */
+      minimumAmount: getMinimumWithdrawalAmount(currency, usdPerUnit),
+      belowMinimum: routing.requestUsd < MINIMUM_WITHDRAWAL_USDT_THRESHOLD,
     };
   } catch (err) {
     console.error("[withdrawals.previewWithdrawalRouting] failed", err);
@@ -361,8 +385,17 @@ export async function requestWithdrawal(
     return { error: toCustomerError(err, "withdrawals.requestWithdrawal.minimum") };
   }
   if (equivalentUsd < MINIMUM_WITHDRAWAL_USDT_THRESHOLD) {
+    // Stated in the currency the user is actually holding. The old wording
+    // ("about 5 USD in NGN") left them to do the conversion themselves to find
+    // out whether their amount cleared.
+    const localMinimum = getMinimumWithdrawalAmount(
+      currency,
+      amount > 0 ? equivalentUsd / amount : null,
+    );
     return {
-      error: `The minimum withdrawal is about ${MINIMUM_WITHDRAWAL_USDT_THRESHOLD} USD in ${currency}.`,
+      error: localMinimum
+        ? `The minimum withdrawal is ${formatAmount(currency, localMinimum)}.`
+        : `The minimum withdrawal is ${MINIMUM_WITHDRAWAL_USDT_THRESHOLD} USD.`,
     };
   }
 
@@ -382,7 +415,7 @@ export async function requestWithdrawal(
         error: await resolvePinError({ userId: user.id, email: user.email, error }),
       };
     }
-    return { error: error.message };
+    return { error: toRpcError(error, "withdrawals") };
   }
 
   let automated = false;

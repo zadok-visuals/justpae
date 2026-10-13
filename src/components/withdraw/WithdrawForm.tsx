@@ -8,6 +8,7 @@ import { PinField } from "@/components/ui/PinField";
 import { SubmitButton } from "@/components/ui/Button";
 import { SelectField } from "@/components/ui/Field";
 import { Banner, Card, DetailRow } from "@/components/ui/Primitives";
+import { ConfirmDialog, useConfirm } from "@/components/ui/ConfirmDialog";
 import { requestWithdrawal, previewWithdrawalRouting } from "@/lib/actions/withdrawals";
 import { MINIMUM_WITHDRAWAL_USDT_THRESHOLD } from "@/lib/busha/limits";
 import { currencyMeta, formatAmount } from "@/lib/currencies";
@@ -65,6 +66,39 @@ export function WithdrawForm(props: WithdrawFormProps) {
   );
 }
 
+/**
+ * What the user is shown on the confirmation, captured at the moment they ask
+ * for it. `fee` and `netAmount` are null when the preview has not landed —
+ * which is a reason to say "we'll confirm the fee on the receipt", not a reason
+ * to invent one.
+ */
+interface ConfirmedWithdrawal {
+  currency: Currency;
+  amount: number;
+  fee: number | null;
+  netAmount: number | null;
+  destination: string;
+  automated: boolean;
+}
+
+/** One line naming where the money lands, for the confirmation dialog. */
+function describeDestination(
+  recipient: WithdrawalRecipient | undefined,
+  currency: Currency,
+): string {
+  if (!recipient) return "Your saved payout destination";
+  if (recipient.wallet_address) {
+    return `${recipient.account_holder_name} · ${recipient.wallet_address} (${
+      recipient.network ?? "BSC"
+    })`;
+  }
+  const where = [recipient.bank_name, recipient.bank_account_number]
+    .filter(Boolean)
+    .join(" · ");
+  const label = currency === "KES" ? "M-Pesa" : "";
+  return [recipient.account_holder_name, where || label].filter(Boolean).join(" · ");
+}
+
 function WithdrawFormFields({
   wallets,
   recipients,
@@ -92,13 +126,24 @@ function WithdrawFormFields({
   const [amountText, setAmountText] = useState("");
   const [pin, setPin] = useState("");
 
-  const [routing, setRouting] = useState<{
-    automated: boolean;
-    reason: string | null;
-    thresholdUsd: number;
-    windowHours: number;
-  } | null>(null);
+  const [routing, setRouting] = useState<Awaited<
+    ReturnType<typeof previewWithdrawalRouting>
+  > | null>(null);
   const [, startPreview] = useTransition();
+
+  // The confirmation step. Nothing leaves the account until this is answered —
+  // before it existed, a withdrawal committed on a single tap with the fee
+  // nowhere on screen.
+  //
+  // The intent is a SNAPSHOT, not a read of live state: the dialog has to show
+  // the figures the user is agreeing to, and a debounced preview landing while
+  // the dialog is open must not quietly change them underneath.
+  const confirm = useConfirm<ConfirmedWithdrawal>();
+  const formRef = useRef<HTMLFormElement>(null);
+  // Set only by the dialog's confirm, read and cleared by the submit handler.
+  // Without it, requestSubmit() would re-enter the handler and re-open the
+  // dialog forever.
+  const confirmedRef = useRef(false);
 
   const wallet = wallets.find((w) => w.currency === currency);
   const balance = wallet?.balance ?? 0;
@@ -189,10 +234,39 @@ function WithdrawFormFields({
   // A stale routing verdict must not linger once the amount is cleared.
   const activeRouting = amount > 0 && !insufficient ? routing : null;
 
-  const blocked = !hasPin || amount <= 0 || insufficient || pin.length < 4;
+  // The minimum, in the currency the user is holding, from the same 5 USD floor
+  // the server compares against. Null until a live rate has been seen — in which
+  // case the line below says nothing rather than quoting an invented number.
+  const minimumAmount = activeRouting?.minimumAmount ?? null;
+  const belowMinimum = activeRouting?.belowMinimum ?? false;
+
+  const blocked =
+    !hasPin || amount <= 0 || insufficient || pin.length < 4 || belowMinimum;
 
   return (
-    <form action={formAction} className="space-y-4">
+    <>
+    <form
+      ref={formRef}
+      action={formAction}
+      // The confirmation sits here rather than on the button's onClick so that
+      // Enter in the amount field goes through it too.
+      onSubmit={(event) => {
+        if (confirmedRef.current) {
+          confirmedRef.current = false;
+          return;
+        }
+        event.preventDefault();
+        confirm.ask({
+          currency,
+          amount,
+          fee: activeRouting?.fee ?? null,
+          netAmount: activeRouting?.netAmount ?? null,
+          destination: describeDestination(recipient, currency),
+          automated: activeRouting?.automated ?? false,
+        });
+      }}
+      className="space-y-4"
+    >
       <input type="hidden" name="currency" value={currency} />
 
       {!hasPin && (
@@ -275,15 +349,82 @@ function WithdrawFormFields({
         </Banner>
       )}
 
+      {/* The fee and what actually arrives, BEFORE the confirmation — so the
+          dialog confirms a figure the user has already seen rather than
+          springing it on them. */}
+      {activeRouting && (
+        <Card>
+          <DetailRow label="Fee">{formatAmount(currency, activeRouting.fee)}</DetailRow>
+          <DetailRow label="You'll receive">
+            {formatAmount(currency, activeRouting.netAmount)}
+          </DetailRow>
+        </Card>
+      )}
+
       {hasPin && <PinField value={pin} onValueChange={setPin} />}
 
       <p className="text-center text-xs text-muted-foreground">
-        Minimum withdrawal is about {MINIMUM_WITHDRAWAL_USDT_THRESHOLD} USD in {currency}.
+        {minimumAmount !== null
+          ? `Minimum withdrawal is ${formatAmount(currency, minimumAmount)}.`
+          : `Minimum withdrawal is ${MINIMUM_WITHDRAWAL_USDT_THRESHOLD} USD.`}
       </p>
+
+      {belowMinimum && minimumAmount !== null && (
+        <Banner tone="warning" title="That's below the minimum">
+          Withdraw at least {formatAmount(currency, minimumAmount)}.
+        </Banner>
+      )}
 
       <SubmitButton disabled={blocked} pendingLabel="Sending…">
         Withdraw {amount > 0 ? formatAmount(currency, amount) : ""}
       </SubmitButton>
     </form>
+
+    <ConfirmDialog
+      open={confirm.open}
+      title="Confirm this withdrawal"
+      body={
+        confirm.intent?.automated
+          ? "We'll send this as soon as you confirm."
+          : "We'll review this one before it goes out."
+      }
+      rows={
+        confirm.intent
+          ? [
+              {
+                label: "Amount",
+                value: formatAmount(confirm.intent.currency, confirm.intent.amount),
+              },
+              {
+                label: "Fee",
+                value:
+                  confirm.intent.fee === null
+                    ? "Confirmed on your receipt"
+                    : formatAmount(confirm.intent.currency, confirm.intent.fee),
+              },
+              {
+                label: "You'll receive",
+                value:
+                  confirm.intent.netAmount === null
+                    ? formatAmount(confirm.intent.currency, confirm.intent.amount) +
+                      " less the fee"
+                    : formatAmount(confirm.intent.currency, confirm.intent.netAmount),
+                emphasis: true,
+              },
+              { label: "Going to", value: confirm.intent.destination },
+            ]
+          : undefined
+      }
+      confirmLabel="Withdraw"
+      cancelLabel="Go back"
+      onCancel={confirm.cancel}
+      onConfirm={() =>
+        confirm.confirm(() => {
+          confirmedRef.current = true;
+          formRef.current?.requestSubmit();
+        })
+      }
+    />
+    </>
   );
 }
