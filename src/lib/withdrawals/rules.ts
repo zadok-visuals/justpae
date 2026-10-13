@@ -50,3 +50,54 @@ export function pinFormatError(pin: string): string | null {
 
   return null;
 }
+
+/**
+ * The shape of a payout destination, per corridor. Returns a message naming the
+ * field, or null.
+ *
+ * WHY THIS EXISTS: the server only ever checked that these fields were
+ * PRESENT, so a nine-digit account number or a truncated wallet address got as
+ * far as the provider, and what came back was the provider's or Postgres'
+ * own wording about a field the user had already moved on from. A wrong payout
+ * destination is also the one mistake in this app with no recall, so saying
+ * "that's not 10 digits" while the number is still on screen is worth more
+ * here than anywhere else.
+ *
+ * DELIBERATELY NOT EXHAUSTIVE. Only rules that are certain are enforced:
+ *
+ *  - NGN account numbers are NUBAN, which is exactly 10 digits, always.
+ *  - USDT on BSC is an EVM address: 0x and 40 hex characters, always.
+ *  - KES is a Kenyan mobile number, checked loosely (a digit count, after an
+ *    optional +254) because the local and international forms are both in
+ *    everyday use and rejecting one of them would be worse than accepting a
+ *    typo the provider will catch.
+ *  - GHS account numbers vary in length by bank, so there is no length to
+ *    check and none is invented. Presence only.
+ *
+ * Mirrored on both sides: the client calls it to say so before a round trip,
+ * the server calls it because a client check is not a check.
+ */
+export function recipientFieldError(
+  currency: string,
+  fields: { bankAccountNumber?: string | null; walletAddress?: string | null },
+): string | null {
+  const account = (fields.bankAccountNumber ?? "").trim();
+  const wallet = (fields.walletAddress ?? "").trim();
+
+  if (currency === "NGN" && !/^\d{10}$/.test(account)) {
+    return "A Nigerian account number is exactly 10 digits.";
+  }
+
+  if (currency === "USDT" && !/^0x[0-9a-fA-F]{40}$/.test(wallet)) {
+    return "That doesn't look like a BSC wallet address. It starts with 0x and has 40 characters after it.";
+  }
+
+  if (currency === "KES") {
+    const digits = account.replace(/[\s-]/g, "").replace(/^\+?254/, "");
+    if (!/^\d{9,10}$/.test(digits)) {
+      return "Enter your M-Pesa number, for example 0712345678 or +254712345678.";
+    }
+  }
+
+  return null;
+}

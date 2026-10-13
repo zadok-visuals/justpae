@@ -7,6 +7,7 @@ import { AmountInput, formatAmountInput, parseAmount } from "@/components/ui/Amo
 import { PinField } from "@/components/ui/PinField";
 import { SubmitButton } from "@/components/ui/Button";
 import { Banner, Card } from "@/components/ui/Primitives";
+import { ConfirmDialog, useConfirm } from "@/components/ui/ConfirmDialog";
 import { useCountdown, formatCountdown } from "@/lib/hooks/useCountdown";
 import {
   quoteConversion,
@@ -95,6 +96,18 @@ function ConvertFormFields({
 
   const secondsLeft = useCountdown(quote?.expiresAt);
 
+  // The confirmation. The intent snapshots the quote rather than reading it
+  // back on confirm: quoting is debounced, so a re-quote landing while the
+  // dialog is open would change the rate and both amounts the user is in the
+  // middle of reading.
+  const confirm = useConfirm<ConversionQuote>();
+  const formRef = useRef<HTMLFormElement>(null);
+  const confirmedRef = useRef(false);
+  // Counts down the SNAPSHOTTED quote, not whatever is currently on the form.
+  // The dialog has to hold the clock for the rate it is actually offering.
+  const confirmSecondsLeft = useCountdown(confirm.intent?.expiresAt);
+  const confirmExpired = confirm.intent != null && confirmSecondsLeft === 0;
+
   const routeMap = useMemo(
     () => new Map(routes.map((r) => [r.to, r])),
     [routes],
@@ -180,7 +193,21 @@ function ConvertFormFields({
     pin.length < 4;
 
   return (
-    <form action={formAction} className="space-y-4">
+    <>
+    <form
+      ref={formRef}
+      action={formAction}
+      onSubmit={(event) => {
+        if (confirmedRef.current) {
+          confirmedRef.current = false;
+          return;
+        }
+        event.preventDefault();
+        if (!activeQuote) return;
+        confirm.ask(activeQuote);
+      }}
+      className="space-y-4"
+    >
       <input type="hidden" name="from" value={from} />
       <input type="hidden" name="to" value={to} />
 
@@ -299,6 +326,58 @@ function ConvertFormFields({
         {expired ? "Rate expired — edit the amount" : `Convert to ${to}`}
       </SubmitButton>
     </form>
+
+    <ConfirmDialog
+      open={confirm.open}
+      title="Confirm this conversion"
+      body={
+        confirmExpired
+          ? "This rate has expired. Close this and we'll price it again."
+          : "The rate below is the one we'll settle at."
+      }
+      rows={
+        confirm.intent
+          ? [
+              {
+                label: "You send",
+                value: formatAmount(confirm.intent.from, confirm.intent.sourceAmount),
+              },
+              {
+                label: "You receive",
+                value: formatAmount(confirm.intent.to, confirm.intent.targetAmount),
+                emphasis: true,
+              },
+              {
+                label: "Rate",
+                value: formatRate(
+                  confirm.intent.from,
+                  confirm.intent.to,
+                  confirm.intent.customerRate,
+                ),
+              },
+              {
+                label: "Our spread",
+                value: `${formatNumber(confirm.intent.markupRate * 100, 2)}%`,
+              },
+              {
+                label: confirmExpired ? "Rate expired" : "Rate held for",
+                value: confirmExpired ? "—" : formatCountdown(confirmSecondsLeft),
+              },
+            ]
+          : undefined
+      }
+      confirmLabel={confirmExpired ? "Rate expired" : "Convert"}
+      cancelLabel="Go back"
+      confirmDisabled={confirmExpired}
+      onCancel={confirm.cancel}
+      onConfirm={() =>
+        confirm.confirm(() => {
+          confirmedRef.current = true;
+          formRef.current?.requestSubmit();
+        })
+      }
+    />
+    </>
   );
 }
 

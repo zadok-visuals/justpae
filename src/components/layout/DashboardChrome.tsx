@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRef } from "react";
 import { usePathname } from "next/navigation";
 import { useFormStatus } from "react-dom";
 import { Wordmark } from "@/components/layout/Mark";
+import { ConfirmDialog, useConfirm } from "@/components/ui/ConfirmDialog";
 import { logOut } from "@/lib/actions/auth";
 import { useCurrentPageTitle } from "@/components/layout/PageTitleContext";
 import { NotificationBell } from "@/components/layout/NotificationBell";
@@ -228,10 +230,57 @@ export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
 
       {/* Pinned below the (independently scrolling) nav list, not inside it —
           sign-out should never scroll out of reach on a tall nav. */}
-      <form action={logOut} className="shrink-0 border-t border-sidebar-border px-3 py-3">
+      <SignOutForm />
+    </aside>
+  );
+}
+
+/**
+ * Sign out, behind a confirmation.
+ *
+ * It sits directly under Profile in a narrow sidebar, which is exactly the
+ * mis-tap that costs someone a re-authentication plus an email code in the
+ * middle of a transfer.
+ */
+function SignOutForm() {
+  const confirm = useConfirm<true>();
+  const formRef = useRef<HTMLFormElement>(null);
+  const confirmedRef = useRef(false);
+
+  return (
+    <>
+      <form
+        ref={formRef}
+        action={logOut}
+        onSubmit={(event) => {
+          if (confirmedRef.current) {
+            confirmedRef.current = false;
+            return;
+          }
+          event.preventDefault();
+          confirm.ask(true);
+        }}
+        className="shrink-0 border-t border-sidebar-border px-3 py-3"
+      >
         <SidebarLogOutButton />
       </form>
-    </aside>
+
+      <ConfirmDialog
+        open={confirm.open}
+        title="Sign out?"
+        body="You'll need your password to get back in, and a verification code if we don't recognise the device."
+        confirmLabel="Sign out"
+        cancelLabel="Stay signed in"
+        destructive
+        onCancel={confirm.cancel}
+        onConfirm={() =>
+          confirm.confirm(() => {
+            confirmedRef.current = true;
+            formRef.current?.requestSubmit();
+          })
+        }
+      />
+    </>
   );
 }
 

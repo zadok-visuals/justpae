@@ -16,7 +16,11 @@ import { getWithdrawalFeeRate } from "@/lib/settings";
 import { formatAmount } from "@/lib/currencies";
 import { toCustomerError, toRpcError } from "@/lib/provider-error";
 import { isPinLockedError, isWrongPinError, resolvePinError } from "@/lib/pin";
-import { RECIPIENT_CHANGE_HOLD_HOURS, pinFormatError } from "@/lib/withdrawals/rules";
+import {
+  RECIPIENT_CHANGE_HOLD_HOURS,
+  pinFormatError,
+  recipientFieldError,
+} from "@/lib/withdrawals/rules";
 import { sendRecipientChangedEmail } from "@/lib/email";
 
 export interface WithdrawalActionState {
@@ -71,6 +75,13 @@ async function parseRecipientFields(
   if (currency === "USD") {
     return { error: "USD can't be withdrawn directly. Convert it first." };
   }
+
+  // Shape, not just presence. The client runs the same function so this is
+  // normally already satisfied — it runs here because a client check is not a
+  // check, and because the alternative was the provider's own wording about a
+  // field the user had already scrolled past.
+  const shapeError = recipientFieldError(currency, { bankAccountNumber, walletAddress });
+  if (shapeError) return { error: shapeError };
 
   // Defence in depth. The UI only ever lets a user pick from the provider's own
   // bank list, with no free-text code — but a client-submitted (name, code)

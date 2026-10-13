@@ -33,6 +33,7 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   destructive = false,
   pending = false,
+  confirmDisabled = false,
   onConfirm,
   onCancel,
 }: {
@@ -44,6 +45,13 @@ export function ConfirmDialog({
   cancelLabel?: string;
   destructive?: boolean;
   pending?: boolean;
+  /**
+   * For the case where what is being confirmed stops being valid while the
+   * dialog is open — a conversion quote expiring under it, most of all. The
+   * dialog stays up saying so rather than vanishing or, worse, committing at a
+   * rate that has already died.
+   */
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -87,6 +95,7 @@ export function ConfirmDialog({
           size="md"
           fullWidth
           loading={pending}
+          disabled={confirmDisabled}
           onClick={onConfirm}
         >
           {confirmLabel}

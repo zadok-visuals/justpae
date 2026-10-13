@@ -1,14 +1,16 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { TextField, PasswordField, SelectField } from "@/components/ui/Field";
 import { SubmitButton } from "@/components/ui/Button";
 import { Banner, Card, DetailRow } from "@/components/ui/Primitives";
+import { ConfirmDialog, useConfirm, type ConfirmRow } from "@/components/ui/ConfirmDialog";
 import {
   setWithdrawalRecipient,
   confirmRecipientChange,
   requestRecipientChange,
 } from "@/lib/actions/withdrawals";
+import { RECIPIENT_CHANGE_HOLD_HOURS, recipientFieldError } from "@/lib/withdrawals/rules";
 import { currencyMeta } from "@/lib/currencies";
 import type { Currency, WithdrawalRecipient } from "@/lib/types/database";
 import type { BushaBank } from "@/lib/busha/client";
@@ -182,23 +184,97 @@ function RecipientFields({
   );
 }
 
+/**
+ * Validate, then confirm, then submit — shared by the add and change forms.
+ *
+ * The fields are uncontrolled (they are prefilled from the saved recipient),
+ * so the snapshot is read out of the form's own FormData at the moment of
+ * submit rather than mirrored into React state.
+ */
+function useRecipientConfirm(currency: Currency) {
+  const confirm = useConfirm<ConfirmRow[]>();
+  const formRef = useRef<HTMLFormElement>(null);
+  const confirmedRef = useRef(false);
+  const [fieldError, setFieldError] = useState<string | null>(null);
+
+  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    if (confirmedRef.current) {
+      confirmedRef.current = false;
+      return;
+    }
+    event.preventDefault();
+
+    const data = new FormData(event.currentTarget);
+    const read = (key: string) => String(data.get(key) ?? "").trim();
+
+    const error = recipientFieldError(currency, {
+      bankAccountNumber: read("bankAccountNumber"),
+      walletAddress: read("walletAddress"),
+    });
+    if (error) {
+      setFieldError(error);
+      return;
+    }
+    setFieldError(null);
+
+    const rows: ConfirmRow[] = [{ label: "Name", value: read("accountHolderName") }];
+    if (currency === "USDT") {
+      rows.push({ label: "Wallet (BSC)", value: read("walletAddress"), emphasis: true });
+    } else {
+      if (read("bankName")) rows.push({ label: "Bank", value: read("bankName") });
+      rows.push({
+        label: currency === "KES" ? "M-Pesa number" : "Account number",
+        value: read("bankAccountNumber"),
+        emphasis: true,
+      });
+    }
+    confirm.ask(rows);
+  }
+
+  return {
+    confirm,
+    formRef,
+    onSubmit,
+    fieldError,
+    runConfirmed: () =>
+      confirm.confirm(() => {
+        confirmedRef.current = true;
+        formRef.current?.requestSubmit();
+      }),
+  };
+}
+
 function NewRecipient({ currency, banks }: { currency: Currency; banks: BushaBank[] }) {
   const [state, formAction] = useActionState(setWithdrawalRecipient, {});
+  const { confirm, formRef, onSubmit, fieldError, runConfirmed } = useRecipientConfirm(currency);
 
   return (
-    <form action={formAction} className="space-y-3">
-      <input type="hidden" name="currency" value={currency} />
-      <RecipientFields currency={currency} banks={banks} />
+    <>
+      <form ref={formRef} action={formAction} onSubmit={onSubmit} className="space-y-3">
+        <input type="hidden" name="currency" value={currency} />
+        <RecipientFields currency={currency} banks={banks} />
 
-      {state.error && (
-        <Banner tone="danger" title="Couldn't save that">
-          {state.error}
-        </Banner>
-      )}
-      {state.ok && <Banner tone="success" title="Destination saved" />}
+        {(fieldError ?? state.error) && (
+          <Banner tone="danger" title="Check this before we save it">
+            {fieldError ?? state.error}
+          </Banner>
+        )}
+        {state.ok && <Banner tone="success" title="Destination saved" />}
 
-      <SubmitButton pendingLabel="Saving…">Save destination</SubmitButton>
-    </form>
+        <SubmitButton pendingLabel="Saving…">Save destination</SubmitButton>
+      </form>
+
+      <ConfirmDialog
+        open={confirm.open}
+        title="Is this where your money should go?"
+        body="Read it back once. A payout sent to the wrong account cannot be recalled by us or by your bank."
+        rows={confirm.intent ?? undefined}
+        confirmLabel="Save destination"
+        cancelLabel="Let me check"
+        onCancel={confirm.cancel}
+        onConfirm={runConfirmed}
+      />
+    </>
   );
 }
 
@@ -214,6 +290,7 @@ function ExistingRecipient({
   const [state, formAction] = useActionState(confirmRecipientChange, {});
   const [changing, setChanging] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
+  const { confirm, formRef, onSubmit, fieldError, runConfirmed } = useRecipientConfirm(currency);
 
   async function startChange() {
     // Marks the change as properly requested, so confirm cannot be called
@@ -254,9 +331,15 @@ function ExistingRecipient({
       {state.ok && <Banner tone="success" title="Destination updated" />}
 
       {changing ? (
-        <form action={formAction} className="space-y-3">
+        <form ref={formRef} action={formAction} onSubmit={onSubmit} className="space-y-3">
           <input type="hidden" name="currency" value={currency} />
           <RecipientFields currency={currency} banks={banks} defaults={recipient} />
+
+          {fieldError && (
+            <Banner tone="danger" title="Check this before we save it">
+              {fieldError}
+            </Banner>
+          )}
 
           <PasswordField
             name="password"
@@ -278,6 +361,18 @@ function ExistingRecipient({
           Change destination
         </button>
       )}
+
+      <ConfirmDialog
+        open={confirm.open}
+        title="Change where your money goes?"
+        body={`Every future ${currency} withdrawal goes here instead. Automated payouts also pause for ${RECIPIENT_CHANGE_HOLD_HOURS} hours after a change, so the next one will be reviewed by a person before it leaves.`}
+        rows={confirm.intent ?? undefined}
+        confirmLabel="Update destination"
+        cancelLabel="Let me check"
+        destructive
+        onCancel={confirm.cancel}
+        onConfirm={runConfirmed}
+      />
     </div>
   );
 }

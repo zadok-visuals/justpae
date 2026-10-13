@@ -9,6 +9,7 @@ import { Button, SubmitButton } from "@/components/ui/Button";
 import { SelectField, TextField } from "@/components/ui/Field";
 import { Banner, Card, DetailRow } from "@/components/ui/Primitives";
 import { CopyField } from "@/components/ui/CopyButton";
+import { ConfirmDialog, useConfirm } from "@/components/ui/ConfirmDialog";
 import { payBill, validateBillCustomer } from "@/lib/actions/bills";
 import { formatAmount, currencyMeta } from "@/lib/currencies";
 import type { Biller } from "@/lib/providers/bills";
@@ -78,6 +79,21 @@ export function BillForm({
   );
 }
 
+/**
+ * What the user is agreeing to pay, snapshotted when they ask to confirm. The
+ * debounced name lookup can land at any moment; the dialog must not change the
+ * name under them between reading it and agreeing to it.
+ */
+interface ConfirmedBill {
+  billerName: string;
+  identifierLabel: string;
+  identifier: string;
+  /** Null when this biller has no name lookup, which the dialog says out loud. */
+  customerName: string | null;
+  currency: Currency;
+  amount: number;
+}
+
 function BillFormFields({
   category,
   billers,
@@ -119,6 +135,13 @@ function BillFormFields({
   } | null>(null);
   const [, startLookup] = useTransition();
 
+  // The confirmation. A mistyped meter number credits a stranger's meter and
+  // there is no recall, so the name the biller returned — or the explicit fact
+  // that nobody could confirm one — is the headline of this dialog.
+  const confirm = useConfirm<ConfirmedBill>();
+  const formRef = useRef<HTMLFormElement>(null);
+  const confirmedRef = useRef(false);
+
   const biller = billers.find((b) => b.code === billerCode) ?? null;
   const amount = parseAmount(amountText);
   const wallet = wallets.find((w) => w.currency === currency);
@@ -152,7 +175,28 @@ function BillFormFields({
     !available || !hasPin || !biller || !identifier.trim() || amount <= 0 || insufficient || pin.length < 4;
 
   return (
-    <form action={formAction} className="space-y-4">
+    <>
+    <form
+      ref={formRef}
+      action={formAction}
+      onSubmit={(event) => {
+        if (confirmedRef.current) {
+          confirmedRef.current = false;
+          return;
+        }
+        event.preventDefault();
+        if (!biller) return;
+        confirm.ask({
+          billerName: biller.name,
+          identifierLabel: biller.identifierLabel,
+          identifier: identifier.trim(),
+          customerName: activeLookup?.customerName ?? null,
+          currency,
+          amount,
+        });
+      }}
+      className="space-y-4"
+    >
       <input type="hidden" name="billerCode" value={billerCode} />
       <input type="hidden" name="currency" value={currency} />
       <input type="hidden" name="customerName" value={activeLookup?.customerName ?? ""} />
@@ -319,6 +363,43 @@ function BillFormFields({
         Pay {amount > 0 ? formatAmount(currency, amount) : ""}
       </SubmitButton>
     </form>
+
+    <ConfirmDialog
+      open={confirm.open}
+      title="Confirm this payment"
+      body={
+        confirm.intent?.customerName
+          ? "Check the name below is who you meant to pay. A bill payment can't be recalled."
+          : "We couldn't confirm a name for this one, so check the number carefully — a bill payment can't be recalled."
+      }
+      rows={
+        confirm.intent
+          ? [
+              { label: "Biller", value: confirm.intent.billerName },
+              { label: confirm.intent.identifierLabel, value: confirm.intent.identifier || "—" },
+              {
+                label: "Name",
+                value: confirm.intent.customerName ?? "Not confirmed by this biller",
+              },
+              {
+                label: "Amount",
+                value: formatAmount(confirm.intent.currency, confirm.intent.amount),
+                emphasis: true,
+              },
+            ]
+          : undefined
+      }
+      confirmLabel="Pay now"
+      cancelLabel="Go back"
+      onCancel={confirm.cancel}
+      onConfirm={() =>
+        confirm.confirm(() => {
+          confirmedRef.current = true;
+          formRef.current?.requestSubmit();
+        })
+      }
+    />
+    </>
   );
 }
 

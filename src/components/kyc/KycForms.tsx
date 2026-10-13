@@ -6,6 +6,7 @@ import { UploadField } from "@/components/ui/UploadField";
 import { Button, SubmitButton } from "@/components/ui/Button";
 import { Banner, Card } from "@/components/ui/Primitives";
 import { StepIndicator } from "@/components/ui/StepIndicator";
+import { UnsavedChangesGuard } from "@/components/ui/UnsavedChangesGuard";
 import { submitIndividualKyc, submitBusinessKyc } from "@/lib/actions/kyc";
 import { GOVERNMENT_ID_TYPES, type KycIdField } from "@/lib/countries";
 
@@ -275,6 +276,18 @@ export function IndividualKycForm({
         submitLabel="Submit for review"
         pendingLabel="Submitting…"
       />
+
+      {/* An ID number plus a photo of a document is not something anyone wants
+          to do twice because they mis-tapped the tab bar. */}
+      <UnsavedChangesGuard
+        when={
+          fullName.trim() !== defaultFullName.trim() ||
+          idNumber.trim() !== "" ||
+          idType !== "" ||
+          governmentId !== null
+        }
+        body="Your ID details and anything you've uploaded on this form will be lost. Nothing has been submitted for review yet."
+      />
     </form>
   );
 }
@@ -438,6 +451,17 @@ export function BusinessKycForm({
         onNext={() => setStep((s) => s + 1)}
         submitLabel="Submit for review"
         pendingLabel="Submitting…"
+      />
+
+      {/* Four steps and three uploads. This one matters most of all. */}
+      <UnsavedChangesGuard
+        when={
+          businessName.trim() !== defaultBusinessName.trim() ||
+          tin.trim() !== "" ||
+          certificate !== null ||
+          directorId !== null
+        }
+        body="Your business details and anything you've uploaded on this form will be lost. Nothing has been submitted for review yet."
       />
     </form>
   );
