@@ -123,7 +123,7 @@ export default function PrivacyPage() {
           signed, short-lived, and issued only to a reviewer.
         </li>
         <li>
-          <strong>Payment and exchange providers</strong> — currently Busha, and Klasha for Ghanaian
+          <strong>Payment and conversion providers</strong> — currently Busha, and Klasha for Ghanaian
           collections. They receive what a transfer requires: amount, currency, and the destination
           account and the name on it.
         </li>
