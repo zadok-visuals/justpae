@@ -52,6 +52,8 @@ a no-op rather than a re-apply.
 | `0017_notifications_and_support_chat.sql` | `notifications`, `notification_reads`, `support_messages`, their RPCs, the private attachments bucket |
 | `0018_event_notification_claim.sql` | `notified_at` on `transactions`/`deposits` plus the two claim functions — the exactly-once gate for money-event notifications |
 | `0019_admin_roles_ledger_suspension.sql` | `admin_users`, `admin_activity_log`, suspension columns and triggers, `admin_dashboard_stats` |
+| `0020_onboarding_basics.sql` | `save_onboarding_basics` — stage-one onboarding writes `phone` and `kyc_type` and never `kyc_status` |
+| `0021_webhook_idempotency.sql` | `webhook_events.event_key` plus a unique partial index, so a redelivered webhook is a no-op rather than a second row |
 
 0003 must precede 0005, 0006 and 0008 — all three call
 `verify_transaction_pin`. 0002 must precede 0006, which reads

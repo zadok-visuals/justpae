@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptBody } from "@/lib/klasha/client";
 import { KLASHA_GHS_DEPOSIT_ENABLED } from "@/lib/flags";
 import { notifyDepositCredited } from "@/lib/notify/events";
+import { recordWebhookDelivery, markWebhookProcessed } from "@/lib/webhooks/record";
 
 /**
  * Secondary provider webhook — GHS deposit collection only.
@@ -85,25 +86,40 @@ export async function POST(request: Request) {
       payload = JSON.parse(rawBody);
     } catch {
       console.error("[klasha webhook] unparseable body");
-      await admin.from("webhook_events").insert({
+      // No key: there is nothing in a body we could not read to key on. It is
+      // still recorded — an unparseable delivery is exactly the thing worth
+      // having evidence of.
+      await recordWebhookDelivery(admin, {
         provider: "klasha",
-        event_type: "unparseable",
+        eventType: "unparseable",
+        eventKey: null,
         payload: { _rawBody: rawBody.slice(0, 4000) },
-        processed_at: new Date().toISOString(),
+        processed: true,
       });
       return NextResponse.json({ received: true });
     }
   }
 
-  const { data: eventRow } = await admin
-    .from("webhook_events")
-    .insert({
-      provider: "klasha",
-      event_type: payload.event ?? "unknown",
-      payload: { ...payload, _signatureValid: signatureValid } as Record<string, unknown>,
-    })
-    .select("id")
-    .single();
+  const eventType = payload.event ?? "unknown";
+
+  // The delivery's identity, from the provider's own fields. Klasha publishes
+  // no delivery id, so the pair that IS stable across a redelivery is the
+  // event name and the transaction reference it concerns.
+  const eventKey = payload.data?.tnxRef ? `${eventType}:${payload.data.tnxRef}` : null;
+
+  const record = await recordWebhookDelivery(admin, {
+    provider: "klasha",
+    eventType,
+    eventKey,
+    payload: { ...payload, _signatureValid: signatureValid } as Record<string, unknown>,
+  });
+
+  // A redelivery. Acknowledged with a 200 rather than ignored silently or
+  // refused — a non-2xx here is read by the provider as "retry", which turns
+  // one duplicate into a queue of them.
+  if (record.duplicate) return NextResponse.json({ received: true, duplicate: true });
+
+  const eventRow = { id: record.id };
 
   if (
     payload.event === "charge.completed" &&
@@ -142,14 +158,18 @@ export async function POST(request: Request) {
         txRef: payload.data.tnxRef,
       });
     }
+  } else if (eventType !== "charge.completed") {
+    // Recorded, and explicitly not acted on. Previously an unrecognised event
+    // was stamped processed exactly like a handled one, so the events table
+    // could not distinguish "we did something about this" from "we had no idea
+    // what this was".
+    console.warn("[klasha webhook] ignoring an event this receiver does not handle", {
+      eventId: record.id,
+      eventType,
+    });
   }
 
-  if (eventRow?.id) {
-    await admin
-      .from("webhook_events")
-      .update({ processed_at: new Date().toISOString() })
-      .eq("id", eventRow.id);
-  }
+  await markWebhookProcessed(admin, record.id);
 
   return NextResponse.json({ received: true });
 }

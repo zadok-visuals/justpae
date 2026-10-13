@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { recordWebhookDelivery, markWebhookProcessed } from "@/lib/webhooks/record";
 import { getTransfer } from "@/lib/busha/client";
 import { verifyTransferMatchesRow } from "@/lib/transfers/verify";
 import {
@@ -81,51 +82,52 @@ export async function POST(request: Request) {
     // An unparseable body is still recorded — it is diagnostic signal, and
     // returning an error would only make the provider retry it forever.
     console.error("[busha webhook] unparseable body");
-    await admin.from("webhook_events").insert({
+    // No key: there is nothing in a body we could not read to key on. Recorded
+    // anyway — an unparseable delivery is exactly the thing worth evidence of.
+    await recordWebhookDelivery(admin, {
       provider: "busha",
-      event_type: "unparseable",
+      eventType: "unparseable",
+      eventKey: null,
       payload: { _rawBody: rawBody.slice(0, 4000) },
-      processed_at: new Date().toISOString(),
+      processed: true,
     });
     return NextResponse.json({ received: true });
   }
-
-  const { data: eventRow } = await admin
-    .from("webhook_events")
-    .insert({
-      provider: "busha",
-      event_type: payload.data?.category ?? "unknown",
-      payload: { ...payload, _signatureValid: signatureValid } as Record<string, unknown>,
-    })
-    .select("id")
-    .single();
 
   const providerReference = payload.data?.id;
   const status = payload.data?.status;
   const category = payload.data?.category;
 
-  async function markProcessed() {
-    if (eventRow?.id) {
-      await admin
-        .from("webhook_events")
-        .update({ processed_at: new Date().toISOString() })
-        .eq("id", eventRow.id);
-    }
-  }
+  // The delivery's identity. The provider's own transfer id plus the status it
+  // is reporting: a genuine transition from processing to completed is a NEW
+  // event and must get through, while a redelivery of the same transition is
+  // the same event and must not.
+  const eventKey = providerReference ? `${providerReference}:${status ?? "unknown"}` : null;
+
+  const record = await recordWebhookDelivery(admin, {
+    provider: "busha",
+    eventType: category ?? "unknown",
+    eventKey,
+    payload: { ...payload, _signatureValid: signatureValid } as Record<string, unknown>,
+  });
+
+  // Acknowledged with a 200, not refused: a non-2xx is read as "retry", which
+  // turns one duplicate into a queue of them.
+  if (record.duplicate) return NextResponse.json({ received: true, duplicate: true });
 
   if (!providerReference || !status) {
-    console.warn("[busha webhook] no id/status to act on", { eventId: eventRow?.id });
-    await markProcessed();
+    console.warn("[busha webhook] no id/status to act on", { eventId: record.id });
+    await markWebhookProcessed(admin, record.id);
     return NextResponse.json({ received: true });
   }
 
   if (category === "deposit") {
-    await handleDeposit(admin, providerReference, eventRow?.id);
+    await handleDeposit(admin, providerReference, record.id ?? undefined);
   } else {
-    await handleTransfer(admin, providerReference, status, eventRow?.id);
+    await handleTransfer(admin, providerReference, status, record.id ?? undefined);
   }
 
-  await markProcessed();
+  await markWebhookProcessed(admin, record.id);
   return NextResponse.json({ received: true });
 }
 

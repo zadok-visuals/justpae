@@ -188,6 +188,12 @@ export type WebhookEvent = {
   id: string;
   provider: string;
   event_type: string;
+  /**
+   * Per-delivery identity, unique per provider (migration 0021). Null when the
+   * delivery carried nothing stable to key on — such rows are recorded but not
+   * deduplicated.
+   */
+  event_key: string | null;
   payload: Record<string, unknown>;
   processed_at: string | null;
   created_at: string;
