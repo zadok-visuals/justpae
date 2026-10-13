@@ -22,6 +22,136 @@ const nextConfig: NextConfig = {
      */
     serverActions: { bodySizeLimit: "2mb" },
   },
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders() }];
+  },
 };
+
+/**
+ * The origin the browser is allowed to talk to Supabase on.
+ *
+ * Read from the same variable the clients are built from, so a project move
+ * cannot leave the CSP pointing at the old project and silently break every
+ * request. Falls back to allowing any *.supabase.co only when the variable is
+ * absent — which is a misconfigured build, and a CSP that bricks the app is a
+ * worse way to find that out than the env check in requireEnv already is.
+ */
+function supabaseOrigins(): string {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!url) return "https://*.supabase.co wss://*.supabase.co";
+  try {
+    const { origin, host } = new URL(url);
+    // wss for Realtime. Not used today, and listing it costs nothing next to
+    // debugging a websocket that fails with no error anyone can see.
+    return `${origin} wss://${host}`;
+  } catch {
+    return "https://*.supabase.co wss://*.supabase.co";
+  }
+}
+
+function securityHeaders() {
+  const supabase = supabaseOrigins();
+  const isDev = process.env.NODE_ENV === "development";
+
+  const csp = [
+    "default-src 'self'",
+
+    // WHY 'unsafe-inline' IS HERE, stated rather than buried: Next's App
+    // Router inlines its own bootstrap script and streams the RSC payload in
+    // inline <script> tags. Allowing those without 'unsafe-inline' needs a
+    // per-request nonce generated in the proxy and threaded onto the request
+    // headers — which this app's proxy cannot do without restructuring the
+    // Supabase cookie handler that rebuilds the response object on every
+    // set. That is a real tightening and it is recorded as a decision rather
+    // than half-done here. What this CSP DOES still buy, today: no script may
+    // be LOADED from another origin, which is how injected script is normally
+    // delivered.
+    //
+    // 'unsafe-eval' in development only — React Refresh needs it, and it must
+    // not be in a production header.
+    isDev
+      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+      : "script-src 'self' 'unsafe-inline'",
+
+    // next/font self-hosts the font files at build time, so no Google Fonts
+    // origin is needed at runtime. 'unsafe-inline' covers Tailwind's own
+    // inlined styles and React's style attributes.
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
+
+    // data: for the QR codes (generated as data URLs by `qrcode`), blob: for
+    // the local preview of a document the user has just chosen but not yet
+    // uploaded, and the Supabase origin for signed URLs out of private
+    // storage.
+    `img-src 'self' data: blob: ${supabase}`,
+
+    // Supabase for auth, data and storage. Resend is called server-side only
+    // and deliberately absent — if it ever appears here, an API key has moved
+    // into the browser.
+    `connect-src 'self' ${supabase}`,
+
+    // No plugins, no embedded documents, and nothing may frame this app. The
+    // app is a money product; being embeddable is how a clickjacked transfer
+    // happens.
+    "object-src 'none'",
+    "frame-src 'none'",
+    "frame-ancestors 'none'",
+
+    // Stops an injected <base> from re-pointing every relative URL, and
+    // restricts where a form may post — including the server actions, which
+    // are same-origin posts.
+    "base-uri 'self'",
+    "form-action 'self'",
+
+    // No http subresources in production.
+    ...(isDev ? [] : ["upgrade-insecure-requests"]),
+  ].join("; ");
+
+  return [
+    { key: "Content-Security-Policy", value: csp },
+
+    // Two years, subdomains included, preload-eligible. Safe to assert: the
+    // app is HTTPS-only in every deployed environment and the apex is ours.
+    {
+      key: "Strict-Transport-Security",
+      value: "max-age=63072000; includeSubDomains; preload",
+    },
+
+    // Stops a browser from deciding a stored document is HTML and running it.
+    // It matters here specifically: this app serves user-uploaded files back
+    // through signed storage URLs.
+    { key: "X-Content-Type-Options", value: "nosniff" },
+
+    // Same origin gets the full path; anyone else gets the origin only. A
+    // referrer carrying /transactions?type=withdrawal into a third party says
+    // more about the user than it needs to.
+    { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+
+    // Camera stays allowed on our own origin — the KYC upload fields use
+    // capture= to photograph a document. Everything else is off.
+    {
+      key: "Permissions-Policy",
+      value: [
+        "camera=(self)",
+        "microphone=()",
+        "geolocation=()",
+        "payment=()",
+        "usb=()",
+        "magnetometer=()",
+        "accelerometer=()",
+        "gyroscope=()",
+        "display-capture=()",
+      ].join(", "),
+    },
+
+    // Redundant with frame-ancestors for current browsers, kept for the ones
+    // that only understand this.
+    { key: "X-Frame-Options", value: "DENY" },
+
+    // Keeps this origin out of a shared browsing-context group, so a window
+    // it opens (or that opens it) cannot reach into it.
+    { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  ];
+}
 
 export default nextConfig;
