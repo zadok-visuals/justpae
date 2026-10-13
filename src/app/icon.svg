@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="justpae">
+  <!--
+    The app icon: the justpae mark, redrawn for small sizes.
+
+    IT IS NOT src/components/layout/Mark.tsx, and that is deliberate. The
+    in-app mark carries a second colour (the naira-green rail) and strokes that
+    are correct at 32px and above. At 16px in a browser tab, a 2px green line
+    next to a 2.6px gold one is two grey smudges. So this one is a single gold
+    on ink, with the strokes thickened and the glyph given more room.
+
+    Hard-coded hex rather than the CSS custom properties the component uses:
+    this file is served as a standalone image, where a var() reference to a
+    token defined on :root in globals.css resolves to nothing and the mark
+    renders invisible. The values are the ink (#0b0d10) and gold (#d9a14a)
+    tokens from globals.css, copied here on purpose.
+
+    (And no double hyphen anywhere in this comment: XML forbids it inside a
+    comment, which silently turns this file into a parse error rather than an
+    icon.)
+
+    Full-bleed background on purpose. An icon with transparent corners gets a
+    white card behind it in a dark browser tab and a dark one in a light tab,
+    and the mark loses its ground either way.
+  -->
+  <rect width="64" height="64" rx="14" fill="#0b0d10"/>
+  <!-- The descender: a "j" stem hooking left, the same gesture as the in-app
+       mark, at a weight that survives being 16 pixels wide. -->
+  <path d="M40 17v20.5c0 5.8-4.6 10.5-10.3 10.5-4.4 0-8.2-2.8-9.7-6.8"
+        stroke="#d9a14a" stroke-width="6.5" stroke-linecap="round" fill="none"/>
+  <!-- The rail. Gold here rather than green — see above. -->
+  <path d="M29 26.5h18" stroke="#d9a14a" stroke-width="5.5" stroke-linecap="round" fill="none"/>
+</svg>

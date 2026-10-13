@@ -4,6 +4,7 @@ import { Wordmark, Mark } from "@/components/layout/Mark";
 import { CURRENCIES } from "@/lib/currencies";
 import { BILL_CATEGORIES } from "@/lib/providers/bills";
 import { BILLS_ENABLED, USD_COLLECTION_ENABLED } from "@/lib/flags";
+import { Analytics } from "@/components/analytics/Analytics";
 
 /**
  * The public landing page.
@@ -381,16 +382,28 @@ export default function LandingPage() {
               justpae &middot; Zadok Royal Limited
             </span>
           </div>
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
             <Link href="/login" className="text-muted-foreground hover:text-foreground">
               Sign in
             </Link>
             <Link href="/signup" className="text-muted-foreground hover:text-foreground">
               Create an account
             </Link>
+            {/* A money product that asks for a government ID has to publish
+                both of these and link them from the page where someone decides
+                to sign up. */}
+            <Link href="/privacy" className="text-muted-foreground hover:text-foreground">
+              Privacy
+            </Link>
+            <Link href="/terms" className="text-muted-foreground hover:text-foreground">
+              Terms
+            </Link>
           </div>
         </div>
       </footer>
+
+      {/* Public pages only — never the dashboard layout. See Analytics. */}
+      <Analytics />
     </div>
   );
 }

@@ -10,7 +10,17 @@ import { requireEnv } from "@/lib/supabase/env";
  * "/" is checked for an EXACT match below rather than folded in here —
  * startsWith("/") matches every path and would disable auth gating entirely.
  */
-const PUBLIC_PATHS = ["/login", "/signup", "/auth", "/forgot-password", "/reset-password"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/signup",
+  "/auth",
+  "/forgot-password",
+  "/reset-password",
+  // The two pages someone reads BEFORE deciding to hand over a government ID.
+  // Putting either behind sign-in would defeat the point of publishing them.
+  "/privacy",
+  "/terms",
+];
 
 /**
  * /dev/gallery is the component gallery used for the 375px/1440px viewport

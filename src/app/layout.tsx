@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Manrope, IBM_Plex_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import { siteUrl } from "@/lib/site";
 import "./globals.css";
 
 /**
@@ -33,6 +34,12 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
+  /**
+   * Required for the Open Graph and Twitter images to resolve to absolute
+   * URLs. Without it Next emits a relative path, and every social scraper
+   * silently drops the card — which looks exactly like not having one.
+   */
+  metadataBase: new URL(siteUrl()),
   title: {
     default: "justpae",
     template: "%s · justpae",

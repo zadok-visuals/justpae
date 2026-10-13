@@ -118,6 +118,23 @@ export function SignupForm() {
           Sign in
         </Link>
       </p>
+
+      {/* Below BOTH buttons, because Google sign-in creates an account too and
+          a consent line attached only to the email form would miss half of
+          the people agreeing to it. Stated rather than hidden behind a
+          checkbox nobody reads — and the links are real links, so the terms
+          can actually be read before agreeing to them. */}
+      <p className="text-center text-xs text-muted-foreground">
+        By creating an account you agree to our{" "}
+        <Link href="/terms" className="font-medium text-primary underline">
+          Terms
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="font-medium text-primary underline">
+          Privacy Policy
+        </Link>
+        .
+      </p>
     </div>
   );
 }
