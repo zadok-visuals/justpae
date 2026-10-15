@@ -64,6 +64,17 @@ export function DepositForm({
 
   const instructions = depositState.bankDetails ?? depositState.cryptoAddress;
 
+  // Edge case: no wallets provisioned (signup trigger missed + auto-provisioning
+  // also failed). Show a clear message rather than an empty selector.
+  if (wallets.length === 0) {
+    return (
+      <Banner tone="warning" title="No wallets found">
+        We couldn't load your wallets. Please refresh the page or contact support if this
+        persists.
+      </Banner>
+    );
+  }
+
   if (instructions && depositState.depositId) {
     return (
       <DepositInstructions

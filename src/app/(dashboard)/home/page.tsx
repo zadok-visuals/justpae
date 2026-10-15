@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { PageShell } from "@/components/layout/PageShell";
 import { WalletCards } from "@/components/home/WalletCards";
 import { QuickActions } from "@/components/home/QuickActions";
@@ -10,6 +11,7 @@ import { LiveRefresh } from "@/components/ui/LiveRefresh";
 import { KycStatusBanner } from "@/components/kyc/KycStatusBanner";
 import { fetchRecentActivity } from "@/lib/transactions";
 import { resolveRoute } from "@/lib/rates/routes";
+import { localCurrencyForCountry } from "@/lib/currencies";
 import type { Currency, Wallet } from "@/lib/types/database";
 
 export const metadata = { title: "Home" };
@@ -41,7 +43,7 @@ export default async function HomePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: profile }, { data: wallets }, recent, rates] = await Promise.all([
+  const [{ data: profile }, walletsResult, recent, rates] = await Promise.all([
     supabase
       .from("profiles")
       .select("full_name, phone, kyc_status, kyc_rejection_reason, kyc_type, country")
@@ -51,6 +53,24 @@ export default async function HomePage() {
     fetchRecentActivity(supabase, user.id, 5),
     loadStripRates(),
   ]);
+
+  let wallets = walletsResult.data;
+
+  // Auto-provision wallets if missing (trigger didn't fire at signup).
+  if (!wallets || wallets.length === 0) {
+    const admin = createAdminClient();
+    const localCurrency = localCurrencyForCountry(profile?.country);
+    const walletsToCreate: { user_id: string; currency: Currency }[] = [
+      { user_id: user.id, currency: "USD" },
+      { user_id: user.id, currency: "USDT" },
+    ];
+    if (localCurrency) {
+      walletsToCreate.push({ user_id: user.id, currency: localCurrency });
+    }
+    await admin.from("wallets").upsert(walletsToCreate, { onConflict: "user_id,currency" });
+    const { data: refreshed } = await supabase.from("wallets").select("*").eq("user_id", user.id);
+    wallets = refreshed;
+  }
 
   const firstName = profile?.full_name?.trim().split(/\s+/)[0] ?? null;
 

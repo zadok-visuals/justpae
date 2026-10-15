@@ -12,6 +12,8 @@ import {
 
 export interface AuthActionState {
   error?: string;
+  /** Echoed back on failure so the form can repopulate the email field. */
+  email?: string;
 }
 
 function appUrl(): string {
@@ -150,7 +152,7 @@ export async function logIn(
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
 
-  if (!email || !password) return { error: "Email and password are required." };
+  if (!email || !password) return { error: "Email and password are required.", email };
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -160,7 +162,7 @@ export async function logIn(
       await setPendingVerificationEmail(email);
       redirect("/auth/verify");
     }
-    return { error: error.message };
+    return { error: error.message, email };
   }
 
   redirect("/home");

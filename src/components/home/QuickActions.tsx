@@ -5,10 +5,11 @@ import {
   WithdrawIcon,
   BillsIcon,
   AirtimeIcon,
+  DepositIcon,
 } from "@/components/layout/NavIcons";
 
 /**
- * The five things people come here to do, one tap from Home.
+ * The six things people come here to do, one tap from Home.
  *
  * Airtime is listed separately from Bills even though it is a bill category,
  * because topping up a phone is by far the most frequent single action in this
@@ -19,6 +20,7 @@ import {
  * or shrinking the targets below a comfortable tap size.
  */
 const ACTIONS = [
+  { href: "/deposit", label: "Add money", Icon: DepositIcon },
   { href: "/receive", label: "Receive", Icon: ReceiveIcon },
   { href: "/convert", label: "Convert", Icon: ConvertIcon },
   { href: "/withdraw", label: "Withdraw", Icon: WithdrawIcon },
@@ -28,7 +30,7 @@ const ACTIONS = [
 
 export function QuickActions() {
   return (
-    <div className="snap-rail -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:grid sm:grid-cols-5 sm:px-0">
+    <div className="snap-rail -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:grid sm:grid-cols-6 sm:px-0">
       {ACTIONS.map(({ href, label, Icon }) => (
         <Link
           key={href}
