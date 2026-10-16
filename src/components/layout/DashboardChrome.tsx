@@ -19,7 +19,6 @@ import {
   AdminIcon,
   LogOutIcon,
   SupportIcon,
-  WalletIcon,
 } from "@/components/layout/NavIcons";
 
 /**
@@ -42,9 +41,9 @@ import {
 
 const TABS = [
   { href: "/home", label: "Home", Icon: HomeIcon },
-  { href: "/accounts", label: "Accounts", Icon: WalletIcon },
-  { href: "/convert", label: "Convert", Icon: ConvertIcon },
   { href: "/transactions", label: "Activity", Icon: ActivityIcon },
+  { href: "/convert", label: "Convert", Icon: ConvertIcon },
+  { href: "/bills", label: "Bills", Icon: BillsIcon },
   { href: "/profile", label: "Profile", Icon: ProfileIcon },
 ];
 
@@ -210,21 +209,6 @@ export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
               </li>
             );
           })}
-          {/* Bills is sidebar-only on desktop — it doesn't fit the 5-slot mobile bar */}
-          <li>
-            <Link
-              href="/bills"
-              aria-current={isActive(pathname, "/bills") ? "page" : undefined}
-              className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium ${
-                isActive(pathname, "/bills")
-                  ? "bg-sidebar-accent text-primary"
-                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-              }`}
-            >
-              <BillsIcon className="size-5" />
-              Bills
-            </Link>
-          </li>
         </ul>
 
         {isAdmin && (

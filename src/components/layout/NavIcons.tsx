@@ -90,16 +90,6 @@ export function DepositIcon(props: IconProps) {
   );
 }
 
-export function WalletIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <rect x="2" y="6" width="20" height="14" rx="2" />
-      <path d="M16 14a1 1 0 1 0 2 0 1 1 0 0 0-2 0Z" fill="currentColor" stroke="none" />
-      <path d="M22 10H16a2 2 0 0 0 0 4h6" />
-    </Icon>
-  );
-}
-
 export function WithdrawIcon(props: IconProps) {
   return (
     <Icon {...props}>

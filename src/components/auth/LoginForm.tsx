@@ -35,7 +35,6 @@ export function LoginForm({ notice }: { notice?: string }) {
           enterKeyHint="next"
           required
           placeholder="you@example.com"
-          defaultValue={state.email ?? ""}
         />
 
         <PasswordField
