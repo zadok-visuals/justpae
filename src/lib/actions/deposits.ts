@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Currency } from "@/lib/types/database";
+import type { Currency, TransactionStatus } from "@/lib/types/database";
 import * as busha from "@/lib/busha/client";
 import * as klasha from "@/lib/klasha/client";
 import { depositAvailability } from "@/lib/deposits/availability";
@@ -371,8 +371,28 @@ async function initiateKlashaGhsDeposit(
 }
 
 export interface DepositStatusState {
+  /**
+   * Deliberately NARROWER than TransactionStatus. Deposits share the
+   * `transaction_status` enum with conversions, so 'partially_completed'
+   * (0023) is representable in the column — but it is a conversion-only
+   * outcome describing a half-finished two-leg bridge, and no deposit path
+   * writes it. Widening this to match the enum would make the polling screen
+   * carry a state it can never reach and, worse, one isFinalStatus does not
+   * treat as terminal, so the poll would never stop.
+   */
   status?: "pending" | "processing" | "completed" | "failed";
   error?: string;
+}
+
+/** Keeps an impossible conversion-only status out of the deposit screen. */
+function toDepositStatus(status: TransactionStatus): NonNullable<DepositStatusState["status"]> {
+  if (status === "partially_completed") {
+    console.error("[deposits] a deposit row is partially_completed, which should be impossible", {
+      status,
+    });
+    return "failed";
+  }
+  return status;
 }
 
 /**
@@ -457,5 +477,5 @@ export async function checkDepositStatus(depositId: string): Promise<DepositStat
     }
   }
 
-  return { status: data.status };
+  return { status: toDepositStatus(data.status) };
 }

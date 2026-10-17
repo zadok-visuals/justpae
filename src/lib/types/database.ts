@@ -26,7 +26,19 @@ export type CountryCode = string;
 
 export type TransactionType = "convert" | "withdrawal";
 export type TransactionProvider = "busha" | "klasha" | "manual";
-export type TransactionStatus = "pending" | "processing" | "completed" | "failed";
+/**
+ * 'partially_completed' (migration 0023) is a conversion-only terminal state:
+ * leg 1 of a fiat-to-fiat bridge converted the source into USDT and leg 2 did
+ * not deliver. The money is neither where it started nor where it was going,
+ * and the user owns the USDT — 'failed' would trigger a source refund that
+ * pays them twice, and 'completed' would claim a delivery that never happened.
+ */
+export type TransactionStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "partially_completed";
 
 export type BillCategory = "airtime" | "data" | "electricity" | "water" | "cable_tv";
 export type BillStatus = "pending" | "processing" | "completed" | "failed" | "refunded";
@@ -177,6 +189,16 @@ export type Transaction = {
   needs_manual_review: boolean;
   manual_review_reason: string | null;
   decline_reason: string | null;
+  /** 0024's leg trail, copied off the quote row at settle time. See
+   *  ConversionQuoteRow for what each one means. */
+  bridge_currency: Currency | null;
+  leg1_provider_reference: string | null;
+  leg2_provider_reference: string | null;
+  leg1_target_amount: number | null;
+  /** What a partial completion actually credited. Kept distinct from
+   *  leg1_target_amount so a later correction is visible rather than
+   *  silently overwriting the provider's reported figure. */
+  partial_credit_amount: number | null;
   /** When the user was told this transaction reached a terminal state. The
    *  exactly-once marker from 0018 — completed and failed are mutually
    *  exclusive, so one stamp per row covers both. */
@@ -302,6 +324,19 @@ export type ConversionQuoteRow = {
   /** Written by server code after the provider call returned. Never an
    *  argument a caller supplies. */
   provider_reference: string | null;
+  /**
+   * 0024's leg trail. A fiat-to-fiat conversion runs as two provider legs
+   * bridged through USDT, so there are two references and an intermediate
+   * amount to record. All four are null on a single-leg conversion, and
+   * `bridge_currency is null` is exactly what partially_complete_conversion
+   * refuses on — a row with no bridge has no intermediate holding to credit.
+   */
+  bridge_currency: Currency | null;
+  leg1_provider_reference: string | null;
+  leg2_provider_reference: string | null;
+  /** Markup-adjusted USDT leg 1 delivered. Written by server code from the
+   *  provider's own leg-1 response; it is what a partial completion credits. */
+  leg1_target_amount: number | null;
   expires_at: string;
   consumed_at: string | null;
   created_at: string;
@@ -590,7 +625,26 @@ export type Database = {
         Args: { p_transaction_id: string; p_reason: string };
         Returns: undefined;
       };
+      /**
+       * 0024 gave this a redirect: a row whose leg1_target_amount is set had
+       * its first leg converted, so refunding the source would pay the user
+       * twice. fail_conversion calls partially_complete_conversion instead
+       * and the row ends up 'partially_completed', NOT 'failed'. Every caller
+       * must re-read the row's status rather than assume the name of the
+       * function it called — see convert.readConversionStatus.
+       */
       fail_conversion: { Args: { p_transaction_id: string; p_reason?: string | null }; Returns: undefined };
+
+      /**
+       * Credits the bridge currency a completed first leg produced and marks
+       * the row 'partially_completed'. Takes an id and a reason — the amount
+       * is read off the row's own leg1_target_amount, never from a caller.
+       * Idempotent, and server-only.
+       */
+      partially_complete_conversion: {
+        Args: { p_transaction_id: string; p_reason?: string | null };
+        Returns: undefined;
+      };
 
       /**
        * The exactly-once gate for money-event notifications (0018). Returns

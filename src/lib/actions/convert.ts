@@ -13,7 +13,7 @@ import { toCustomerError, toRpcError } from "@/lib/provider-error";
 import { CURRENCY_CODES, formatAmount } from "@/lib/currencies";
 import { isPinLockedError, isWrongPinError, resolvePinError } from "@/lib/pin";
 import { notifyConversionCompleted } from "@/lib/notify/events";
-import { runConversion } from "@/lib/convert/sequence";
+import { runConversion, type ProviderResult } from "@/lib/convert/sequence";
 
 /**
  * /convert's server side.
@@ -192,6 +192,9 @@ export async function executeConversion(
     return { error: toCustomerError(err, "convert.executeConversion") };
   }
   if (!route.available) return { error: route.reason };
+  // Re-bound as a const so the narrowing survives into the step closures
+  // below; a `let` that a closure captures is widened straight back.
+  const liveRoute = route;
 
   // Expressed in the currency the user is actually spending, from the same
   // helper the client uses with the same live rate — so the two can never
@@ -214,7 +217,7 @@ export async function executeConversion(
   //
   // Each step below is the real implementation of one of those; the test
   // injects fakes and asserts on call counts.
-  const outcome = await runConversion<busha.BushaTransfer, string>({
+  const outcome = await runConversion<ConversionExecution, string>({
     // Checks suspension, the PIN, the destination wallet and the balance, and
     // debits the source wallet into a hold — one transaction, no provider.
     // Until this returns a hold id, nothing has been asked of anyone outside
@@ -249,14 +252,16 @@ export async function executeConversion(
     // The provider executes at its own real, unmarked rate. The customer is
     // only ever credited the marked-up figure, and the gap between the two is
     // the margin — which is why both are recorded on the row.
-    callProvider: async () => {
-      const providerQuote = await busha.createQuote({
-        sourceCurrency: from,
-        targetCurrency: to,
-        sourceAmount: amount.toFixed(2),
-      });
-      return busha.createTransfer(providerQuote.id);
-    },
+    //
+    // ONE LEG OR TWO, depending on the route. routes.ts has always PRICED a
+    // fiat-to-fiat pair as a bridge through USDT, because the provider quotes
+    // no direct pair between any two of our fiat currencies — but this used
+    // to send a single createQuote(from, to) for it anyway, which the
+    // provider rejects. The execution now matches the pricing.
+    callProvider: () =>
+      liveRoute.kind === "fiat_via_usdt"
+        ? executeBridgedConversion({ from, to, amount, route: liveRoute })
+        : executeSingleLeg({ from, to, amount }),
 
     // THE QUOTE ROW IS THE CONTRACT. Every figure that will end up on the
     // ledger row is written here, with the service role, by this server code
@@ -265,9 +270,10 @@ export async function executeConversion(
     // transfer that was actually created. The settle step then takes nothing
     // but this row's id and the hold's: there is no argument through which a
     // figure can arrive from outside.
-    writeQuote: async (transfer) => {
-      const rawTargetAmount = Number(transfer.target_amount);
-      const customerTargetAmount = applyMarkupToAmount(rawTargetAmount, route.markupRate);
+    writeQuote: async (execution) => {
+      const { finalTransfer } = execution;
+      const rawTargetAmount = Number(finalTransfer.target_amount);
+      const customerTargetAmount = applyMarkupToAmount(rawTargetAmount, liveRoute.markupRate);
 
       // The SOURCE figure is the amount that was actually HELD, not the one
       // the provider echoes back. They are the same number in practice, but
@@ -275,11 +281,18 @@ export async function executeConversion(
       // is what left the user's balance, so `amount` is what the row says. A
       // divergence is a real operational signal, so it is logged rather than
       // quietly absorbed.
-      const providerSourceAmount = Number(transfer.source_amount);
-      if (Number.isFinite(providerSourceAmount) && round2(providerSourceAmount) !== round2(amount)) {
+      //
+      // Only meaningful for a single-leg conversion: on a bridged one the
+      // final transfer's source is USDT, not the user's currency.
+      const providerSourceAmount = Number(finalTransfer.source_amount);
+      if (
+        !execution.bridgeCurrency &&
+        Number.isFinite(providerSourceAmount) &&
+        round2(providerSourceAmount) !== round2(amount)
+      ) {
         console.error("[convert.executeConversion] provider source amount differs from the held amount", {
           userId: user.id,
-          transferId: transfer.id,
+          transferId: finalTransfer.id,
           held: round2(amount),
           providerReported: round2(providerSourceAmount),
         });
@@ -292,12 +305,23 @@ export async function executeConversion(
           source_currency: from,
           target_currency: to,
           source_amount: round2(amount),
+          // On a partial there is no target delivery, but the row still
+          // records what the conversion was FOR — the detail view shows the
+          // intended target alongside what actually landed.
           target_amount: round2(customerTargetAmount),
-          provider_rate: route.providerRate,
-          markup_rate: route.markupRate,
-          customer_rate: route.customerRate,
+          provider_rate: liveRoute.providerRate,
+          markup_rate: liveRoute.markupRate,
+          customer_rate: liveRoute.customerRate,
           raw_target_amount: round2(rawTargetAmount),
-          provider_reference: transfer.id,
+          // The primary reference is the leg that determines final delivery,
+          // so the reconciler and the webhook keep pointing at the right one
+          // without knowing how many legs there were.
+          provider_reference: execution.leg2Reference ?? finalTransfer.id,
+          bridge_currency: execution.bridgeCurrency ?? null,
+          leg1_provider_reference: execution.leg1Reference ?? null,
+          leg2_provider_reference: execution.leg2Reference ?? null,
+          leg1_target_amount:
+            execution.leg1CustomerAmount != null ? round2(execution.leg1CustomerAmount) : null,
           expires_at: new Date(Date.now() + QUOTE_TTL_SECONDS * 1000).toISOString(),
         })
         .select("id")
@@ -306,7 +330,7 @@ export async function executeConversion(
       if (quoteError || !quoteRow) {
         console.error("[convert.executeConversion] transfer executed but quote write failed", {
           userId: user.id,
-          transferId: transfer.id,
+          transferId: finalTransfer.id,
           error: quoteError,
         });
         return { ok: false, error: "Could not complete that conversion. Please contact support." };
@@ -343,6 +367,31 @@ export async function executeConversion(
     },
 
     release: (holdId, reason) => releaseHold(admin, holdId, user.id, reason),
+
+    // Leg 1 converted and leg 2 did not. The row already owns the hold, so
+    // the source is accounted for; what is left is to put the USDT leg 1
+    // produced into the user's own wallet and mark the row for what it is.
+    //
+    // No amount crosses this boundary. The function reads leg1_target_amount
+    // off the row — written above by writeQuote from the provider's own
+    // leg-1 response, with the service role — which is the same rule every
+    // other money function here follows since 0010.
+    settlePartial: async (transactionId, reason) => {
+      const { error } = await admin.rpc("partially_complete_conversion", {
+        p_transaction_id: transactionId,
+        p_reason: reason,
+      });
+      if (error) {
+        // The user is owed USDT that has not landed. Nothing here can fix
+        // that — a release would be wrong, since the source is gone — so it
+        // has to be loud enough for a human to pick up.
+        console.error(
+          "[convert.executeConversion] COULD NOT CREDIT A COMPLETED FIRST LEG — user is owed USDT",
+          { userId: user.id, transactionId, reason, error },
+        );
+      }
+    },
+
     describeProviderError: (err) => toCustomerError(err, "convert.executeConversion"),
   });
 
@@ -358,9 +407,14 @@ export async function executeConversion(
   // conversion categories and the conversion ones are not fully confirmed, so
   // anything else is left pending for the webhook or the reconcile cron.
   // complete_conversion is idempotent, so a later call is always safe.
+  //
+  // A "partial" is explicitly excluded: settlePartial has already moved that
+  // row to partially_completed and credited the bridge currency, and
+  // complete_conversion on top of it would credit the TARGET currency too —
+  // for a delivery that never happened.
   if (
-    outcome.transfer.status === "funds_converted" ||
-    outcome.transfer.status === "funds_delivered"
+    outcome.outcome === "completed" &&
+    isTransferDelivered(outcome.transfer.finalTransfer.status)
   ) {
     await admin.rpc("complete_conversion", { p_transaction_id: outcome.transactionId });
     // Claimed, so the webhook and the reconciler cannot also announce this
@@ -374,7 +428,14 @@ export async function executeConversion(
 }
 
 export interface ConversionStatusState {
-  status?: "pending" | "processing" | "completed" | "failed";
+  /**
+   * "partially_completed" is a real outcome, not an error state: leg 1 of a
+   * bridged conversion converted and leg 2 did not, so the user holds USDT
+   * instead of the currency they asked for. The confirmation screen has to be
+   * able to say that rather than rounding it to "failed", which would be a
+   * lie about where the money went.
+   */
+  status?: "pending" | "processing" | "completed" | "failed" | "partially_completed";
   error?: string;
 }
 
@@ -436,7 +497,7 @@ export async function checkConversionStatus(
           revalidatePath("/transactions");
           return { status: "completed" };
         }
-      } else if (transfer.status === "cancelled" || transfer.status === "funds_not_delivered") {
+      } else if (isTransferFailed(transfer.status)) {
         const { error: failError } = await admin.rpc("fail_conversion", {
           p_transaction_id: transactionId,
           p_reason: `Provider reported ${transfer.status}`,
@@ -449,7 +510,13 @@ export async function checkConversionStatus(
         } else {
           revalidatePath("/home");
           revalidatePath("/transactions");
-          return { status: "failed" };
+          // NOT necessarily "failed". fail_conversion REDIRECTS to
+          // partially_complete_conversion when the row's leg1_target_amount
+          // is set (migration 0024) — a two-leg row whose first leg converted
+          // ends up partially_completed with USDT credited, because refunding
+          // its source would pay the user twice. The caller must be told what
+          // actually happened, so the row is re-read rather than assumed.
+          return { status: await readConversionStatus(transactionId, user.id) };
         }
       }
     } catch (err) {
@@ -468,6 +535,292 @@ export async function checkConversionStatus(
 
 function round2(value: number): number {
   return Number(value.toFixed(2));
+}
+
+/**
+ * Re-reads a conversion row's status after a settlement function ran.
+ *
+ * Needed because fail_conversion does not always produce 'failed': 0024 has
+ * it redirect a row whose first leg converted into
+ * partially_complete_conversion instead. The RPC returns void, so the row
+ * itself is the only honest source of what the outcome was.
+ *
+ * Falls back to "failed" only when the row cannot be re-read at all — the RPC
+ * did report success, so something terminal did happen, and claiming it is
+ * still pending would leave the poller spinning forever.
+ */
+async function readConversionStatus(
+  transactionId: string,
+  userId: string,
+): Promise<NonNullable<ConversionStatusState["status"]>> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("transactions")
+    .select("status")
+    .eq("id", transactionId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("[convert.readConversionStatus] could not re-read the settled row", {
+      transactionId,
+      error,
+    });
+    return "failed";
+  }
+
+  return data.status as NonNullable<ConversionStatusState["status"]>;
+}
+
+/**
+ * What the provider step hands to writeQuote.
+ *
+ * One shape for both route shapes, so writeQuote never branches on how many
+ * legs ran. A single-leg conversion simply leaves every leg field null, and
+ * `bridge_currency is null` is exactly the condition migration 0024's
+ * partially_complete_conversion refuses on — a row with no bridge has no
+ * intermediate holding to credit, so it can only ever fail and refund.
+ */
+interface ConversionExecution {
+  /**
+   * The leg that determines final delivery: leg 2 on a bridged conversion,
+   * the only transfer on a single-leg one. Its target_amount is what the
+   * customer was converting INTO, and its status is what the poller, the
+   * webhook and the reconciler all read.
+   */
+  finalTransfer: busha.BushaTransfer;
+  /** "USDT" on a bridged conversion, null on a single leg. */
+  bridgeCurrency: Currency | null;
+  leg1Reference: string | null;
+  leg2Reference: string | null;
+  /**
+   * The markup-adjusted USDT leg 1 actually delivered. This is the figure
+   * partially_complete_conversion credits off the row, so it is real money:
+   * it is taken from the provider's own leg-1 response and never from
+   * anything the client sent.
+   */
+  leg1CustomerAmount: number | null;
+}
+
+/**
+ * Terminal success for a conversion transfer.
+ *
+ * Busha enumerates its statuses across deposit, withdrawal and conversion
+ * categories in one union, so most of them cannot occur here. These two are
+ * the conversion ones that mean the money arrived, and they are the same pair
+ * executeConversion, checkConversionStatus, the webhook and the reconciler all
+ * already treat as settled — kept in one place so the four cannot drift.
+ */
+function isTransferDelivered(status: busha.BushaTransfer["status"]): boolean {
+  return status === "funds_converted" || status === "funds_delivered";
+}
+
+/** Terminal failure. Anything else is still in flight. */
+function isTransferFailed(status: busha.BushaTransfer["status"]): boolean {
+  return (
+    status === "cancelled" || status === "funds_not_delivered" || status === "funds_refunded"
+  );
+}
+
+/** How long leg 1 is given to land before leg 2 can spend what it produced. */
+const LEG1_POLL_ATTEMPTS = 8;
+const LEG1_POLL_INTERVAL_MS = 1_500;
+
+/**
+ * The ORIGINAL single-leg path: fiat <-> USDT, which the provider does quote
+ * as a direct pair. Unchanged in behaviour from before the two-leg split —
+ * one quote, one transfer, no bridge.
+ *
+ * It does NOT wait for a terminal status. A single-leg conversion that is
+ * still in flight is left pending and settled later by the poll, the webhook
+ * or the reconciler, exactly as it always was; there is no second leg waiting
+ * on it, so there is nothing to wait for.
+ */
+async function executeSingleLeg(params: {
+  from: Currency;
+  to: Currency;
+  amount: number;
+}): Promise<ProviderResult<ConversionExecution>> {
+  const providerQuote = await busha.createQuote({
+    sourceCurrency: params.from,
+    targetCurrency: params.to,
+    sourceAmount: params.amount.toFixed(2),
+  });
+  const transfer = await busha.createTransfer(providerQuote.id);
+
+  return {
+    outcome: "completed",
+    transfer: {
+      finalTransfer: transfer,
+      bridgeCurrency: null,
+      leg1Reference: null,
+      leg2Reference: null,
+      leg1CustomerAmount: null,
+    },
+  };
+}
+
+/**
+ * fiat -> USDT -> fiat, because the provider quotes no direct pair between any
+ * two of our fiat currencies. routes.ts has always PRICED this pair this way;
+ * this is the execution finally matching the pricing.
+ *
+ * The three outcomes, and which one happens is the whole point of the design:
+ *
+ *   leg 1 throws / fails   THROW. Nothing moved, so runConversion releases the
+ *                          hold and the user's source currency comes straight
+ *                          back. Indistinguishable from a single-leg failure.
+ *   leg 2 throws / fails   RETURN "partial". Leg 1 really converted the source
+ *                          into USDT; that USDT exists. Releasing would refund
+ *                          a source the user no longer has a claim to while
+ *                          the USDT stayed with us — paying out twice. The row
+ *                          settles and the USDT is credited instead.
+ *   both succeed           RETURN "completed" on leg 2's transfer.
+ */
+async function executeBridgedConversion(params: {
+  from: Currency;
+  to: Currency;
+  amount: number;
+  /** The resolved route, for the markup. Narrowed to the available shape. */
+  route: Extract<ConversionRoute, { available: true }>;
+}): Promise<ProviderResult<ConversionExecution>> {
+  const { from, to, amount, route } = params;
+
+  // ── Leg 1: source fiat -> USDT ───────────────────────────────────────────
+  // Any throw here propagates untouched. That is correct: nothing has moved,
+  // and runConversion's catch is the release path.
+  const leg1Quote = await busha.createQuote({
+    sourceCurrency: from,
+    targetCurrency: "USDT",
+    sourceAmount: amount.toFixed(2),
+  });
+  let leg1 = await busha.createTransfer(leg1Quote.id);
+
+  // Leg 2 SPENDS what leg 1 produced, so unlike a single-leg conversion this
+  // one cannot be left to settle in the background — the USDT has to exist
+  // before it can be sold. Wait for a terminal status.
+  leg1 = await awaitTerminalTransfer(leg1);
+
+  if (!isTransferDelivered(leg1.status)) {
+    // Includes the "still in flight when the budget ran out" case. Releasing
+    // the hold is the right call for the USER either way — they are made whole
+    // — but a leg 1 that lands AFTER this point leaves USDT sitting on the
+    // business's own provider balance with no row pointing at it. That is a
+    // reconciliation job for a human, so it is logged as loudly as a failure.
+    console.error("[convert.executeBridgedConversion] leg 1 did not deliver — releasing", {
+      from,
+      to,
+      amount,
+      leg1Reference: leg1.id,
+      leg1Status: leg1.status,
+      stillInFlight: !isTransferFailed(leg1.status),
+    });
+    throw new busha.BushaError(
+      `Conversion leg 1 (${from} to USDT) reported ${leg1.status}`,
+      502,
+    );
+  }
+
+  // What leg 1 ACTUALLY delivered, from its own response — never recomputed
+  // from a rate, because the rate that was quoted and the rate that executed
+  // are allowed to differ and the provider's figure is the true one.
+  const leg1RawUsdt = Number(leg1.target_amount);
+  if (!Number.isFinite(leg1RawUsdt) || leg1RawUsdt <= 0) {
+    throw new busha.BushaError("Conversion leg 1 delivered no USDT", 502);
+  }
+
+  // ONE markup across the whole journey, not one per leg. route.markupRate is
+  // the markup for the (from, to) pair the customer was quoted, and writeQuote
+  // applies that same single rate to the final delivery. Applying it again on
+  // the bridge would charge the customer twice for one conversion; applying a
+  // different one would mean the USDT they are credited on a partial was
+  // priced on a basis they were never shown.
+  const leg1CustomerAmount = applyMarkupToAmount(leg1RawUsdt, route.markupRate);
+
+  // ── Leg 2: USDT -> target fiat ───────────────────────────────────────────
+  // From here on, money HAS moved. Every failure below returns "partial"
+  // rather than throwing, and the user ends up holding the USDT.
+  try {
+    const leg2Quote = await busha.createQuote({
+      sourceCurrency: "USDT",
+      targetCurrency: to,
+      // The provider's own leg-1 delivery is what there is to spend. Spending
+      // the marked-up figure would try to sell USDT we do not have.
+      sourceAmount: leg1RawUsdt.toFixed(2),
+    });
+    const leg2 = await busha.createTransfer(leg2Quote.id);
+
+    const execution: ConversionExecution = {
+      finalTransfer: leg2,
+      bridgeCurrency: "USDT",
+      leg1Reference: leg1.id,
+      leg2Reference: leg2.id,
+      leg1CustomerAmount,
+    };
+
+    // Leg 2 is allowed to still be in flight — that is an ordinary pending
+    // conversion, and the poll, the webhook and the reconciler all settle it.
+    // Only an explicit terminal failure is a partial.
+    if (isTransferFailed(leg2.status)) {
+      return {
+        outcome: "partial",
+        transfer: execution,
+        error: new Error(`Conversion leg 2 (USDT to ${to}) reported ${leg2.status}`),
+      };
+    }
+
+    return { outcome: "completed", transfer: execution };
+  } catch (err) {
+    // Leg 2 never got off the ground. Leg 1's own transfer is the one that
+    // really happened, so it becomes the final transfer on the row — there is
+    // no leg 2 reference to point anything at.
+    console.error("[convert.executeBridgedConversion] leg 2 failed after leg 1 converted", {
+      from,
+      to,
+      leg1Reference: leg1.id,
+      leg1CustomerAmount,
+      error: err instanceof Error ? err.message : err,
+    });
+    return {
+      outcome: "partial",
+      transfer: {
+        finalTransfer: leg1,
+        bridgeCurrency: "USDT",
+        leg1Reference: leg1.id,
+        leg2Reference: null,
+        leg1CustomerAmount,
+      },
+      error: err,
+    };
+  }
+}
+
+/**
+ * Polls a transfer until it is terminal, or until the budget runs out.
+ *
+ * Returns the freshest transfer it managed to read, terminal or not — the
+ * caller decides what a non-terminal one means. A lookup that throws is not
+ * fatal here: the last known transfer is returned instead, and the caller's
+ * own status check handles it.
+ */
+async function awaitTerminalTransfer(transfer: busha.BushaTransfer): Promise<busha.BushaTransfer> {
+  let latest = transfer;
+
+  for (let attempt = 0; attempt < LEG1_POLL_ATTEMPTS; attempt += 1) {
+    if (isTransferDelivered(latest.status) || isTransferFailed(latest.status)) return latest;
+    await new Promise((resolve) => setTimeout(resolve, LEG1_POLL_INTERVAL_MS));
+    try {
+      latest = await busha.getTransfer(latest.id);
+    } catch (err) {
+      console.error("[convert.awaitTerminalTransfer] lookup failed", {
+        transferId: latest.id,
+        error: err instanceof Error ? err.message : err,
+      });
+      return latest;
+    }
+  }
+
+  return latest;
 }
 
 /**

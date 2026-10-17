@@ -54,8 +54,13 @@ export async function GET(request: Request) {
     // The amount and currency columns are selected because completion is no
     // longer allowed on the provider's status alone — the transfer has to
     // describe THIS row. See src/lib/transfers/verify.ts.
+    // The leg columns come too: on a two-leg conversion provider_reference is
+    // LEG 2's, whose source is USDT rather than the row's own currency, and
+    // verifyTransferMatchesRow needs the bridge trail to know that. Without
+    // them every correctly-executed fiat-to-fiat conversion would be flagged
+    // for manual review instead of completing.
     .select(
-      "id, type, provider_reference, amount, currency, target_currency, target_amount, raw_target_amount",
+      "id, type, provider_reference, amount, currency, target_currency, target_amount, raw_target_amount, markup_rate, bridge_currency, leg1_provider_reference, leg2_provider_reference, leg1_target_amount",
     )
     .eq("provider", "busha")
     .in("status", ["pending", "processing"])

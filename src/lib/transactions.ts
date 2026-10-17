@@ -308,6 +308,11 @@ async function queryBills(
   // burying it inside "Bills" makes it harder to find than it should be.
   if (filter === "airtime") query = query.eq("category", "airtime");
   if (filter === "bills") query = query.neq("category", "airtime");
+  // 'partially_completed' is a conversion-only status (0023) and no bill can
+  // carry it, so filtering bills by it must return nothing rather than be a
+  // type error — returning the unfiltered list would be worse than returning
+  // none, since it would show rows that do not match what was asked for.
+  if (filters.status === "partially_completed") return [];
   if (filters.status) query = query.eq("status", filters.status);
   if (filters.from) query = query.gte("created_at", filters.from);
   if (filters.to) query = query.lte("created_at", endOfDay(filters.to));

@@ -240,8 +240,12 @@ async function handleTransfer(
     .from("transactions")
     // Amounts and currencies, because the provider's status alone is no longer
     // enough to complete a row — see src/lib/transfers/verify.ts.
+    // Including the 0024 leg trail: a two-leg conversion's provider_reference
+    // is leg 2's, and leg 2's source is USDT, not the row's own currency.
+    // verifyTransferMatchesRow cannot tell a correct bridged conversion from
+    // somebody else's transfer without it.
     .select(
-      "id, type, status, needs_manual_review, amount, currency, target_currency, target_amount, raw_target_amount",
+      "id, type, status, needs_manual_review, amount, currency, target_currency, target_amount, raw_target_amount, markup_rate, bridge_currency, leg1_provider_reference, leg2_provider_reference, leg1_target_amount",
     )
     .eq("provider", "busha")
     .eq("provider_reference", providerReference)
