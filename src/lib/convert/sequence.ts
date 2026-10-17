@@ -30,26 +30,67 @@
 /** What a step returns when it can fail with a message the caller may show. */
 export type StepResult<T> = { ok: true; value: T } | { ok: false; error: string; isPinError?: boolean };
 
+/**
+ * What the provider step reports back.
+ *
+ * A fiat-to-fiat conversion is TWO provider legs bridged through USDT, since
+ * no direct fiat pair is quoted. That makes a third outcome real, and it is
+ * neither success nor failure:
+ *
+ *   completed  everything the conversion needed from the provider is done.
+ *   partial    leg 1 converted the source into USDT; leg 2 did not deliver.
+ *              The money moved. It is simply not where it was going.
+ *   (throw)    nothing moved — leg 1 itself failed, or this was a one-leg
+ *              conversion that failed. The hold is released.
+ *
+ * "partial" must never take the release path. Releasing refunds the source
+ * currency the user no longer has a claim to, while the USDT leg 1 produced
+ * stays with the business: a double credit against us. It settles instead,
+ * and the USDT goes to the user's own wallet.
+ */
+export type ProviderResult<TTransfer> =
+  | { outcome: "completed"; transfer: TTransfer }
+  | { outcome: "partial"; transfer: TTransfer; error: unknown };
+
 export interface ConversionSteps<TTransfer, TQuote> {
   /**
    * Suspension, PIN, destination wallet, balance, and the debit — one
    * database transaction, no provider. Resolves to the hold id.
    */
   beginHold: () => Promise<StepResult<string>>;
-  /** The provider call. Throws on failure, like the provider client does. */
-  callProvider: () => Promise<TTransfer>;
+  /**
+   * The provider call or calls. Throws when NOTHING moved; resolves to a
+   * ProviderResult otherwise.
+   */
+  callProvider: () => Promise<ProviderResult<TTransfer>>;
   /** Records what the provider reported, server-side. */
   writeQuote: (transfer: TTransfer) => Promise<StepResult<TQuote>>;
   /** Writes the ledger row from the hold and the quote. No second debit. */
   settle: (holdId: string, quote: TQuote) => Promise<StepResult<string>>;
   /** Puts the money back. Must not throw — see convert.ts releaseHold. */
   release: (holdId: string, reason: string) => Promise<void>;
+  /**
+   * Credits the bridge currency leg 1 produced and marks the row
+   * partially completed. Only ever called for a "partial" provider result.
+   */
+  settlePartial: (transactionId: string, reason: string) => Promise<void>;
   /** Turns a thrown provider error into customer-facing text. */
   describeProviderError: (err: unknown) => string;
 }
 
 export type ConversionOutcome<TTransfer> =
-  | { ok: true; transactionId: string; transfer: TTransfer; holdId: string }
+  | {
+      ok: true;
+      transactionId: string;
+      transfer: TTransfer;
+      holdId: string;
+      /**
+       * "partial" means leg 1 converted and leg 2 did not: the row exists,
+       * the bridge currency has been credited, and the caller must NOT go on
+       * to complete it.
+       */
+      outcome: "completed" | "partial";
+    }
   | {
       ok: false;
       error: string;
@@ -73,10 +114,12 @@ export async function runConversion<TTransfer, TQuote>(
   const holdId = held.value;
 
   // ── 2. The provider ──────────────────────────────────────────────────────
-  let transfer: TTransfer;
+  let provider: ProviderResult<TTransfer>;
   try {
-    transfer = await steps.callProvider();
+    provider = await steps.callProvider();
   } catch (err) {
+    // A throw means NOTHING moved. That is the only case where giving the
+    // source currency back is correct.
     await steps.release(holdId, err instanceof Error ? err.message : String(err));
     return {
       ok: false,
@@ -85,6 +128,8 @@ export async function runConversion<TTransfer, TQuote>(
       released: true,
     };
   }
+
+  const { transfer } = provider;
 
   // ── 3. Record what it said ───────────────────────────────────────────────
   const quoted = await steps.writeQuote(transfer);
@@ -100,5 +145,22 @@ export async function runConversion<TTransfer, TQuote>(
     return { ok: false, error: settled.error, failedAt: "settle", released: true };
   }
 
-  return { ok: true, transactionId: settled.value, transfer, holdId };
+  // ── 5. A half-done conversion is settled, not released ───────────────────
+  // The row now owns the hold, so the money is accounted for. What is left is
+  // to put the USDT leg 1 produced into the user's own wallet and mark the
+  // row for what it is.
+  if (provider.outcome === "partial") {
+    await steps.settlePartial(
+      settled.value,
+      provider.error instanceof Error ? provider.error.message : String(provider.error),
+    );
+  }
+
+  return {
+    ok: true,
+    transactionId: settled.value,
+    transfer,
+    holdId,
+    outcome: provider.outcome,
+  };
 }

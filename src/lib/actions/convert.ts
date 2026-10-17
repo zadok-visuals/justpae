@@ -214,7 +214,7 @@ export async function executeConversion(
   //
   // Each step below is the real implementation of one of those; the test
   // injects fakes and asserts on call counts.
-  const outcome = await runConversion<busha.BushaTransfer, string>({
+  const outcome = await runConversion<ConversionExecution, string>({
     // Checks suspension, the PIN, the destination wallet and the balance, and
     // debits the source wallet into a hold — one transaction, no provider.
     // Until this returns a hold id, nothing has been asked of anyone outside
@@ -249,14 +249,16 @@ export async function executeConversion(
     // The provider executes at its own real, unmarked rate. The customer is
     // only ever credited the marked-up figure, and the gap between the two is
     // the margin — which is why both are recorded on the row.
-    callProvider: async () => {
-      const providerQuote = await busha.createQuote({
-        sourceCurrency: from,
-        targetCurrency: to,
-        sourceAmount: amount.toFixed(2),
-      });
-      return busha.createTransfer(providerQuote.id);
-    },
+    //
+    // ONE LEG OR TWO, depending on the route. routes.ts has always PRICED a
+    // fiat-to-fiat pair as a bridge through USDT, because the provider quotes
+    // no direct pair between any two of our fiat currencies — but this used
+    // to send a single createQuote(from, to) for it anyway, which the
+    // provider rejects. The execution now matches the pricing.
+    callProvider: () =>
+      route.kind === "fiat_via_usdt"
+        ? executeBridgedConversion({ from, to, amount, route })
+        : executeSingleLeg({ from, to, amount }),
 
     // THE QUOTE ROW IS THE CONTRACT. Every figure that will end up on the
     // ledger row is written here, with the service role, by this server code
@@ -265,8 +267,9 @@ export async function executeConversion(
     // transfer that was actually created. The settle step then takes nothing
     // but this row's id and the hold's: there is no argument through which a
     // figure can arrive from outside.
-    writeQuote: async (transfer) => {
-      const rawTargetAmount = Number(transfer.target_amount);
+    writeQuote: async (execution) => {
+      const { finalTransfer } = execution;
+      const rawTargetAmount = Number(finalTransfer.target_amount);
       const customerTargetAmount = applyMarkupToAmount(rawTargetAmount, route.markupRate);
 
       // The SOURCE figure is the amount that was actually HELD, not the one
@@ -275,11 +278,18 @@ export async function executeConversion(
       // is what left the user's balance, so `amount` is what the row says. A
       // divergence is a real operational signal, so it is logged rather than
       // quietly absorbed.
-      const providerSourceAmount = Number(transfer.source_amount);
-      if (Number.isFinite(providerSourceAmount) && round2(providerSourceAmount) !== round2(amount)) {
+      //
+      // Only meaningful for a single-leg conversion: on a bridged one the
+      // final transfer's source is USDT, not the user's currency.
+      const providerSourceAmount = Number(finalTransfer.source_amount);
+      if (
+        !execution.bridgeCurrency &&
+        Number.isFinite(providerSourceAmount) &&
+        round2(providerSourceAmount) !== round2(amount)
+      ) {
         console.error("[convert.executeConversion] provider source amount differs from the held amount", {
           userId: user.id,
-          transferId: transfer.id,
+          transferId: finalTransfer.id,
           held: round2(amount),
           providerReported: round2(providerSourceAmount),
         });
@@ -292,12 +302,23 @@ export async function executeConversion(
           source_currency: from,
           target_currency: to,
           source_amount: round2(amount),
+          // On a partial there is no target delivery, but the row still
+          // records what the conversion was FOR — the detail view shows the
+          // intended target alongside what actually landed.
           target_amount: round2(customerTargetAmount),
           provider_rate: route.providerRate,
           markup_rate: route.markupRate,
           customer_rate: route.customerRate,
           raw_target_amount: round2(rawTargetAmount),
-          provider_reference: transfer.id,
+          // The primary reference is the leg that determines final delivery,
+          // so the reconciler and the webhook keep pointing at the right one
+          // without knowing how many legs there were.
+          provider_reference: execution.leg2Reference ?? finalTransfer.id,
+          bridge_currency: execution.bridgeCurrency ?? null,
+          leg1_provider_reference: execution.leg1Reference ?? null,
+          leg2_provider_reference: execution.leg2Reference ?? null,
+          leg1_target_amount:
+            execution.leg1CustomerAmount != null ? round2(execution.leg1CustomerAmount) : null,
           expires_at: new Date(Date.now() + QUOTE_TTL_SECONDS * 1000).toISOString(),
         })
         .select("id")
@@ -306,7 +327,7 @@ export async function executeConversion(
       if (quoteError || !quoteRow) {
         console.error("[convert.executeConversion] transfer executed but quote write failed", {
           userId: user.id,
-          transferId: transfer.id,
+          transferId: finalTransfer.id,
           error: quoteError,
         });
         return { ok: false, error: "Could not complete that conversion. Please contact support." };

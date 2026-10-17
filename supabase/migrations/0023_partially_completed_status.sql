@@ -1,0 +1,25 @@
+-- ============================================================================
+-- justpae 0023 — one new transaction_status value, and nothing else.
+--
+-- WHY THIS FILE CONTAINS ONE LINE
+--
+-- Postgres forbids USING a newly added enum value in the same transaction that
+-- added it, and `supabase db push` runs each migration file in its own
+-- transaction. 0024 both references 'partially_completed' and writes it, so
+-- the value has to arrive in an earlier file. Same constraint the migrations
+-- README already records for adding CNY to the `currency` enum.
+--
+-- WHAT IT IS FOR
+--
+-- A fiat-to-fiat conversion is two provider legs bridged through USDT, because
+-- the provider quotes no direct fiat pair. If the second leg fails, the money
+-- is neither where it started nor where it was going — it is sitting in USDT,
+-- which is a real outcome the user now owns and not a failure to be refunded.
+--
+-- 'failed' would be a lie: fail_conversion refunds the source amount, and
+-- refunding money that was genuinely converted would credit the user twice.
+-- 'completed' would be a bigger lie. Hence a fourth terminal state that says
+-- what actually happened.
+-- ============================================================================
+
+alter type transaction_status add value 'partially_completed';

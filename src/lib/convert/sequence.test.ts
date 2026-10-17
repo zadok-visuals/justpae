@@ -15,6 +15,7 @@ interface Spy {
   releases: { holdId: string; reason: string }[];
   settles: number;
   quotes: number;
+  partials: { transactionId: string; reason: string }[];
 }
 
 /**
@@ -25,13 +26,13 @@ function steps(overrides: Partial<ConversionSteps<string, string>> = {}): {
   steps: ConversionSteps<string, string>;
   spy: Spy;
 } {
-  const spy: Spy = { providerCalls: 0, releases: [], settles: 0, quotes: 0 };
+  const spy: Spy = { providerCalls: 0, releases: [], settles: 0, quotes: 0, partials: [] };
 
   const base: ConversionSteps<string, string> = {
     beginHold: async () => ok("hold-1"),
     callProvider: async () => {
       spy.providerCalls += 1;
-      return "transfer-1";
+      return { outcome: "completed", transfer: "transfer-1" };
     },
     writeQuote: async () => {
       spy.quotes += 1;
@@ -43,6 +44,9 @@ function steps(overrides: Partial<ConversionSteps<string, string>> = {}): {
     },
     release: async (holdId, reason) => {
       spy.releases.push({ holdId, reason });
+    },
+    settlePartial: async (transactionId, reason) => {
+      spy.partials.push({ transactionId, reason });
     },
     describeProviderError: (err) => (err instanceof Error ? err.message : "Provider failed"),
   };
@@ -140,9 +144,79 @@ test("the happy path holds, calls the provider once, and never releases", async 
 
   assert.equal(outcome.ok, true);
   assert.equal(outcome.ok === true && outcome.transactionId, "txn-1");
+  assert.equal(outcome.ok === true && outcome.outcome, "completed");
   assert.equal(spy.providerCalls, 1);
   assert.equal(spy.quotes, 1);
   assert.equal(spy.settles, 1);
   // A release on the success path would hand back money the conversion spent.
   assert.deepEqual(spy.releases, []);
+  assert.deepEqual(spy.partials, []);
+});
+
+// ── Group 4a: the two-leg outcomes ─────────────────────────────────────────
+
+test("a failed SECOND leg settles and credits, and never releases", async () => {
+  // THE ONE THAT MATTERS. Leg 1 really converted the source into USDT. A
+  // release here would refund source currency the user no longer has a claim
+  // to while the USDT stays with the business — paying out twice. So the row
+  // is settled and the bridge currency is credited instead.
+  const { steps: s, spy } = steps({
+    callProvider: async () => {
+      spy.providerCalls += 1;
+      return {
+        outcome: "partial",
+        transfer: "transfer-leg1-only",
+        error: new Error("leg 2 rejected"),
+      };
+    },
+  });
+
+  const outcome = await runConversion(s);
+
+  assert.equal(outcome.ok, true);
+  assert.equal(outcome.ok === true && outcome.outcome, "partial");
+  assert.equal(spy.settles, 1, "the hold must still settle into a row");
+  assert.deepEqual(spy.releases, [], "a partial must never release the hold");
+  assert.deepEqual(spy.partials, [{ transactionId: "txn-1", reason: "leg 2 rejected" }]);
+});
+
+test("a failed FIRST leg is an ordinary provider failure and releases", async () => {
+  // Nothing moved, so the source refund is exactly right. The distinction
+  // between this and the test above is the whole of the two-leg design.
+  const { steps: s, spy } = steps({
+    callProvider: async () => {
+      spy.providerCalls += 1;
+      throw new Error("leg 1 rejected");
+    },
+  });
+
+  const outcome = await runConversion(s);
+
+  assert.equal(outcome.ok, false);
+  assert.equal(outcome.ok === false && outcome.failedAt, "provider");
+  assert.equal(spy.releases.length, 1);
+  assert.deepEqual(spy.partials, []);
+  assert.equal(spy.settles, 0);
+});
+
+test("a partial whose ledger write fails still releases rather than crediting", async () => {
+  // There is no row to attach the credit to, so the only thing that can be
+  // done for the user is give the source back. The business absorbs the
+  // leg-1 movement, which is the right way round.
+  const { steps: s, spy } = steps({
+    callProvider: async () => {
+      spy.providerCalls += 1;
+      return { outcome: "partial", transfer: "t", error: new Error("leg 2 rejected") };
+    },
+    settle: async () => {
+      spy.settles += 1;
+      return fail("ledger write failed");
+    },
+  });
+
+  const outcome = await runConversion(s);
+
+  assert.equal(outcome.ok, false);
+  assert.equal(spy.releases.length, 1);
+  assert.deepEqual(spy.partials, [], "nothing to credit without a row");
 });
