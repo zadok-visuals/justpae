@@ -1,6 +1,7 @@
 import type { Currency } from "@/lib/types/database";
 import { getUsdtPairRates } from "@/lib/busha/rate";
 import { quoteWithMarkup, type MarkupQuote } from "@/lib/rates/markup";
+import { isUsdPair, USD_CONVERSION_UNAVAILABLE } from "@/lib/currencies";
 
 /**
  * Server-only. Conversion route resolution for /convert.
@@ -57,6 +58,21 @@ function unavailable(from: Currency, to: Currency, reason: string): ConversionRo
 export async function resolveRoute(from: Currency, to: Currency): Promise<ConversionRoute> {
   if (from === to) {
     return unavailable(from, to, "Pick two different wallets.");
+  }
+
+  // ── USD: refused HERE, before any provider call. ────────────────────────
+  //
+  // There is no USDT/USD pair on this account, so every USD route — direct to
+  // USDT, or bridged to a local currency — resolves to nothing. Left to the
+  // lookups below, that arrives as the generic "USDT/USD isn't quoted by our
+  // liquidity provider yet" line, which reads as a passing outage rather than
+  // the standing fact it is, and only after a wasted round trip per pair.
+  //
+  // One short-circuit covers every caller: quoteConversion, executeConversion,
+  // listRoutesFrom (so the select is disabled with the real reason before the
+  // user picks it) and Home's rate strip all route through here.
+  if (isUsdPair(from, to)) {
+    return unavailable(from, to, USD_CONVERSION_UNAVAILABLE);
   }
 
   // ── USDT on one side: a single direct pair lookup. ──────────────────────

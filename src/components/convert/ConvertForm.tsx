@@ -16,7 +16,14 @@ import {
   type RouteAvailability,
 } from "@/lib/actions/convert";
 import { getMinimumConversionAmount } from "@/lib/busha/limits";
-import { currencyMeta, formatAmount, formatNumber, formatRate } from "@/lib/currencies";
+import {
+  currencyMeta,
+  formatAmount,
+  formatNumber,
+  formatRate,
+  isUsdPair,
+  USD_CONVERSION_UNAVAILABLE,
+} from "@/lib/currencies";
 import type { Currency, Wallet } from "@/lib/types/database";
 
 /**
@@ -130,6 +137,10 @@ function ConvertFormFields({
     // synchronous state write in the effect body on every keystroke back to
     // empty.
     if (typedAmount <= 0) return;
+    // A USD pair has a known answer that no round trip can change, and the
+    // banner is already showing it. Quoting anyway would only risk replacing
+    // that specific message with a generic "couldn't price that".
+    if (isUsdPair(from, to)) return;
 
     const requestId = ++latestRequest.current;
     const timer = setTimeout(() => {
@@ -183,7 +194,12 @@ function ConvertFormFields({
     activeQuote?.minimumSourceAmount ?? getMinimumConversionAmount(from);
   const expired = activeQuote != null && secondsLeft === 0;
 
+  // Derived from the pair alone, so it is true before any quote round trip —
+  // the point is that the user is told BEFORE typing an amount, not after.
+  const usdPicked = isUsdPair(from, to);
+
   const blocked =
+    usdPicked ||
     !hasPin ||
     !currentRoute?.available ||
     activeQuote == null ||
@@ -298,13 +314,24 @@ function ConvertFormFields({
         />
       </Card>
 
-      {currentRoute && !currentRoute.available && (
-        <Banner tone="info" title={`${from} to ${to} isn't available right now`}>
-          {currentRoute.reason}
+      {/* USD is a STANDING state, not a passing one, so it gets its own
+          banner rather than the "isn't available right now" wording — and it
+          renders the moment USD is picked on either side, with no amount
+          typed and no quote attempted. */}
+      {usdPicked ? (
+        <Banner tone="info" title="Dollar conversions aren't open yet">
+          {USD_CONVERSION_UNAVAILABLE}
         </Banner>
+      ) : (
+        currentRoute &&
+        !currentRoute.available && (
+          <Banner tone="info" title={`${from} to ${to} isn't available right now`}>
+            {currentRoute.reason}
+          </Banner>
+        )
       )}
 
-      {activeUnavailable && currentRoute?.available && (
+      {activeUnavailable && !usdPicked && currentRoute?.available && (
         <Banner live tone="info" title="Couldn't price that">
           {activeUnavailable}
         </Banner>
@@ -323,7 +350,11 @@ function ConvertFormFields({
       {hasPin && <PinField value={pin} onValueChange={setPin} error={state.error} />}
 
       <SubmitButton disabled={blocked} pendingLabel="Converting…">
-        {expired ? "Rate expired — edit the amount" : `Convert to ${to}`}
+        {usdPicked
+          ? "Dollar conversions aren't open yet"
+          : expired
+            ? "Rate expired — edit the amount"
+            : `Convert to ${to}`}
       </SubmitButton>
     </form>
 

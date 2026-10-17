@@ -10,7 +10,7 @@ import { resolveRoute, resolveRoutesFrom, type ConversionRoute } from "@/lib/rat
 import { applyMarkupToAmount } from "@/lib/rates/markup";
 import { getMinimumConversionAmount } from "@/lib/busha/limits";
 import { toCustomerError, toRpcError } from "@/lib/provider-error";
-import { CURRENCY_CODES, formatAmount } from "@/lib/currencies";
+import { CURRENCY_CODES, formatAmount, isUsdPair, USD_CONVERSION_UNAVAILABLE } from "@/lib/currencies";
 import { isPinLockedError, isWrongPinError, resolvePinError } from "@/lib/pin";
 import { notifyConversionCompleted } from "@/lib/notify/events";
 import { runConversion, type ProviderResult } from "@/lib/convert/sequence";
@@ -150,10 +150,17 @@ export async function listRoutesFrom(from: Currency): Promise<RouteAvailability[
     console.error("[convert.listRoutesFrom] failed", err);
     // A provider outage must not render every route "unavailable" with a
     // confident-sounding per-pair explanation it has no basis for.
+    //
+    // USD is the exception, and it is not a guess: its unavailability is a
+    // standing fact about this account, not a symptom of the outage we just
+    // caught. Telling a USD holder to "try again in a moment" during an
+    // outage would be the one generic error this message exists to prevent.
     return CURRENCY_CODES.filter((c) => c !== from).map((to) => ({
       to,
       available: false,
-      reason: "Rates are unavailable right now. Please try again in a moment.",
+      reason: isUsdPair(from, to)
+        ? USD_CONVERSION_UNAVAILABLE
+        : "Rates are unavailable right now. Please try again in a moment.",
       customerRate: null,
     }));
   }
