@@ -9,9 +9,32 @@ import {
   clearPendingVerificationEmail,
   resolvePendingVerificationEmail,
 } from "@/lib/auth/pendingEmail";
+import { loginFailureValues, signupFailureValues } from "@/lib/auth/actionValues";
 
 export interface AuthActionState {
   error?: string;
+  /**
+   * What the user typed, echoed back so a failed submit can re-render it.
+   *
+   * React 19 RESETS an uncontrolled form once its action resolves. The reset
+   * restores each input to its `defaultValue`, so a form that returns only an
+   * error comes back blank — someone who mistypes a password has their email
+   * wiped too, and on a phone that is the difference between one correction
+   * and retyping the whole thing. Returning the values and feeding them to
+   * `defaultValue` makes the reset restore what they typed instead of
+   * nothing.
+   *
+   * NEVER a password, and the type is what enforces it: there is no field
+   * here to put one in. A password echoed back into an action state is a
+   * secret written into the RSC payload, which is on the wire and in the
+   * browser's memory for no benefit — the user has to retype it either way,
+   * because a password field they cannot read is not one they can correct.
+   */
+  values?: {
+    email?: string;
+    fullName?: string;
+    country?: string;
+  };
 }
 
 function appUrl(): string {
@@ -27,14 +50,22 @@ export async function signUp(
   const fullName = String(formData.get("fullName") ?? "").trim();
   const country = String(formData.get("country") ?? "").trim().toUpperCase();
 
+  // Three fields echoed back on every failure; the password is not one of
+  // them. Signup is the form where this matters most — it is the longest in
+  // the app and the one a weak-password rejection sends you back to.
+  const values = signupFailureValues({ email, fullName, country });
+
   if (!email || !password || !fullName || !country) {
-    return { error: "All fields are required." };
+    return { error: "All fields are required.", values };
   }
   if (!assessPasswordStrength(password).meetsMinimum) {
-    return { error: "Password is too weak — use at least 8 characters with a mix of letters, numbers or symbols." };
+    return {
+      error: "Password is too weak — use at least 8 characters with a mix of letters, numbers or symbols.",
+      values,
+    };
   }
   if (!isKnownCountry(country)) {
-    return { error: "Pick your country from the list." };
+    return { error: "Pick your country from the list.", values };
   }
 
   const supabase = await createClient();
@@ -56,7 +87,7 @@ export async function signUp(
     },
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: error.message, values };
 
   if (data.session) {
     // signUp() only returns a session immediately when the Supabase
@@ -69,7 +100,7 @@ export async function signUp(
     console.error(
       "[signUp] Supabase 'Confirm email' is OFF: refusing to create an unverified session",
     );
-    return { error: "Sign up is temporarily unavailable. Please try again shortly." };
+    return { error: "Sign up is temporarily unavailable. Please try again shortly.", values };
   }
 
   // confirm-signup.html sends {{ .Token }} as the primary path (works by
@@ -150,7 +181,14 @@ export async function logIn(
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
 
-  if (!email || !password) return { error: "Email and password are required." };
+  // Every failure path below carries the email back, so the field survives the
+  // React 19 form reset. The password never does — loginFailureValues takes
+  // only the email, so there is nothing here that could pass one.
+  const values = loginFailureValues(email);
+
+  if (!email || !password) {
+    return { error: "Email and password are required.", values };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -160,7 +198,7 @@ export async function logIn(
       await setPendingVerificationEmail(email);
       redirect("/auth/verify");
     }
-    return { error: error.message };
+    return { error: error.message, values };
   }
 
   redirect("/home");
@@ -195,6 +233,8 @@ export async function logOut() {
 export interface ForgotPasswordState {
   error?: string;
   sent?: boolean;
+  /** Echoed back on failure so the React 19 form reset does not blank it. */
+  values?: { email?: string };
 }
 
 export async function requestPasswordReset(
@@ -202,7 +242,7 @@ export async function requestPasswordReset(
   formData: FormData,
 ): Promise<ForgotPasswordState> {
   const email = String(formData.get("email") ?? "").trim();
-  if (!email) return { error: "Enter your email address." };
+  if (!email) return { error: "Enter your email address.", values: { email } };
 
   const supabase = await createClient();
   await supabase.auth.resetPasswordForEmail(email, {
@@ -216,6 +256,12 @@ export async function requestPasswordReset(
   return { sent: true };
 }
 
+/**
+ * Note there is deliberately no `values` echo here: this form's only two
+ * fields are the new password and its confirmation. Both are secrets, so
+ * there is nothing to carry back — the user retypes either way, which is the
+ * point of a password field they cannot read.
+ */
 export async function resetPassword(
   _prevState: AuthActionState,
   formData: FormData,

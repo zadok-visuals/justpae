@@ -38,7 +38,11 @@ export function RateMarkupForm() {
       {state.ok && <Banner tone="success" title="Markup updated" />}
 
       <form action={formAction} className="space-y-3">
-        <SelectField name="pair" label="Pair" required defaultValue="">
+        {/* Both defaultValues read from the action state so a rejected edit
+            keeps the pair and the number. Without it the React 19 reset puts
+            the select back to "Choose a pair" and empties the field, so
+            correcting a typo means re-picking the pair as well. */}
+        <SelectField name="pair" label="Pair" required defaultValue={state.values?.pair ?? ""}>
           <option value="" disabled>
             Choose a pair
           </option>
@@ -57,6 +61,7 @@ export function RateMarkupForm() {
           required
           placeholder="0.5"
           trailing="%"
+          defaultValue={state.values?.markupPercent ?? ""}
           error={state.error}
         />
 
@@ -117,7 +122,17 @@ export function SettingsForm({ values }: { values: Record<string, string> }) {
               label={setting.label}
               hint={setting.hint}
               inputMode="decimal"
-              defaultValue={values[setting.key] ?? ""}
+              // The STORED value normally, but the rejected edit when this is
+              // the setting that just failed. settingKey is what scopes that:
+              // one action state is shared by all three forms, so without the
+              // key check a rejected edit to one would repopulate the others.
+              // Snapping silently back to the stored number is the worst
+              // outcome here — it looks exactly like a successful save.
+              defaultValue={
+                state.values?.settingKey === setting.key
+                  ? state.values.settingValue ?? ""
+                  : values[setting.key] ?? ""
+              }
               required
             />
             <p className="text-xs text-muted-foreground">{setting.help}</p>

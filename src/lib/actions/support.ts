@@ -116,6 +116,15 @@ export async function getUnreadSupportCount(): Promise<number> {
 export interface SendSupportMessageState {
   error?: string;
   ok?: boolean;
+  /**
+   * Echoed back on failure so a reply survives the React 19 form reset.
+   *
+   * Only the admin reply box needs it. The customer composer is a CONTROLLED
+   * textarea that clears optimistically and keeps its draft in a ref, offering
+   * it back through the failure toast — a better answer for that side, because
+   * the message is supposed to vanish the instant you press send.
+   */
+  values?: { body?: string };
 }
 
 export async function sendSupportMessage(
@@ -340,9 +349,15 @@ export async function replyToSupportThread(
 
   const userId = String(formData.get("userId") ?? "");
   const body = String(formData.get("body") ?? "").trim();
-  if (!userId) return { error: "Missing the thread." };
-  if (!body) return { error: "Write a reply." };
-  if (body.length > SUPPORT_MESSAGE_MAX_LENGTH) return { error: "That reply is too long." };
+  // Carried by every failure return, so a long reply is not lost to a
+  // transient send error. See SendSupportMessageState.
+  const values = { body };
+
+  if (!userId) return { error: "Missing the thread.", values };
+  if (!body) return { error: "Write a reply.", values };
+  if (body.length > SUPPORT_MESSAGE_MAX_LENGTH) {
+    return { error: "That reply is too long.", values };
+  }
 
   const service = createAdminClient();
   const { error } = await service.rpc("admin_send_support_message", {
@@ -353,7 +368,7 @@ export async function replyToSupportThread(
 
   if (error) {
     console.error("[support.replyToSupportThread] failed", { userId, error });
-    return { error: "Couldn't send that reply." };
+    return { error: "Couldn't send that reply.", values };
   }
 
   const { data: profile } = await service

@@ -49,6 +49,7 @@ export function ForgotPasswordForm() {
           required
           placeholder="you@example.com"
           error={state.error}
+          defaultValue={state.values?.email ?? ""}
         />
 
         <SubmitButton pendingLabel="Sending…">Send reset link</SubmitButton>
@@ -64,6 +65,11 @@ export function ForgotPasswordForm() {
   );
 }
 
+/**
+ * No defaultValue anywhere in this one, deliberately. Both fields are
+ * passwords, so there is nothing that may be echoed back — see
+ * AuthActionState in src/lib/actions/auth.ts.
+ */
 export function ResetPasswordForm() {
   const [state, formAction] = useActionState(resetPassword, {});
 

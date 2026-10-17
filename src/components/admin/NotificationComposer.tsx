@@ -78,6 +78,11 @@ export function NotificationComposer() {
         </div>
       </fieldset>
 
+      {/* Every defaultValue below reads from the action state, which carries
+          the draft back on failure and NOT on success. That split is what
+          lets the reset() above still clear the composer after a send, while
+          a rejected send — a bad link, an email with no account — keeps the
+          wording the admin just wrote. */}
       {audience === "user" && (
         <TextField
           name="targetEmail"
@@ -86,6 +91,7 @@ export function NotificationComposer() {
           required
           autoComplete="off"
           placeholder="customer@example.com"
+          defaultValue={state.values?.targetEmail ?? ""}
         />
       )}
 
@@ -95,6 +101,7 @@ export function NotificationComposer() {
         required
         maxLength={120}
         placeholder="e.g. Scheduled maintenance on Sunday"
+        defaultValue={state.values?.title ?? ""}
       />
 
       <TextAreaField
@@ -103,6 +110,7 @@ export function NotificationComposer() {
         required
         maxLength={600}
         placeholder="Keep it short — this is read in a dropdown, not an inbox."
+        defaultValue={state.values?.body ?? ""}
       />
 
       <TextField
@@ -114,6 +122,7 @@ export function NotificationComposer() {
         // is a phishing primitive, so it is refused in all three places.
         pattern="^/[A-Za-z0-9/_?=&.\-]*$"
         placeholder="/transactions"
+        defaultValue={state.values?.href ?? ""}
       />
 
       <SubmitButton pendingLabel="Sending…">Send notification</SubmitButton>

@@ -21,8 +21,15 @@ export function SupportReplyForm({ userId }: { userId: string }) {
   const [state, formAction] = useActionState(replyToSupportThread, {});
   const formRef = useRef<HTMLFormElement>(null);
 
-  // Clear the box only once the reply has actually landed. Resetting on submit
-  // would throw away what the admin typed if the send failed.
+  // Clear the box only once the reply has actually landed.
+  //
+  // That intent predates React 19, which resets an uncontrolled form after
+  // EVERY action regardless of what this effect does — so a failed send was
+  // throwing the reply away anyway, exactly what the original comment set out
+  // to avoid. The reset restores defaultValue, so the fix is for the action to
+  // return the body on failure and for the field below to read it: the reset
+  // then restores the text instead of emptying it. On success the action
+  // returns no values, defaultValue is "", and the box clears as intended.
   useEffect(() => {
     if (state.ok) formRef.current?.reset();
   }, [state]);
@@ -37,6 +44,7 @@ export function SupportReplyForm({ userId }: { userId: string }) {
         required
         maxLength={SUPPORT_MESSAGE_MAX_LENGTH}
         placeholder="Write your reply…"
+        defaultValue={state.values?.body ?? ""}
       />
       <SubmitButton pendingLabel="Sending…">Send reply</SubmitButton>
       <FieldError>{state.error}</FieldError>

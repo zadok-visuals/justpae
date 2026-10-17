@@ -23,6 +23,27 @@ import { KYC_BUCKET } from "@/lib/kyc/constants";
 export interface AdminActionState {
   error?: string;
   ok?: boolean;
+  /**
+   * Echoed back on failure so the React 19 form reset does not blank a typed
+   * rejection reason. A reason is required and the customer reads it, so it
+   * is usually a sentence someone composed rather than a word — losing it to
+   * a transient RPC error means writing it again.
+   *
+   * The rates forms carry theirs too. There the reset is worse than blanking:
+   * those fields default to the STORED value, so a rejected edit silently
+   * snaps back to the old number and looks like it saved.
+   *
+   * settingKey scopes settingValue, because /admin/rates renders one form per
+   * setting over a single shared action state — without it, a rejected edit
+   * to one setting would repopulate all three.
+   */
+  values?: {
+    reason?: string;
+    pair?: string;
+    markupPercent?: string;
+    settingKey?: string;
+    settingValue?: string;
+  };
 }
 
 export async function approveKyc(
@@ -71,7 +92,7 @@ export async function rejectKyc(
   // Required, not optional. Without it the user's status page can only say
   // "please review and resubmit", which tells them nothing and all but
   // guarantees a second rejection for the same reason.
-  if (!reason) return { error: "A rejection reason is required." };
+  if (!reason) return { error: "A rejection reason is required.", values: { reason } };
 
   const admin = createAdminClient();
   const { error } = await admin.rpc("admin_reject_kyc", {
@@ -79,7 +100,7 @@ export async function rejectKyc(
     p_reason: reason,
   });
 
-  if (error) return { error: toRpcError(error, "admin") };
+  if (error) return { error: toRpcError(error, "admin"), values: { reason } };
 
   await logAdminActivity({
     adminId: actor.id,
@@ -200,7 +221,7 @@ export async function rejectWithdrawal(
     p_reason: reason || null,
   });
 
-  if (error) return { error: toRpcError(error, "admin") };
+  if (error) return { error: toRpcError(error, "admin"), values: { reason } };
 
   // admin_reject_withdrawal has already refunded the wallet, and the refund is
   // the headline of the message. A rejected withdrawal the customer is never
@@ -267,15 +288,21 @@ export async function setRateMarkup(
 
   // Submitted as a single "BASE/QUOTE" value from one select — simpler than
   // two dropdowns that can be set to the same currency.
-  const [base, quote] = String(formData.get("pair") ?? "").split("/");
-  const markupPercent = Number(formData.get("markupPercent"));
+  const rawPair = String(formData.get("pair") ?? "");
+  const [base, quote] = rawPair.split("/");
+  const rawMarkup = String(formData.get("markupPercent") ?? "");
+  const markupPercent = Number(rawMarkup);
+
+  // Echoed on every failure so a rejected edit does not clear the pair the
+  // admin picked and the number they typed.
+  const values = { pair: rawPair, markupPercent: rawMarkup };
 
   if (!base || !quote || !isCurrency(base) || !isCurrency(quote)) {
-    return { error: "Select a currency pair." };
+    return { error: "Select a currency pair.", values };
   }
-  if (base === quote) return { error: "Base and quote currency must differ." };
+  if (base === quote) return { error: "Base and quote currency must differ.", values };
   if (!Number.isFinite(markupPercent) || markupPercent < 0 || markupPercent >= 100) {
-    return { error: "Enter a markup between 0 and 99.99 percent." };
+    return { error: "Enter a markup between 0 and 99.99 percent.", values };
   }
 
   const admin = createAdminClient();
@@ -288,7 +315,7 @@ export async function setRateMarkup(
     p_set_by: adminUser.id,
   });
 
-  if (error) return { error: toRpcError(error, "admin") };
+  if (error) return { error: toRpcError(error, "admin"), values };
 
   await logAdminActivity({
     adminId: adminUser.id,
@@ -317,23 +344,27 @@ export async function setAppSetting(
   const key = String(formData.get("key") ?? "");
   const rawValue = String(formData.get("value") ?? "").trim();
 
+  // settingKey scopes settingValue to the one form that failed — /admin/rates
+  // renders one form per setting over a single shared action state.
+  const values = { settingKey: key, settingValue: rawValue };
+
   const allowed = Object.values(SETTING_KEYS) as string[];
-  if (!allowed.includes(key)) return { error: "Unknown setting." };
+  if (!allowed.includes(key)) return { error: "Unknown setting.", values };
 
   const value = Number(rawValue);
-  if (!Number.isFinite(value) || value < 0) return { error: "Enter a valid number." };
+  if (!Number.isFinite(value) || value < 0) return { error: "Enter a valid number.", values };
 
   // Per-setting sanity bounds. A fee rate typed as "5" meaning 5% would be
   // stored as 500%, and a zero threshold would route every withdrawal to
   // manual review — both are easy slips with expensive consequences.
   if (key === SETTING_KEYS.withdrawalFeeRate && value >= 1) {
-    return { error: "The fee rate is a fraction, e.g. 0.01 for 1%." };
+    return { error: "The fee rate is a fraction, e.g. 0.01 for 1%.", values };
   }
   if (key === SETTING_KEYS.automatedPayoutWindowHours && (value < 1 || value > 168)) {
-    return { error: "The window must be between 1 and 168 hours." };
+    return { error: "The window must be between 1 and 168 hours.", values };
   }
   if (key === SETTING_KEYS.automatedPayoutThresholdUsd && value <= 0) {
-    return { error: "The threshold must be greater than zero." };
+    return { error: "The threshold must be greater than zero.", values };
   }
 
   const admin = createAdminClient();
@@ -343,7 +374,7 @@ export async function setAppSetting(
     p_set_by: adminUser.id,
   });
 
-  if (error) return { error: toRpcError(error, "admin") };
+  if (error) return { error: toRpcError(error, "admin"), values };
 
   // The payout threshold and the fee rate change how money moves for every
   // user, with no other trace than this.

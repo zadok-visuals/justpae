@@ -39,6 +39,13 @@ const SEARCH_PAGE_SIZE = 25;
 export interface AdminUserActionState {
   error?: string;
   ok?: boolean;
+  /**
+   * Echoed back on failure so the React 19 form reset restores what was
+   * typed. Two fields qualify: the email on the grant-role form (which is
+   * rejected for several reasons an admin can fix and resubmit) and the
+   * suspension reason (required, customer-visible, and usually a sentence).
+   */
+  values?: { email?: string; reason?: string };
 }
 
 export interface AdminUserSearchResult {
@@ -192,15 +199,15 @@ export async function suspendUser(
   const userId = String(formData.get("userId") ?? "");
   const reason = String(formData.get("reason") ?? "").trim();
 
-  if (!userId) return { error: "Missing the account." };
+  if (!userId) return { error: "Missing the account.", values: { reason } };
   // Mirrors the function's own check. Required because the reason is the only
   // thing that tells the next admin — or a regulator — why this happened.
-  if (!reason) return { error: "A suspension reason is required." };
+  if (!reason) return { error: "A suspension reason is required.", values: { reason } };
 
   // Refused here as well as in SQL, so the message is a sentence rather than a
   // raised exception. An admin who suspends their own account locks themselves
   // out of the tool they would need to undo it.
-  if (userId === actor.id) return { error: "You cannot suspend your own account." };
+  if (userId === actor.id) return { error: "You cannot suspend your own account.", values: { reason } };
 
   const service = createAdminClient();
   const { error } = await service.rpc("admin_suspend_user", {
@@ -211,7 +218,7 @@ export async function suspendUser(
 
   // The function raises for a missing account and for an account that still
   // holds admin access. Both messages are written to be shown.
-  if (error) return { error: toRpcError(error, "adminUsers") };
+  if (error) return { error: toRpcError(error, "adminUsers"), values: { reason } };
 
   // admin_suspend_user logs from inside itself — this is the in-app notice,
   // which is a separate thing. The user is told, with the reason: an account
@@ -270,8 +277,8 @@ export async function grantAdminRole(
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const role = String(formData.get("role") ?? "admin");
 
-  if (!email) return { error: "Enter the email of the account to grant." };
-  if (role !== "admin" && role !== "superadmin") return { error: "Unknown role." };
+  if (!email) return { error: "Enter the email of the account to grant.", values: { email } };
+  if (role !== "admin" && role !== "superadmin") return { error: "Unknown role.", values: { email } };
 
   const service = createAdminClient();
   const { data: profile } = await service
@@ -280,13 +287,13 @@ export async function grantAdminRole(
     .eq("email", email)
     .maybeSingle();
 
-  if (!profile) return { error: `No account found for ${email}.` };
+  if (!profile) return { error: `No account found for ${email}.`, values: { email } };
 
   // The reverse of the rule admin_suspend_user enforces. Admin access on a
   // suspended account is a state where the two systems disagree about whether
   // this person is trusted, and whichever one wins, the answer is wrong.
   if (profile.suspended_at) {
-    return { error: "That account is suspended. Reinstate it first." };
+    return { error: "That account is suspended. Reinstate it first.", values: { email } };
   }
 
   const { error } = await service.rpc("admin_grant_role", {
@@ -295,7 +302,7 @@ export async function grantAdminRole(
     p_granted_by: actor.id,
   });
 
-  if (error) return { error: toRpcError(error, "adminUsers") };
+  if (error) return { error: toRpcError(error, "adminUsers"), values: { email } };
 
   // The grant is logged inside admin_grant_role. This tells the person, which
   // matters more than it looks: if they did not expect it, they are the first

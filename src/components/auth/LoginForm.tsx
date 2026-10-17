@@ -24,6 +24,11 @@ export function LoginForm({ notice }: { notice?: string }) {
       )}
 
       <form action={formAction} className="space-y-4">
+        {/* defaultValue, not value: the form stays uncontrolled, and React 19
+            resets it to defaultValue once the action resolves. Returning the
+            email in the action state is therefore what makes the reset
+            restore it rather than blank it. The password field has no
+            equivalent on purpose — see AuthActionState. */}
         <TextField
           name="email"
           label="Email"
@@ -35,6 +40,7 @@ export function LoginForm({ notice }: { notice?: string }) {
           enterKeyHint="next"
           required
           placeholder="you@example.com"
+          defaultValue={state.values?.email ?? ""}
         />
 
         <PasswordField

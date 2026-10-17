@@ -22,6 +22,13 @@ export function SignupForm() {
         </p>
       </div>
 
+      {/* Each defaultValue reads from the action state so the React 19 form
+          reset restores what was typed rather than blanking it. This is the
+          longest form in the app, and the most likely rejection — a password
+          that misses the strength bar — is the one that would otherwise cost
+          the user all three of the fields above it. The password itself is
+          never echoed; it is controlled local state here anyway, because the
+          strength meter needs it. */}
       <form action={formAction} className="space-y-4">
         <TextField
           name="fullName"
@@ -31,6 +38,7 @@ export function SignupForm() {
           enterKeyHint="next"
           required
           placeholder="Your full name"
+          defaultValue={state.values?.fullName ?? ""}
         />
 
         <TextField
@@ -44,6 +52,7 @@ export function SignupForm() {
           enterKeyHint="next"
           required
           placeholder="you@example.com"
+          defaultValue={state.values?.email ?? ""}
         />
 
         {/* The country drives which local wallet gets provisioned, so it is
@@ -55,7 +64,7 @@ export function SignupForm() {
           label="Country"
           hint="Where you live"
           required
-          defaultValue=""
+          defaultValue={state.values?.country ?? ""}
         >
           <option value="" disabled>
             Choose your country

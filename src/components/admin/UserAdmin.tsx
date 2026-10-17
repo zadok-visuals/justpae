@@ -150,6 +150,7 @@ function GrantForm() {
         required
         autoComplete="off"
         placeholder="colleague@justpae.com"
+        defaultValue={state.values?.email ?? ""}
       />
       <div>
         <label htmlFor="grant-role" className="mb-1.5 block text-sm font-medium text-foreground">
@@ -305,6 +306,7 @@ function UserRow({
             hint="The customer sees this"
             required
             placeholder="e.g. Unusual activity under review. We'll be in touch within 48 hours."
+            defaultValue={suspendState.values?.reason ?? ""}
           />
           <div className="flex gap-2">
             <SubmitButton variant="danger" size="sm" fullWidth={false} pendingLabel="Suspending…">

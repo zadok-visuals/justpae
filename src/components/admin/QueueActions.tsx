@@ -35,6 +35,7 @@ export function KycQueueActions({ userId }: { userId: string }) {
           hint="The customer sees this"
           required
           placeholder="e.g. The ID photo is too blurry to read the number."
+          defaultValue={rejectState.values?.reason ?? ""}
         />
         <div className="flex gap-2">
           <SubmitButton variant="danger" size="sm" fullWidth={false} pendingLabel="Rejecting…">
@@ -104,6 +105,7 @@ export function WithdrawalQueueActions({
           label="Why are you rejecting this?"
           hint="The customer sees this. Their balance is refunded."
           placeholder="e.g. Account details don't match the verified name."
+          defaultValue={rejectState.values?.reason ?? ""}
         />
         <div className="flex gap-2">
           <SubmitButton variant="danger" size="sm" fullWidth={false} pendingLabel="Rejecting…">

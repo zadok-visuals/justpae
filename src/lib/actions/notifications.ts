@@ -86,6 +86,18 @@ export interface SendNotificationState {
   ok?: boolean;
   /** How many users it reached, for the admin's confirmation line. */
   recipients?: number;
+  /**
+   * Echoed back on FAILURE only, so the React 19 form reset restores the
+   * draft instead of blanking it. This is a composer — a few hundred
+   * characters of carefully worded customer notice — and losing it to "no
+   * account found for that email" is the kind of thing that gets a feature
+   * quietly abandoned.
+   *
+   * Deliberately absent on success: the success path calls form.reset() to
+   * clear the composer for the next notice, and echoing values back would
+   * fight it.
+   */
+  values?: { title?: string; body?: string; href?: string; targetEmail?: string };
 }
 
 /**
@@ -109,25 +121,29 @@ export async function sendNotification(
   const audience = String(formData.get("audience") ?? "broadcast");
   const targetEmail = String(formData.get("targetEmail") ?? "").trim().toLowerCase();
 
-  if (!title) return { error: "Give it a title." };
-  if (!body) return { error: "Write the message." };
+  // Carried by every failure return below. The draft is the expensive thing
+  // on this form; the admin can retype an email address, not a notice.
+  const values = { title, body, href, targetEmail };
+
+  if (!title) return { error: "Give it a title.", values };
+  if (!body) return { error: "Write the message.", values };
   if (href && !/^\/[A-Za-z0-9/_?=&.-]*$/.test(href)) {
     // Mirrors the check constraint. An external link in an in-app notification
     // is a phishing primitive, so it is refused in both places.
-    return { error: "The link must be a path inside the app, starting with /." };
+    return { error: "The link must be a path inside the app, starting with /.", values };
   }
 
   const service = createAdminClient();
   let targetUserId: string | null = null;
 
   if (audience === "user") {
-    if (!targetEmail) return { error: "Enter the email of the user to notify." };
+    if (!targetEmail) return { error: "Enter the email of the user to notify.", values };
     const { data: profile } = await service
       .from("profiles")
       .select("id")
       .eq("email", targetEmail)
       .maybeSingle();
-    if (!profile) return { error: `No account found for ${targetEmail}.` };
+    if (!profile) return { error: `No account found for ${targetEmail}.`, values };
     targetUserId = profile.id;
   }
 
@@ -141,7 +157,7 @@ export async function sendNotification(
 
   if (error) {
     console.error("[notifications.sendNotification] failed", error);
-    return { error: "Couldn't send that notification." };
+    return { error: "Couldn't send that notification.", values };
   }
 
   let recipients = 1;
