@@ -28,6 +28,36 @@ import { formatAmount } from "@/lib/currencies";
  *                   verified provider webhook, and nothing else credits it.
  */
 
+/**
+ * Whether this account is suspended, read with the USER's own client.
+ *
+ * "profiles: read own" already lets a session read its own row — the dashboard
+ * layout reads the same two columns to render the suspension banner — so this
+ * needs no service role, and using one here would mean a privileged client in
+ * a path that does not otherwise need it.
+ *
+ * Fails CLOSED on a read error. A deposit that cannot be started is a bad
+ * minute; provisioning a provider account for an account nobody could verify
+ * is a worse one.
+ */
+async function isSuspended(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("suspended_at")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[deposits.isSuspended] suspension lookup failed", { userId, error });
+    return true;
+  }
+
+  return Boolean(data?.suspended_at);
+}
+
 export interface DepositQuoteState {
   error?: string;
   quoteId?: string;
@@ -181,6 +211,20 @@ export async function initiateDeposit(
   const currency = String(formData.get("currency") ?? "").toUpperCase() as Currency;
   const availability = depositAvailability(currency);
   if (!availability.available) return { error: availability.reason };
+
+  // SUSPENSION, BEFORE THE PROVIDER CALL.
+  //
+  // The deposits_block_suspended trigger from 0019 fires on INSERT into
+  // deposits — which happens AFTER createTransfer below. Left to the trigger
+  // alone, a suspended account still caused a real temporary bank account to
+  // be provisioned at the provider, and then got told to contact support
+  // before sending money. The provider-side object was orphaned and the user
+  // was given an instruction that reads like a system fault.
+  //
+  // A deposit spends none of the user's balance, so there is nothing to hold
+  // here — the ordering is the whole fix. The trigger stays as the backstop.
+  const suspended = await isSuspended(supabase, user.id);
+  if (suspended) return { error: "This account is suspended. Please contact support." };
 
   if (availability.provider === "klasha") {
     return initiateKlashaGhsDeposit(supabase, user.id, formData);

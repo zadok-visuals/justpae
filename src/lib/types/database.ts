@@ -541,6 +541,50 @@ export type Database = {
         Args: { p_user_id: string; p_quote_id: string; p_pin: string };
         Returns: string;
       };
+
+      /**
+       * 0022. The three halves of a conversion, split around the provider call
+       * so that every reason to refuse one is evaluated BEFORE the provider is
+       * asked to move anything.
+       *
+       * begin_conversion_hold checks suspension, the PIN, the destination
+       * wallet and the balance, then debits the source wallet into a hold row,
+       * all in one transaction. It returns the hold id — a server-side
+       * capability that never reaches the browser.
+       *
+       * Then the provider is called. Exactly one of these two follows:
+       *
+       *   release_conversion_hold            the provider failed; money back.
+       *   create_conversion_from_held_quote  the provider succeeded; the
+       *                                      ledger row is written from the
+       *                                      quote, with no second debit.
+       *
+       * expire_stale_conversion_holds is the cron's safety net for a hold
+       * whose process died before either could run.
+       */
+      begin_conversion_hold: {
+        Args: {
+          p_user_id: string;
+          p_source_currency: Currency;
+          p_target_currency: Currency;
+          p_source_amount: number;
+          p_pin: string;
+        };
+        Returns: string;
+      };
+      release_conversion_hold: {
+        Args: { p_hold_id: string; p_user_id?: string | null; p_reason?: string | null };
+        Returns: undefined;
+      };
+      create_conversion_from_held_quote: {
+        Args: { p_user_id: string; p_hold_id: string; p_quote_id: string };
+        Returns: string;
+      };
+      expire_stale_conversion_holds: {
+        Args: { p_older_than?: string };
+        Returns: number;
+      };
+
       complete_conversion: { Args: { p_transaction_id: string }; Returns: undefined };
       flag_transaction_for_review: {
         Args: { p_transaction_id: string; p_reason: string };

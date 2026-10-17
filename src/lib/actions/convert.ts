@@ -13,6 +13,7 @@ import { toCustomerError, toRpcError } from "@/lib/provider-error";
 import { CURRENCY_CODES, formatAmount } from "@/lib/currencies";
 import { isPinLockedError, isWrongPinError, resolvePinError } from "@/lib/pin";
 import { notifyConversionCompleted } from "@/lib/notify/events";
+import { runConversion } from "@/lib/convert/sequence";
 
 /**
  * /convert's server side.
@@ -201,101 +202,155 @@ export async function executeConversion(
     return { error: `The minimum conversion is ${formatAmount(from, minimum)}.` };
   }
 
-  // The provider executes at its own real, unmarked rate. The customer is only
-  // ever credited the marked-up figure, and the gap between the two is the
-  // margin — which is why both are recorded on the row.
-  let transfer: busha.BushaTransfer;
-  try {
-    const quote = await busha.createQuote({
-      sourceCurrency: from,
-      targetCurrency: to,
-      sourceAmount: amount.toFixed(2),
-    });
-    transfer = await busha.createTransfer(quote.id);
-  } catch (err) {
-    return { error: toCustomerError(err, "convert.executeConversion") };
-  }
-
-  // The provider's OWN response amounts are what get recorded, never the
-  // client's estimate and never our own pre-call arithmetic.
-  const sourceAmount = Number(transfer.source_amount);
-  const rawTargetAmount = Number(transfer.target_amount);
-  const customerTargetAmount = applyMarkupToAmount(rawTargetAmount, route.markupRate);
-
-  // THE QUOTE ROW IS THE CONTRACT. Every figure that will end up on the ledger
-  // row is written here, with the service role, by this server code — the
-  // amounts the provider itself just reported, the rate trail resolved
-  // server-side, and the provider reference of the transfer that was actually
-  // created. create_conversion_from_quote then takes nothing but this row's id
-  // and a PIN.
-  //
-  // This is what replaces passing eleven figures into an RPC that `authenticated`
-  // could call directly. Previously a user could name their own target amount
-  // and attach the reference of one of their own earlier completed transfers;
-  // now there is no argument through which a figure can arrive.
   const admin = createAdminClient();
 
-  const { data: quoteRow, error: quoteError } = await admin
-    .from("conversion_quotes")
-    .insert({
-      user_id: user.id,
-      source_currency: transfer.source_currency.toUpperCase() as Currency,
-      target_currency: transfer.target_currency.toUpperCase() as Currency,
-      source_amount: round2(sourceAmount),
-      target_amount: round2(customerTargetAmount),
-      provider_rate: route.providerRate,
-      markup_rate: route.markupRate,
-      customer_rate: route.customerRate,
-      raw_target_amount: round2(rawTargetAmount),
-      provider_reference: transfer.id,
-      expires_at: new Date(Date.now() + QUOTE_TTL_SECONDS * 1000).toISOString(),
-    })
-    .select("id")
-    .single();
+  // ── THE ORDER IS THE FIX ─────────────────────────────────────────────────
+  //
+  // runConversion owns the sequence: hold, then provider, then record, with a
+  // release on every path after the hold. It lives in src/lib/convert/
+  // sequence.ts and is unit-tested there, because the bug this replaces was a
+  // wrong ORDER rather than a wrong number — and an order is only testable
+  // once it is separable from the Supabase and provider clients.
+  //
+  // Each step below is the real implementation of one of those; the test
+  // injects fakes and asserts on call counts.
+  const outcome = await runConversion<busha.BushaTransfer, string>({
+    // Checks suspension, the PIN, the destination wallet and the balance, and
+    // debits the source wallet into a hold — one transaction, no provider.
+    // Until this returns a hold id, nothing has been asked of anyone outside
+    // this database. It used to run AFTER createQuote and createTransfer,
+    // which is what let a wrong PIN execute a real transfer. See 0022.
+    beginHold: async () => {
+      const { data, error } = await admin.rpc("begin_conversion_hold", {
+        p_user_id: user.id,
+        p_source_currency: from,
+        p_target_currency: to,
+        p_source_amount: amount,
+        p_pin: pin,
+      });
 
-  if (quoteError || !quoteRow) {
-    console.error("[convert.executeConversion] transfer executed but quote write failed", {
-      userId: user.id,
-      transferId: transfer.id,
-      error: quoteError,
-    });
-    return { error: "Could not complete that conversion. Please contact support." };
-  }
-
-  const { data: transactionId, error: rpcError } = await admin.rpc(
-    "create_conversion_from_quote",
-    {
-      // From the verified session, server-side — not from the form, and not
-      // from auth.uid(), which is null on the service-role client.
-      p_user_id: user.id,
-      p_quote_id: quoteRow.id,
-      p_pin: pin,
+      if (error) {
+        // A wrong PIN is the common case and is NOT an operational problem.
+        // resolvePinError counts the attempt — which has to happen in a fresh
+        // transaction, see src/lib/pin.ts — and locks the PIN after five.
+        if (isWrongPinError(error) || isPinLockedError(error)) {
+          return {
+            ok: false,
+            error: await resolvePinError({ userId: user.id, email: user.email, error }),
+            isPinError: true,
+          };
+        }
+        return { ok: false, error: toRpcError(error, "convert") };
+      }
+      if (!data) return { ok: false, error: "Could not start that conversion." };
+      return { ok: true, value: data };
     },
-  );
 
-  if (rpcError) {
-    // The provider transfer already happened but the ledger write did not —
-    // the user's balance is untouched (the RPC is what debits) while the
-    // provider has moved funds inside our own account. That needs a human, and
-    // it must be loud in the logs rather than a generic toast.
-    //
-    // A wrong PIN is the common case here and is NOT an operational problem, so
-    // it is handled first: resolvePinError counts the attempt (which has to
-    // happen in a fresh transaction — see src/lib/pin.ts) and locks the PIN
-    // after five.
-    if (isWrongPinError(rpcError) || isPinLockedError(rpcError)) {
-      return {
-        error: await resolvePinError({ userId: user.id, email: user.email, error: rpcError }),
-      };
-    }
+    // The provider executes at its own real, unmarked rate. The customer is
+    // only ever credited the marked-up figure, and the gap between the two is
+    // the margin — which is why both are recorded on the row.
+    callProvider: async () => {
+      const providerQuote = await busha.createQuote({
+        sourceCurrency: from,
+        targetCurrency: to,
+        sourceAmount: amount.toFixed(2),
+      });
+      return busha.createTransfer(providerQuote.id);
+    },
 
-    console.error("[convert.executeConversion] transfer executed but ledger write failed", {
-      userId: user.id,
-      transferId: transfer.id,
-      quoteId: quoteRow.id,
-      error: rpcError,
-    });
-    return { error: rpcError.message };
+    // THE QUOTE ROW IS THE CONTRACT. Every figure that will end up on the
+    // ledger row is written here, with the service role, by this server code
+    // — the amount that was held, the target the provider itself just
+    // reported, the rate trail resolved server-side, and the reference of the
+    // transfer that was actually created. The settle step then takes nothing
+    // but this row's id and the hold's: there is no argument through which a
+    // figure can arrive from outside.
+    writeQuote: async (transfer) => {
+      const rawTargetAmount = Number(transfer.target_amount);
+      const customerTargetAmount = applyMarkupToAmount(rawTargetAmount, route.markupRate);
+
+      // The SOURCE figure is the amount that was actually HELD, not the one
+      // the provider echoes back. They are the same number in practice, but
+      // if they ever diverge the ledger has to agree with the wallet: `amount`
+      // is what left the user's balance, so `amount` is what the row says. A
+      // divergence is a real operational signal, so it is logged rather than
+      // quietly absorbed.
+      const providerSourceAmount = Number(transfer.source_amount);
+      if (Number.isFinite(providerSourceAmount) && round2(providerSourceAmount) !== round2(amount)) {
+        console.error("[convert.executeConversion] provider source amount differs from the held amount", {
+          userId: user.id,
+          transferId: transfer.id,
+          held: round2(amount),
+          providerReported: round2(providerSourceAmount),
+        });
+      }
+
+      const { data: quoteRow, error: quoteError } = await admin
+        .from("conversion_quotes")
+        .insert({
+          user_id: user.id,
+          source_currency: from,
+          target_currency: to,
+          source_amount: round2(amount),
+          target_amount: round2(customerTargetAmount),
+          provider_rate: route.providerRate,
+          markup_rate: route.markupRate,
+          customer_rate: route.customerRate,
+          raw_target_amount: round2(rawTargetAmount),
+          provider_reference: transfer.id,
+          expires_at: new Date(Date.now() + QUOTE_TTL_SECONDS * 1000).toISOString(),
+        })
+        .select("id")
+        .single();
+
+      if (quoteError || !quoteRow) {
+        console.error("[convert.executeConversion] transfer executed but quote write failed", {
+          userId: user.id,
+          transferId: transfer.id,
+          error: quoteError,
+        });
+        return { ok: false, error: "Could not complete that conversion. Please contact support." };
+      }
+
+      return { ok: true, value: quoteRow.id };
+    },
+
+    // No second debit — the hold already took the money.
+    settle: async (holdId, quoteId) => {
+      const { data, error } = await admin.rpc("create_conversion_from_held_quote", {
+        // From the verified session, server-side — not from the form, and not
+        // from auth.uid(), which is null on the service-role client.
+        p_user_id: user.id,
+        p_hold_id: holdId,
+        p_quote_id: quoteId,
+      });
+
+      if (error || !data) {
+        // The provider transfer already happened but the ledger write did
+        // not. That needs a human, and it must be loud in the logs rather
+        // than a generic toast. The PIN is NOT a possible cause here any more
+        // — it was verified before the hold — so there is no PIN branch.
+        console.error("[convert.executeConversion] transfer executed but ledger write failed", {
+          userId: user.id,
+          quoteId,
+          holdId,
+          error,
+        });
+        return { ok: false, error: "Could not complete that conversion. Please contact support." };
+      }
+
+      return { ok: true, value: data };
+    },
+
+    release: (holdId, reason) => releaseHold(admin, holdId, user.id, reason),
+    describeProviderError: (err) => toCustomerError(err, "convert.executeConversion"),
+  });
+
+  if (!outcome.ok) {
+    // Every non-hold failure has already put the money back — runConversion
+    // guarantees it, and sequence.test.ts is what keeps that true.
+    revalidatePath("/home");
+    return { error: outcome.error };
   }
 
   // Complete synchronously only on an unambiguous success status. The provider
@@ -304,18 +359,18 @@ export async function executeConversion(
   // anything else is left pending for the webhook or the reconcile cron.
   // complete_conversion is idempotent, so a later call is always safe.
   if (
-    transactionId &&
-    (transfer.status === "funds_converted" || transfer.status === "funds_delivered")
+    outcome.transfer.status === "funds_converted" ||
+    outcome.transfer.status === "funds_delivered"
   ) {
-    await admin.rpc("complete_conversion", { p_transaction_id: transactionId });
+    await admin.rpc("complete_conversion", { p_transaction_id: outcome.transactionId });
     // Claimed, so the webhook and the reconciler cannot also announce this
     // one — see src/lib/notify/events.ts.
-    await notifyConversionCompleted(transactionId);
+    await notifyConversionCompleted(outcome.transactionId);
   }
 
   revalidatePath("/home");
   revalidatePath("/transactions");
-  return { transactionId: transactionId ?? undefined };
+  return { transactionId: outcome.transactionId };
 }
 
 export interface ConversionStatusState {
@@ -413,4 +468,37 @@ export async function checkConversionStatus(
 
 function round2(value: number): number {
   return Number(value.toFixed(2));
+}
+
+/**
+ * Puts a hold's money back, and never throws.
+ *
+ * Every caller is already on a failure path. A release that threw would
+ * replace a recoverable "the provider was down" with an unhandled exception,
+ * and the user would get the generic error page instead of the real reason —
+ * while the money stayed held either way. So the failure to release is logged
+ * loudly and swallowed, and `expire_stale_conversion_holds` picks the hold up
+ * from the cron fifteen minutes later. The user is made whole by one path or
+ * the other.
+ */
+async function releaseHold(
+  admin: ReturnType<typeof createAdminClient>,
+  holdId: string,
+  userId: string,
+  reason: string,
+): Promise<void> {
+  const { error } = await admin.rpc("release_conversion_hold", {
+    p_hold_id: holdId,
+    p_user_id: userId,
+    p_reason: reason.slice(0, 1000),
+  });
+
+  if (error) {
+    console.error("[convert.releaseHold] COULD NOT RELEASE A HOLD — funds are held", {
+      userId,
+      holdId,
+      reason,
+      error,
+    });
+  }
 }

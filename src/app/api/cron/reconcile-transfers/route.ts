@@ -27,6 +27,28 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient();
 
+  // FIRST, before anything that talks to the provider: give back any money
+  // sitting in an abandoned conversion hold.
+  //
+  // A hold is taken before the provider call and resolved after it, so the one
+  // case the action itself cannot clean up is the process dying in between.
+  // That money is out of the user's balance and attached to nothing. Fifteen
+  // minutes is far longer than any provider call this app makes, so anything
+  // older is abandoned rather than slow. See migration 0022.
+  //
+  // It runs first because it needs no network and must not be skipped by an
+  // early return or a provider outage further down.
+  let holdsReleased = 0;
+  const { data: released, error: holdError } = await admin.rpc("expire_stale_conversion_holds", {});
+  if (holdError) {
+    console.error("[reconcile-transfers] could not sweep stale conversion holds", holdError);
+  } else {
+    holdsReleased = released ?? 0;
+    if (holdsReleased > 0) {
+      console.warn("[reconcile-transfers] released abandoned conversion holds", { holdsReleased });
+    }
+  }
+
   const { data: stale } = await admin
     .from("transactions")
     // The amount and currency columns are selected because completion is no
@@ -123,5 +145,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ checked: results.length, results });
+  return NextResponse.json({ checked: results.length, holdsReleased, results });
 }
