@@ -84,3 +84,29 @@ export function formatRate(base: Currency, quote: Currency, rate: number): strin
   const decimals = rate < 1 ? 6 : 2;
   return `1 ${base} = ${currencyMeta(quote).symbol}${formatNumber(rate, decimals)}`;
 }
+
+/**
+ * WHY EVERY USD CONVERSION IS UNAVAILABLE, in the one place that says so.
+ *
+ * Every conversion in this app is priced and executed through USDT — a fiat
+ * pair against USDT directly, or two of those bridged. Our liquidity provider
+ * quotes no USDT/USD pair on this account, so USD has no leg of its own and
+ * therefore no route to or from anything, including USDT itself.
+ *
+ * The honest consequence is that USD cannot be converted at all today. What
+ * matters is that the user is TOLD that, in those words, everywhere USD can
+ * be picked — rather than being allowed to select it, type an amount, enter a
+ * PIN and then meet "rates are unavailable right now", which is both wrong
+ * and the most expensive possible moment to be wrong.
+ *
+ * It is tied to dollar receiving because that is the same dependency: the
+ * provider that will hold real USD for this account is the one that would
+ * quote it. When /receive launches, this goes away.
+ */
+export const USD_CONVERSION_UNAVAILABLE =
+  "USD conversions open when dollar receiving launches. Dollars you hold can't be converted yet.";
+
+/** True when a pair cannot be routed because one side is USD. */
+export function isUsdPair(from: Currency, to: Currency): boolean {
+  return from === "USD" || to === "USD";
+}
