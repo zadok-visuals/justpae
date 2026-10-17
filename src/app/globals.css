@@ -286,19 +286,49 @@
     height: env(safe-area-inset-bottom, 0px);
   }
 
-  /* Horizontal wallet-card rail on mobile: snap, no visible scrollbar.
+  /* Horizontal rails: wallet cards, the rates strip, quick actions, the
+     activity filter tabs and the admin nav. Snap, no visible scrollbar.
 
-     `touch-action: pan-y` hands vertical panning back to the browser while
-     this element owns horizontal — without it a horizontal swipe is ambiguous
-     and the page jitters vertically as the rail moves. Native scroll snapping
-     is used rather than a JS gesture because the browser's own physics beat a
-     hand-rolled spring. */
+     `touch-action` MUST name both axes.
+
+     It used to say `pan-y` alone, with a comment claiming that handed
+     vertical panning back to the browser "while this element owns
+     horizontal". That is backwards, and it broke every rail on every touch
+     device. touch-action is an ALLOWLIST of the gestures the browser may
+     handle natively on this element — it does not describe what the element
+     keeps for itself. `pan-y` therefore permits vertical panning and
+     FORBIDS horizontal, so the browser refused to scroll the very rails this
+     class exists to make scrollable. Nothing owned horizontal at all: there
+     is no JS gesture handler here, by design, because native scroll snapping
+     beats a hand-rolled spring.
+
+     `pan-x pan-y` permits both, which is what was meant. Horizontal swipes
+     scroll the rail; vertical swipes still scroll the page, so a finger that
+     starts on a wallet card can still scroll Home. What stays excluded is
+     pinch-zoom and double-tap-zoom on the rail itself, which is the only part
+     of the original intent worth keeping.
+
+     The page cannot be dragged sideways as a result: overscroll-behavior-x:
+     contain stops a rail that has hit its end from chaining the scroll to the
+     page behind it. */
   .snap-rail {
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
     -ms-overflow-style: none;
     overscroll-behavior-x: contain;
-    touch-action: pan-y;
+    touch-action: pan-x pan-y;
+  }
+
+  /* A rail child must never be squeezed to fit.
+
+     A flex item defaults to `min-width: auto`, so in a `flex` row with no
+     wrap the children shrink to the container width instead of overflowing it
+     — and a rail whose content fits has nothing to scroll, which looks
+     identical to the touch-action bug above and was hiding behind it. Setting
+     it here rather than on each of the five rails means a new rail is correct
+     by default. */
+  .snap-rail > * {
+    flex-shrink: 0;
   }
 
   /* The app shell tracks the VISIBLE viewport. 100vh is the height with the
