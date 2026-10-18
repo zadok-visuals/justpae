@@ -1,8 +1,7 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { SupportChat } from "@/components/support/SupportChat";
 import { loadMySupportThread } from "@/lib/actions/support";
+import { requireSessionUser } from "@/lib/auth/session";
 
 export const metadata = { title: "Support" };
 
@@ -11,11 +10,7 @@ export const metadata = { title: "Support" };
 export const dynamic = "force-dynamic";
 
 export default async function SupportPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireSessionUser();
 
   const { messages, attachmentUrls } = await loadMySupportThread();
 

@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { Banner, SectionHeader, EmptyState } from "@/components/ui/Primitives";
 import { BILL_CATEGORIES, isBillsAvailable } from "@/lib/providers/bills";
 import { countryName } from "@/lib/countries";
 import type { BillBeneficiary } from "@/lib/types/database";
+import { requireSessionUser } from "@/lib/auth/session";
 
 export const metadata = { title: "Bills" };
 export const dynamic = "force-dynamic";
@@ -21,10 +21,7 @@ export const dynamic = "force-dynamic";
  */
 export default async function BillsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireSessionUser();
 
   const [{ data: profile }, { data: beneficiaries }] = await Promise.all([
     supabase.from("profiles").select("country").eq("id", user.id).maybeSingle(),

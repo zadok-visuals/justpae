@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { EmptyState } from "@/components/ui/Primitives";
 import { currencyMeta, formatAmount, CURRENCIES } from "@/lib/currencies";
 import { startRouteTiming } from "@/lib/perf/timing";
 import type { Currency, Wallet } from "@/lib/types/database";
+import { requireSessionUser } from "@/lib/auth/session";
 
 export const metadata = { title: "Accounts" };
 
@@ -28,10 +28,7 @@ export const dynamic = "force-dynamic";
 export default async function AccountsPage() {
   const endRouteTiming = startRouteTiming("/accounts");
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireSessionUser();
 
   const { data } = await supabase.from("wallets").select("*").eq("user_id", user.id);
   const wallets = (data ?? []) as Wallet[];

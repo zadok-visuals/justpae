@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSuspension, requireSessionUser } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/auth/admin";
 import { Banner } from "@/components/ui/Primitives";
 import { BottomTabBar, Sidebar, TopBar } from "@/components/layout/DashboardChrome";
@@ -9,51 +8,28 @@ import { getUnreadNotificationCount } from "@/lib/actions/notifications";
 import { getUnreadSupportCount } from "@/lib/actions/support";
 
 /**
- * The user's own suspension state, read under their own RLS — the existing
- * "profiles: read own" policy already covers it, so this needs no service-role
- * client and no new grant.
+ * The suspension banner is PURELY the explanation, never the enforcement.
+ * What actually stops a suspended account moving money is a BEFORE INSERT
+ * trigger on transactions, bill_payments and deposits (migration 0019), which
+ * fires for the service role and inside every security-definer money function
+ * alike. The banner exists so a suspended user reads a reason here instead of
+ * opening a support thread whose first line is "my app is broken".
  *
- * This banner is PURELY the explanation, never the enforcement. What actually
- * stops a suspended account moving money is a BEFORE INSERT trigger on
- * transactions, bill_payments and deposits (migration 0019), which fires for
- * the service role and inside every security-definer money function alike. The
- * banner exists so a suspended user reads a reason here instead of opening a
- * support thread whose first line is "my app is broken".
+ * getSuspension reads the user's own profile row under their own RLS — the
+ * existing "profiles: read own" policy covers it, so no service-role client
+ * and no new grant — and is memoised per request, so a page that also needs
+ * the profile does not read it a second time.
  */
-async function suspensionFor(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-): Promise<{ at: string; reason: string | null } | null> {
-  const { data } = await supabase
-    .from("profiles")
-    .select("suspended_at, suspended_reason")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (!data?.suspended_at) return null;
-  return { at: data.suspended_at, reason: data.suspended_reason };
-}
-
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // The proxy already redirects an anonymous request, but this is checked
-  // again here because the layout reads the user — a layout that assumes a
-  // session the proxy happened to allow through is a layout that crashes the
-  // first time the matcher changes.
-  if (!user) redirect("/login");
-
-  // Same reasoning for the confirmation gate the proxy also applies: an
-  // unconfirmed session should never render the dashboard, proxy matcher
-  // notwithstanding.
-  // No email in the URL — /auth/verify reads it from this very session (see
-  // resolvePendingVerificationEmail, which prefers the session over the
-  // cookie), so carrying it as a query parameter leaked the address into
-  // history and any referrer for no benefit at all.
-  if (!user.email_confirmed_at) redirect("/auth/verify");
+  // THE authoritative check, and now the only auth round trip in the render.
+  //
+  // The proxy verifies the session's JWT locally and routes on it; this is
+  // the real getUser() that the proxy's cheaper check is allowed to lean on,
+  // and it carries the email-confirmation funnel that a JWT cannot answer
+  // honestly. Memoised via React cache(), so every page under this layout
+  // calls the same helper and shares this one call rather than making its
+  // own — which is what three separate getUser()s per page view used to be.
+  const user = await requireSessionUser();
 
   // user_metadata.full_name is set at signup (see signUp in lib/actions/auth)
   // and costs nothing extra to read — it's already on the session, unlike a
@@ -70,7 +46,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     getUnreadNotificationCount(),
     getUnreadSupportCount(),
     isAdmin(user.id, user.email),
-    suspensionFor(supabase, user.id),
+    getSuspension(user.id),
   ]);
 
   return (

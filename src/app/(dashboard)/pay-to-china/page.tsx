@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { PayToChinaForm } from "@/components/payToChina/PayToChinaForm";
@@ -8,6 +7,7 @@ import { fetchActivityPage } from "@/lib/transactions";
 import { parseCurrencyParam } from "@/lib/accounts/preselect";
 import { startRouteTiming } from "@/lib/perf/timing";
 import type { SavedPayToChinaRecipient, Wallet } from "@/lib/types/database";
+import { requireSessionUser } from "@/lib/auth/session";
 
 export const metadata = { title: "Pay to China" };
 export const dynamic = "force-dynamic";
@@ -26,10 +26,7 @@ export const dynamic = "force-dynamic";
 export default async function PayToChinaPage(props: PageProps<"/pay-to-china">) {
   const endRouteTiming = startRouteTiming("/pay-to-china");
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireSessionUser();
 
   const params = await props.searchParams;
 

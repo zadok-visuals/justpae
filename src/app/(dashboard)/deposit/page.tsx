@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { DepositForm } from "@/components/deposit/DepositForm";
@@ -6,6 +5,7 @@ import { depositAvailability } from "@/lib/deposits/availability";
 import { parseCurrencyParam, preselectCurrency } from "@/lib/accounts/preselect";
 import { startRouteTiming } from "@/lib/perf/timing";
 import type { Wallet } from "@/lib/types/database";
+import { requireSessionUser } from "@/lib/auth/session";
 
 export const metadata = { title: "Add money" };
 export const dynamic = "force-dynamic";
@@ -13,10 +13,7 @@ export const dynamic = "force-dynamic";
 export default async function DepositPage(props: PageProps<"/deposit">) {
   const endRouteTiming = startRouteTiming("/deposit");
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireSessionUser();
 
   const [{ data: wallets }, params] = await Promise.all([
     supabase.from("wallets").select("*").eq("user_id", user.id),

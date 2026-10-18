@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { WalletCards } from "@/components/home/WalletCards";
@@ -12,6 +11,7 @@ import { fetchRecentActivity } from "@/lib/transactions";
 import { resolveRateBoard } from "@/lib/rates/display";
 import { startRouteTiming } from "@/lib/perf/timing";
 import type { Wallet } from "@/lib/types/database";
+import { requireSessionUser } from "@/lib/auth/session";
 
 export const metadata = { title: "Home" };
 
@@ -30,10 +30,7 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const endRouteTiming = startRouteTiming("/home");
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireSessionUser();
 
   const [{ data: profile }, { data: wallets }, recent, rates] = await Promise.all([
     supabase

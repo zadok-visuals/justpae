@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { Card, Pill, Banner, DetailRow } from "@/components/ui/Primitives";
@@ -12,6 +11,7 @@ import { getBanks, type BushaBank } from "@/lib/busha/client";
 import { countryName } from "@/lib/countries";
 import { startRouteTiming } from "@/lib/perf/timing";
 import type { Currency, Wallet, WithdrawalRecipient } from "@/lib/types/database";
+import { requireSessionUser } from "@/lib/auth/session";
 
 export const metadata = { title: "Profile" };
 export const dynamic = "force-dynamic";
@@ -26,10 +26,7 @@ export const dynamic = "force-dynamic";
 export default async function ProfilePage() {
   const endRouteTiming = startRouteTiming("/profile");
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireSessionUser();
 
   const [
     { data: profile },

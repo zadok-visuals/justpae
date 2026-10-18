@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { ActivityFilters } from "@/components/transactions/ActivityFilters";
@@ -9,6 +8,7 @@ import { fetchActivityPage, type ActivityFilter, type ActivityFilters as Filters
 import type { TransactionStatus } from "@/lib/types/database";
 import { isCurrency } from "@/lib/currencies";
 import { startRouteTiming } from "@/lib/perf/timing";
+import { requireSessionUser } from "@/lib/auth/session";
 
 export const metadata = { title: "Activity" };
 export const dynamic = "force-dynamic";
@@ -29,10 +29,7 @@ const VALID_STATUSES = ["pending", "processing", "completed", "failed", "refunde
 export default async function TransactionsPage(props: PageProps<"/transactions">) {
   const endRouteTiming = startRouteTiming("/transactions");
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireSessionUser();
 
   // Next.js 16: searchParams is a Promise. Synchronous access was removed.
   const params = await props.searchParams;

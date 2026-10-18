@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Banner } from "@/components/ui/Primitives";
 import { KycTypeSelector } from "@/components/kyc/KycTypeSelector";
 import { phoneHintFor } from "@/lib/countries";
+import { requireSessionUser } from "@/lib/auth/session";
 
 export const metadata = { title: "Finish setting up" };
 export const dynamic = "force-dynamic";
@@ -19,10 +20,7 @@ export const dynamic = "force-dynamic";
  */
 export default async function OnboardingBasicsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireSessionUser();
 
   const { data: profile } = await supabase
     .from("profiles")

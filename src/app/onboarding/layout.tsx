@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireSessionUser } from "@/lib/auth/session";
 import { Wordmark } from "@/components/layout/Mark";
 
 /**
@@ -12,17 +11,12 @@ import { Wordmark } from "@/components/layout/Mark";
  * mandatory to use the app, only to withdraw.
  */
 export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  // No email in the URL. /auth/verify resolves it from the session (which
-  // this branch is holding) or from the pending-email cookie — see
-  // resolvePendingVerificationEmail. The proxy and the auth actions were both
-  // moved off URL-carried email; this layout and the dashboard's were the two
-  // that still put a user's address into history and any referrer.
-  if (!user.email_confirmed_at) redirect("/auth/verify");
+  // Both gates — a session at all, and a confirmed address — in one memoised
+  // call shared with every page under this layout. No email in the URL:
+  // /auth/verify resolves it from the session or from the pending-email
+  // cookie (see resolvePendingVerificationEmail), rather than putting a
+  // user's address into history and any referrer.
+  await requireSessionUser();
 
   return (
     <div className="flex min-h-screen-dvh flex-col bg-background">

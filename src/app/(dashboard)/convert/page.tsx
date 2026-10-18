@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { ConvertForm } from "@/components/convert/ConvertForm";
@@ -9,6 +8,7 @@ import { resolveRateBoard } from "@/lib/rates/display";
 import { parseCurrencyParam, preselectCurrency } from "@/lib/accounts/preselect";
 import { startRouteTiming } from "@/lib/perf/timing";
 import type { Wallet } from "@/lib/types/database";
+import { requireSessionUser } from "@/lib/auth/session";
 
 export const metadata = { title: "Convert" };
 export const dynamic = "force-dynamic";
@@ -16,10 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function ConvertPage(props: PageProps<"/convert">) {
   const endRouteTiming = startRouteTiming("/convert");
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireSessionUser();
 
   const params = await props.searchParams;
 

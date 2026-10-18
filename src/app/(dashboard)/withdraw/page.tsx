@@ -1,19 +1,16 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { WithdrawForm } from "@/components/withdraw/WithdrawForm";
 import { parseCurrencyParam, preselectCurrency } from "@/lib/accounts/preselect";
 import type { Wallet, WithdrawalRecipient } from "@/lib/types/database";
+import { requireSessionUser } from "@/lib/auth/session";
 
 export const metadata = { title: "Withdraw" };
 export const dynamic = "force-dynamic";
 
 export default async function WithdrawPage(props: PageProps<"/withdraw">) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireSessionUser();
 
   const params = await props.searchParams;
 

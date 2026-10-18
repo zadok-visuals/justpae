@@ -3,16 +3,14 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { IndividualKycForm } from "@/components/kyc/KycForms";
 import { kycIdFieldFor, usesBvnOrNin } from "@/lib/countries";
+import { requireSessionUser } from "@/lib/auth/session";
 
 export const metadata = { title: "Verify your identity" };
 export const dynamic = "force-dynamic";
 
 export default async function IndividualKycPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireSessionUser();
 
   const { data: profile } = await supabase
     .from("profiles")

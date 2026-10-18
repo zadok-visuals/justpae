@@ -1,6 +1,8 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getSessionUser } from "@/lib/auth/session";
 import type { AdminRole } from "@/lib/types/database";
 
 /**
@@ -49,8 +51,16 @@ function isBootstrapAdminEmail(email: string | null | undefined): boolean {
  * The role, or null. Resolves the bootstrap on the way through, so the first
  * sign-in by an ADMIN_EMAILS address creates its row and everything after that
  * reads the database.
+ *
+ * Memoised per request. Rendering any admin page resolved the role at least
+ * twice — once in the dashboard layout's isAdmin() to decide whether to show
+ * the link at all, and again in the page's own requireAdminUser() — each a
+ * service-role RPC. They are the same question asked twice inside one render,
+ * which is precisely what cache() is for. Nothing is shared between requests
+ * or between users, so a revocation still takes effect on the very next
+ * request.
  */
-export async function adminRoleFor(
+export const adminRoleFor = cache(async function adminRoleFor(
   userId: string,
   email: string | null | undefined,
 ): Promise<AdminRole | null> {
@@ -74,7 +84,7 @@ export async function adminRoleFor(
     return null;
   }
   return bootstrapped ?? null;
-}
+});
 
 /**
  * Display-only check, for deciding whether to render a link to /admin at all.
@@ -127,11 +137,10 @@ export interface AdminIdentity {
  * requireAdminUser.
  */
 export async function requireAdminRoleOnly(): Promise<AdminIdentity> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  // getSessionUser() is the authoritative getUser(), memoised for this
+  // request — the admin layout and the page under it now share one call
+  // instead of making one each.
+  const user = await getSessionUser();
   if (!user) redirect("/login");
 
   const role = await adminRoleFor(user.id, user.email);
@@ -157,16 +166,13 @@ export async function requireAdminRoleOnly(): Promise<AdminIdentity> {
 export async function requireAdminUser(options?: {
   role?: AdminRole;
 }): Promise<AdminIdentity> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getSessionUser();
   if (!user) redirect("/login");
 
   const role = await adminRoleFor(user.id, user.email);
   if (!role) redirect("/home");
 
+  const supabase = await createClient();
   const mfa = await adminMfaState(supabase);
   // Both branches land on the same page, which decides whether to show the
   // enrolment QR or the code prompt. Two routes for one destination would just

@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { BillForm } from "@/components/bills/BillForm";
@@ -7,6 +7,7 @@ import { BILL_CATEGORIES, billersFor, isBillsAvailable } from "@/lib/providers/b
 import { listBillers } from "@/lib/actions/bills";
 import { countryName } from "@/lib/countries";
 import type { BillCategory, Wallet } from "@/lib/types/database";
+import { requireSessionUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -26,10 +27,7 @@ export default async function BillCategoryPage(props: PageProps<"/bills/[categor
   const billCategory = category as BillCategory;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireSessionUser();
 
   // See the note in /convert: withdrawal_pins is no longer readable by a user
   // session, because reading it meant being able to read pin_hash.

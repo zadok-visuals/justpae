@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { AccountActions } from "@/components/accounts/AccountActions";
@@ -13,6 +13,7 @@ import { resolveRateBoard, localRateCurrencies } from "@/lib/rates/display";
 import { currencyMeta, formatAmount, isCurrency, USD_CONVERSION_UNAVAILABLE } from "@/lib/currencies";
 import { startRouteTiming } from "@/lib/perf/timing";
 import type { Currency, Wallet } from "@/lib/types/database";
+import { requireSessionUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -47,10 +48,7 @@ export default async function AccountPage(props: PageProps<"/accounts/[currency]
 
   const endRouteTiming = startRouteTiming(`/accounts/${currency}`);
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireSessionUser();
 
   const meta = currencyMeta(currency);
 

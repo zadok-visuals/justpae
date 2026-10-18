@@ -1,17 +1,14 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Banner, Card, Pill } from "@/components/ui/Primitives";
+import { requireSessionUser } from "@/lib/auth/session";
 
 export const metadata = { title: "Verification status" };
 export const dynamic = "force-dynamic";
 
 export default async function KycStatusPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireSessionUser();
 
   const [{ data: profile }, { data: documents }] = await Promise.all([
     supabase
