@@ -3,6 +3,7 @@ import { depositAvailability } from "@/lib/deposits/availability";
 import { isAutomatablePayoutCurrency } from "@/lib/busha/payout";
 import { USD_COLLECTION_ENABLED } from "@/lib/flags";
 import { USD_CONVERSION_UNAVAILABLE, currencyMeta } from "@/lib/currencies";
+import { cnyRouteBlocker } from "@/lib/cny/priceCore";
 
 /**
  * What a user can actually DO with one wallet, and when they can't, why.
@@ -72,13 +73,27 @@ export function staticConvertAvailability(currency: Currency): ConvertAvailabili
  *   manual     no channel, but the money is still the user's and a human can
  *              send it. GHS. Offering it is correct; pretending it is instant
  *              is not.
- *   never      USD. There is no USD payout on this account at all, and the
- *              honest instruction is to convert it rather than to wait.
+ *   never      USD and CNY. Neither has a payout on this account at all, and
+ *              the honest instruction is to convert or spend rather than wait.
  */
 export function withdrawAvailability(currency: Currency): {
   mode: "automated" | "manual" | "never";
   reason: string | null;
 } {
+  if (currency === "CNY") {
+    // Not a policy this module is choosing: migration 0026 puts a trigger on
+    // `transactions` that refuses a CNY withdrawal outright, because a
+    // synthetic balance leaving through a payout rail would be the business
+    // paying out real money against an obligation it created for itself.
+    // Without this branch the fallthrough below calls it "manual" and offers
+    // a flow guaranteed to fail — the dead end the whole account-page audit
+    // exists to remove. The sentence is the trigger's own.
+    return {
+      mode: "never",
+      reason: "Yuan can't be withdrawn. Spend it with Pay to China, or convert it first.",
+    };
+  }
+
   if (currency === "USD") {
     // Matches requestWithdrawal's own refusal (src/lib/actions/withdrawals.ts),
     // so the screen and the server say the same thing.
@@ -145,6 +160,24 @@ export function accountActions(
     href: `/convert?currency=${currency}`,
     disabledReason: convertState && !convertState.available ? convertState.reason : null,
     note: null,
+  });
+
+  // ── Pay to China ────────────────────────────────────────────────────────
+  // A yuan balance pays directly; every other wallet buys the yuan on the way
+  // through, which is why this is offered on NGN, KES and USDT and not only
+  // on CNY. The refusal for USD and GHS is cnyRouteBlocker's own sentence,
+  // not a paraphrase — the form will say exactly the same thing, because it
+  // asks the same function.
+  const payToChinaBlocker = currency === "CNY" ? null : cnyRouteBlocker(currency);
+  actions.push({
+    key: "payToChina",
+    label: "Pay to China",
+    href: `/pay-to-china?currency=${currency}`,
+    disabledReason: payToChinaBlocker,
+    note:
+      payToChinaBlocker === null && currency !== "CNY"
+        ? "Your yuan is bought as the payment goes out, at the rate you're shown."
+        : null,
   });
 
   // ── Withdraw ────────────────────────────────────────────────────────────

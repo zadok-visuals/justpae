@@ -1,4 +1,9 @@
-import { usdtRateAt, toUsdt, type SupplierRateRow } from "@/lib/admin/supplierRate";
+// Relative, with the extension, rather than the "@/" alias: this module is
+// covered by pnlMath.test.ts, which runs under `node --test` with no bundler
+// and therefore no alias resolution. supplierRate.ts is import-free for the
+// same reason. tsconfig's allowImportingTsExtensions is what lets the app's
+// own build read the same specifier.
+import { usdtRateAt, toUsdt, type SupplierRateRow } from "./supplierRate.ts";
 
 /**
  * The margin arithmetic, with no database in it.

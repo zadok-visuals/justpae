@@ -1,16 +1,15 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Currency } from "@/lib/types/database";
 import { probeFiatToUsdtRate } from "@/lib/busha/rate";
-import { applyMarkupToAmount } from "@/lib/rates/markupMath";
-import { isUsdPair } from "@/lib/currencies";
+import type { CnyTier, CnyDirection } from "@/lib/cny/tiers";
 import {
-  computeCnyAmounts,
-  solveCnySpend,
-  lowestTier,
-  round2,
-  type CnyTier,
-  type CnyDirection,
-} from "@/lib/cny/tiers";
+  priceCnyConversion,
+  cnyRouteBlocker,
+  indicativeCnyRate as indicativeRateFromTiers,
+  type CnyPrice,
+} from "@/lib/cny/priceCore";
+
+export { cnyRouteBlocker };
 
 /**
  * Server-only. What CNY costs, and what it is worth.
@@ -26,6 +25,13 @@ import {
  * and this module does the arithmetic; the RESULT is then written to a quote
  * row that the settlement function reads, which is what keeps the "no figure
  * arrives from a caller" contract intact.
+ *
+ * WHAT IS IN THIS FILE AND WHAT IS NOT. The two impure steps are here: read
+ * the ladder, ask the provider. The arithmetic between them lives in
+ * priceCore.ts, which has no database and no network in it and is therefore
+ * under unit test — a mis-resolved band or an inverted markup is a wrong
+ * price on every order, and neither is visible by reading the form that
+ * renders it.
  *
  * THE LADDER IS READ WITH THE SERVICE ROLE, always. cny_tier_rates has RLS on
  * and no read policy — a customer session genuinely cannot fetch it, which is
@@ -72,45 +78,12 @@ export function cnyMarkupFor(config: CnyPricingConfig, nonCnyCurrency: Currency)
 
 export type CnyUnavailable = { available: false; reason: string };
 
-export interface CnyQuote {
-  available: true;
-  direction: CnyDirection;
-  nonCnyCurrency: Currency;
-  /** What leaves the user's wallet. */
-  sourceCurrency: Currency;
-  sourceAmount: number;
-  /** What lands, after markup. */
-  targetCurrency: Currency;
-  targetAmount: number;
-  /** Before markup — the margin is the gap, and /admin/pnl reports it. */
-  rawTargetAmount: number;
-  /** USDT per 1 unit of the non-CNY currency. Null for a USDT payer. */
-  providerRate: number | null;
-  /** CNY per 1 USDT — the band that applied. */
-  tierRate: number;
-  markupRate: number;
-  /** Target per 1 source, after markup. The one figure a receipt can check. */
-  customerRate: number;
-  /** USDT-equivalent of one source unit, for the minimum gate. */
-  sourceUsdtRate: number;
-}
-
 /**
- * Why a CNY route might not be priceable at all, checked before any provider
- * call so the answer costs nothing when it is "no".
+ * A priced CNY conversion. Every figure on it comes from priceCore, so the
+ * quote a caller sees and the arithmetic under test cannot drift apart.
  */
-export function cnyRouteBlocker(nonCnyCurrency: Currency): string | null {
-  if (nonCnyCurrency === "CNY") return "Pick two different wallets.";
-  if (isUsdPair(nonCnyCurrency, "CNY")) {
-    // USD has no leg anywhere on this account (see USD_CONVERSION_UNAVAILABLE)
-    // and CNY pricing needs the USDT leg to exist. Caught here so the user is
-    // told the standing reason rather than a generic pricing failure.
-    return "Dollar conversions aren't open yet, so dollars can't be converted to yuan either.";
-  }
-  if (nonCnyCurrency === "GHS") {
-    return "Cedi conversions are under maintenance. We'll let you know the moment they're back.";
-  }
-  return null;
+export interface CnyQuote extends CnyPrice {
+  available: true;
 }
 
 /**
@@ -163,72 +136,23 @@ export async function quoteCnyConversion(params: {
     }
   }
 
-  const markupRate = cnyMarkupFor(config, nonCnyCurrency);
+  // Everything impure is now behind us: the ladder is loaded and the live
+  // rate is in hand. The arithmetic is priceCore's, under unit test.
+  const price = priceCnyConversion({
+    direction,
+    nonCnyCurrency,
+    amount,
+    amountSide,
+    providerRate,
+    tiers: config.tiers,
+    markupRate: cnyMarkupFor(config, nonCnyCurrency),
+  });
 
-  // ── Resolve the pre-markup amounts ───────────────────────────────────────
-  //
-  // Four combinations of (direction, which field was typed), and the ladder
-  // is resolved differently for each. The rule: resolve the band off whatever
-  // CNY figure is actually KNOWN, and fall back to the forward walk only when
-  // the CNY side is the unknown one.
-  let amounts: { cnyAmount: number; nonCnyAmount: number; tierRate: number } | null;
-
-  if (direction === "to_cny") {
-    amounts =
-      amountSide === "source"
-        ? computeCnyAmounts("to_cny", amount, providerRate, config.tiers)
-        : // They typed the yuan they want the recipient to have. That figure
-          // is in CNY already, so the band comes from it directly.
-          solveCnySpend(amount, providerRate, config.tiers);
-  } else {
-    if (amountSide === "source") {
-      amounts = computeCnyAmounts("from_cny", amount, providerRate, config.tiers);
-    } else {
-      // Spending CNY, but they typed how much non-CNY they want out. Convert
-      // that back to USDT and then to the CNY it would cost — and because
-      // that CNY figure is derived rather than given, the band has to be
-      // found by the forward walk on the USDT equivalent.
-      const usdtWanted = providerRate != null ? amount * providerRate : amount;
-      const forward = computeCnyAmounts("to_cny", usdtWanted, null, config.tiers);
-      amounts = forward
-        ? { cnyAmount: forward.cnyAmount, nonCnyAmount: round2(amount), tierRate: forward.tierRate }
-        : null;
-    }
-  }
-
-  if (!amounts) {
+  if (!price) {
     return { available: false, reason: "Yuan pricing isn't configured yet. Please try again later." };
   }
 
-  const sourceCurrency: Currency = direction === "to_cny" ? nonCnyCurrency : "CNY";
-  const targetCurrency: Currency = direction === "to_cny" ? "CNY" : nonCnyCurrency;
-  const sourceAmount = round2(
-    direction === "to_cny" ? amounts.nonCnyAmount : amounts.cnyAmount,
-  );
-  const rawTargetAmount = round2(
-    direction === "to_cny" ? amounts.cnyAmount : amounts.nonCnyAmount,
-  );
-  const targetAmount = round2(applyMarkupToAmount(rawTargetAmount, markupRate));
-
-  return {
-    available: true,
-    direction,
-    nonCnyCurrency,
-    sourceCurrency,
-    sourceAmount,
-    targetCurrency,
-    targetAmount,
-    rawTargetAmount,
-    providerRate,
-    tierRate: amounts.tierRate,
-    markupRate,
-    customerRate: sourceAmount > 0 ? targetAmount / sourceAmount : 0,
-    sourceUsdtRate:
-      direction === "to_cny"
-        ? (providerRate ?? 1)
-        : // One CNY is worth 1/tierRate USDT. Used only for the minimum gate.
-          1 / amounts.tierRate,
-  };
+  return { available: true, ...price };
 }
 
 /**
@@ -241,5 +165,5 @@ export async function quoteCnyConversion(params: {
  * promise we then fail to honour.
  */
 export function indicativeCnyRate(config: CnyPricingConfig): number | null {
-  return lowestTier(config.tiers)?.usdtToCnyRate ?? null;
+  return indicativeRateFromTiers(config.tiers);
 }

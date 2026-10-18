@@ -5,6 +5,7 @@ import {
   WithdrawIcon,
   BillsIcon,
   AirtimeIcon,
+  SendIcon,
 } from "@/components/layout/NavIcons";
 import { AddMoneyMenu, type AddMoneyChoice } from "@/components/home/AddMoneyMenu";
 import { depositAvailability } from "@/lib/deposits/availability";
@@ -33,9 +34,11 @@ const COLUMN_CLASS: Record<number, string> = {
  * people are actually here for, and it asks which wallet before navigating —
  * see AddMoneyMenu.
  *
- * NOT HERE YET: Pay to China. Its page and the CNY wallet arrive with Group 8;
- * a tile pointing at a route that does not exist would be the exact dead end
- * this commit removes.
+ * Pay to China is here unconditionally, and that is deliberate rather than an
+ * oversight about the flags above. It is not behind an unchosen provider — a
+ * human settles it — so it works for every account from the moment it ships.
+ * A user with no yuan can still fund one from naira, shillings or USDT, which
+ * is most of the point of it.
  */
 export function QuickActions({ wallets }: { wallets: Wallet[] }) {
   // Config order, so the sheet does not reshuffle between loads.
@@ -64,6 +67,7 @@ export function QuickActions({ wallets }: { wallets: Wallet[] }) {
 
   const links = [
     { href: "/convert", label: "Convert", Icon: ConvertIcon },
+    { href: "/pay-to-china", label: "Pay to China", Icon: SendIcon },
     { href: "/withdraw", label: "Withdraw", Icon: WithdrawIcon },
     ...(USD_COLLECTION_ENABLED
       ? [{ href: "/receive", label: "Receive USD", Icon: ReceiveIcon }]

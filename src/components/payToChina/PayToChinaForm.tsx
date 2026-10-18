@@ -56,6 +56,8 @@ interface PayToChinaFormProps {
   hasPin: boolean;
   kycApproved: boolean;
   userId: string;
+  /** The wallet the user arrived with, from ?currency= on an account page. */
+  initialCurrency?: Currency;
 }
 
 export function PayToChinaForm(props: PayToChinaFormProps) {
@@ -86,6 +88,7 @@ function PayToChinaFields({
   hasPin,
   kycApproved,
   userId,
+  initialCurrency,
   state,
   formAction,
 }: PayToChinaFormProps & {
@@ -101,9 +104,17 @@ function PayToChinaFields({
   );
 
   const [sourceCurrency, setSourceCurrency] = useState<Currency>(
-    // The CNY wallet first when it has anything in it: yuan already bought is
-    // yuan that does not need pricing again.
-    funded.find((w) => w.currency === "CNY")?.currency ?? funded[0]?.currency ?? "NGN",
+    // A wallet named in the URL wins, because the user picked it on the
+    // account page they came from and being dropped onto a different one is
+    // the app overruling a choice already made. Only if it is actually
+    // funded — an empty wallet is not in `funded` and selecting it would
+    // show a balance of zero and refuse every amount.
+    funded.find((w) => w.currency === initialCurrency)?.currency ??
+      // Otherwise the CNY wallet when it has anything in it: yuan already
+      // bought is yuan that does not need pricing again.
+      funded.find((w) => w.currency === "CNY")?.currency ??
+      funded[0]?.currency ??
+      "NGN",
   );
   const [amountText, setAmountText] = useState("");
   const [method, setMethod] = useState<PayoutMethod>("alipay");

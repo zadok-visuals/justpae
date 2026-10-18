@@ -2,192 +2,270 @@ import { requireAdminUser } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchAllRows } from "@/lib/supabase/paging";
 import { Card, Banner, EmptyState } from "@/components/ui/Primitives";
-import { formatAmount, formatNumber } from "@/lib/currencies";
-import type { Currency } from "@/lib/types/database";
-
-/** The columns the margin calculation needs, and no others. */
-type MarginRow = {
-  id: string;
-  created_at: string;
-  currency: Currency;
-  amount: number;
-  target_currency: Currency | null;
-  target_amount: number | null;
-  raw_target_amount: number | null;
-  provider_rate: number | null;
-  markup_rate: number | null;
-  customer_rate: number | null;
-};
+import { formatNumber } from "@/lib/currencies";
+import { computePnl, type PnlInputRow } from "@/lib/admin/pnlMath";
+import type { SupplierRateRow } from "@/lib/admin/supplierRate";
 
 export const metadata = { title: "Margin" };
 export const dynamic = "force-dynamic";
 
 /**
- * Margin per order.
+ * Margin, in USDT, across every route that earns one.
  *
- * This is computable at all ONLY because create_conversion records
- * raw_target_amount (what the provider actually delivered, pre-markup)
- * alongside target_amount (what the customer was credited). The gap between
- * them IS the margin.
+ * WHY USDT AND NOT "PER CURRENCY". This page used to total the margin on
+ * provider conversions alone, summed per destination currency, because that
+ * was the only route there was. There are now four — provider conversions,
+ * yuan conversions, Pay to China and withdrawal fees — and they earn in
+ * naira, shillings, yuan and USDT. A page that reports four separate totals
+ * cannot answer "did we make money this month", and a page that adds them
+ * together without converting answers it wrongly. So everything is converted,
+ * once, at the supplier rate that was in force when the order happened, and
+ * the arithmetic lives in src/lib/admin/pnlMath.ts under unit test.
  *
- * Without those two columns the markup collected on a completed order is
- * unrecoverable after the fact: the provider's original response is gone, and
- * reconstructing it from a stored rate loses every rounding step along the
- * way.
+ * WHAT IS COUNTED. Completed orders only. A two-leg conversion sitting at
+ * `partially_completed` has delivered one leg and owes the other; its margin
+ * is not realised and counting it would book revenue on an order that can
+ * still be refunded.
  *
- * Margin is summed PER TARGET CURRENCY and never across currencies. A total
- * mixing naira, cedis and dollars is a meaningless number that looks
- * authoritative.
+ * NOTHING IS SILENTLY ZERO. An order that cannot be valued — no rate on file
+ * for its pair, no rate trail recorded — is counted as skipped and said out
+ * loud, because a missing order and a zero-margin order look identical in a
+ * total and mean completely different things.
  */
+
+/** The columns the margin calculation needs, and no others. */
+type MarginRow = {
+  id: string;
+  created_at: string;
+  type: "convert" | "withdrawal" | "pay_to_china";
+  provider: string;
+  currency: string;
+  amount: number;
+  target_currency: string | null;
+  target_amount: number | null;
+  actual_target_amount: number | null;
+  raw_target_amount: number | null;
+};
+
 export default async function AdminPnlPage() {
   await requireAdminUser();
   const admin = createAdminClient();
 
-  // PAGED, not .limit(100). This page used to sum a hundred rows and print the
-  // result as the margin, so past a hundred completed conversions the figure
-  // on screen was simply wrong — silently, with nothing saying it was partial.
-  // A wrong list inconveniences someone; a wrong total misinforms the operator
-  // about the business.
-  const { rows, truncated, error } = await fetchAllRows<MarginRow>((from, to) =>
+  const [ratesResult, ordersResult] = await Promise.all([
     admin
-      .from("transactions")
-      .select(
-        "id, created_at, currency, amount, target_currency, target_amount, raw_target_amount, provider_rate, markup_rate, customer_rate",
-      )
-      .eq("type", "convert")
-      .eq("status", "completed")
-      .not("raw_target_amount", "is", null)
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: false })
-      .range(from, to),
-  );
+      .from("supplier_rates")
+      .select("base_currency, quote_currency, buy_rate, effective_from")
+      .order("effective_from", { ascending: false }),
+    // PAGED, not .limit(100). This page used to sum a hundred rows and print
+    // the result as the margin, so past a hundred completed orders the figure
+    // on screen was simply wrong — silently, with nothing saying it was
+    // partial. A wrong list inconveniences someone; a wrong total misinforms
+    // the operator about their own business.
+    fetchAllRows<MarginRow>((from, to) =>
+      admin
+        .from("transactions")
+        .select(
+          "id, created_at, type, provider, currency, amount, target_currency, target_amount, actual_target_amount, raw_target_amount",
+        )
+        .in("type", ["convert", "withdrawal", "pay_to_china"])
+        .eq("status", "completed")
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, to),
+    ),
+  ]);
 
-  if (error) console.error("[admin/pnl] read failed", error);
+  if (ratesResult.error) console.error("[admin/pnl] supplier rates read failed", ratesResult.error);
+  if (ordersResult.error) console.error("[admin/pnl] orders read failed", ordersResult.error);
 
-  // The table shows a recent window out of the rows already fetched. The
+  const rates: SupplierRateRow[] = (ratesResult.data ?? []).map((row) => ({
+    base_currency: row.base_currency,
+    quote_currency: row.quote_currency,
+    buy_rate: Number(row.buy_rate),
+    effective_from: row.effective_from,
+  }));
+
+  const inputRows: PnlInputRow[] = ordersResult.rows.map((row) => ({
+    id: row.id,
+    createdAt: row.created_at,
+    type: row.type,
+    provider: row.provider,
+    currency: row.currency,
+    amount: Number(row.amount),
+    targetCurrency: row.target_currency,
+    targetAmount: row.target_amount == null ? null : Number(row.target_amount),
+    actualTargetAmount: row.actual_target_amount == null ? null : Number(row.actual_target_amount),
+    rawTargetAmount: row.raw_target_amount == null ? null : Number(row.raw_target_amount),
+  }));
+
+  const { orders, totals } = computePnl(inputRows, rates);
+
+  // The table shows a recent window out of the rows already valued. The
   // TOTALS above it are the whole set, which is the entire point.
-  const recent = rows.slice(0, 100);
+  const recent = orders.slice(0, 100);
 
-  const byCurrency = new Map<Currency, { margin: number; volume: number; count: number }>();
-  for (const row of rows) {
-    if (!row.target_currency || row.raw_target_amount == null || row.target_amount == null) {
-      continue;
-    }
-    const existing = byCurrency.get(row.target_currency) ?? { margin: 0, volume: 0, count: 0 };
-    existing.margin += row.raw_target_amount - row.target_amount;
-    existing.volume += row.target_amount;
-    existing.count += 1;
-    byCurrency.set(row.target_currency, existing);
-  }
+  const routeCards = [
+    { label: "Conversions", value: totals.conversionUsdt },
+    { label: "Yuan conversions", value: totals.cnyConversionUsdt },
+    { label: "Pay to China", value: totals.payToChinaUsdt },
+    { label: "Withdrawal fees", value: totals.withdrawalFeesUsdt },
+  ];
 
   return (
     <div className="space-y-5">
       <h1 className="font-display text-2xl font-semibold text-foreground">Margin</h1>
 
       <Banner tone="info" title="How this is calculated">
-        Margin is what the provider delivered minus what the customer was credited, recorded on
-        each order at the moment it was created. Totals are per destination currency — mixing
-        currencies in one figure would be meaningless. Every completed conversion is counted,
-        not a recent sample.
+        Every figure here is in USDT. The four routes earn in different currencies, so each order
+        is converted at the supplier rate that was in force when it happened — that is the only
+        way the four can be added into one total that means anything. Completed orders only.
       </Banner>
+
+      {ratesResult.error || ordersResult.error ? (
+        <Banner tone="warning" title="Some of this could not be read">
+          A query behind this page failed, so the figures below are incomplete. Check the server
+          logs before relying on them.
+        </Banner>
+      ) : null}
 
       {/* Said out loud. The whole point of the paging fix is that a partial
           total is never again presented as a complete one. */}
-      {truncated && (
+      {ordersResult.truncated && (
         <Banner tone="warning" title="These totals are incomplete">
-          There are more completed conversions than this page will read in one go, so the figures
-          below cover only the most recent {rows.length.toLocaleString("en-US")}. Treat them as a
-          floor, not a total.
+          There are more completed orders than this page will read in one go, so the figures below
+          cover only the most recent {ordersResult.rows.length.toLocaleString("en-US")}. Treat them
+          as a floor, not a total.
         </Banner>
       )}
 
-      {byCurrency.size === 0 ? (
+      {orders.length === 0 && totals.cnyFundedPayments === 0 ? (
         <EmptyState
-          title="No completed conversions yet"
-          body="Margin appears here once conversions start settling."
+          title="No completed orders yet"
+          body="Margin appears here once conversions, payments and withdrawals start settling."
           action={{ href: "/admin", label: "Back to admin" }}
         />
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {[...byCurrency.entries()].map(([currency, totals]) => (
-              <Card key={currency} className="space-y-1">
-                <p className="text-sm text-muted-foreground">Margin in {currency}</p>
-                <p className="font-display text-2xl font-semibold tabular-nums text-naira-light">
-                  {formatAmount(currency, totals.margin)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {totals.count} orders · {formatAmount(currency, totals.volume)} credited
+          <Card className="space-y-1">
+            <p className="text-sm text-muted-foreground">Total margin</p>
+            <p className="font-display text-3xl font-semibold tabular-nums text-naira-light">
+              {formatNumber(totals.totalUsdt)} USDT
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {orders.length.toLocaleString("en-US")} orders valued
+              {totals.skipped > 0 ? ` · ${totals.skipped} could not be` : ""}
+            </p>
+          </Card>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {routeCards.map((route) => (
+              <Card key={route.label} className="space-y-1">
+                <p className="text-sm text-muted-foreground">{route.label}</p>
+                <p className="font-display text-xl font-semibold tabular-nums text-foreground">
+                  {formatNumber(route.value)} USDT
                 </p>
               </Card>
             ))}
           </div>
 
-          <Card>
-            <h2 className="mb-3 text-base font-semibold text-foreground">
-              Last {recent.length} conversions
-            </h2>
-            <div className="scroll-x">
-              <table className="w-full min-w-[40rem] text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-muted-foreground">
-                    <th scope="col" className="pb-2 font-medium">
-                      When
-                    </th>
-                    <th scope="col" className="pb-2 font-medium">
-                      Pair
-                    </th>
-                    <th scope="col" className="pb-2 text-right font-medium">
-                      Sent
-                    </th>
-                    <th scope="col" className="pb-2 text-right font-medium">
-                      Provider gave
-                    </th>
-                    <th scope="col" className="pb-2 text-right font-medium">
-                      Customer got
-                    </th>
-                    <th scope="col" className="pb-2 text-right font-medium">
-                      Margin
-                    </th>
-                    <th scope="col" className="pb-2 text-right font-medium">
-                      Spread
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recent.map((row) => (
-                    <tr key={row.id} className="border-b border-border last:border-0">
-                      <td className="py-2 text-muted-foreground">
-                        {new Date(row.created_at).toLocaleDateString("en-GB")}
-                      </td>
-                      <td className="py-2 font-medium text-foreground">
-                        {row.currency} → {row.target_currency}
-                      </td>
-                      <td className="py-2 text-right tabular-nums text-foreground">
-                        {formatNumber(row.amount)}
-                      </td>
-                      <td className="py-2 text-right tabular-nums text-muted-foreground">
-                        {row.raw_target_amount != null ? formatNumber(row.raw_target_amount) : "—"}
-                      </td>
-                      <td className="py-2 text-right tabular-nums text-foreground">
-                        {row.target_amount != null ? formatNumber(row.target_amount) : "—"}
-                      </td>
-                      <td className="py-2 text-right tabular-nums text-naira-light">
-                        {row.raw_target_amount != null && row.target_amount != null
-                          ? formatNumber(row.raw_target_amount - row.target_amount)
-                          : "—"}
-                      </td>
-                      <td className="py-2 text-right tabular-nums text-muted-foreground">
-                        {row.markup_rate != null
-                          ? `${formatNumber(Number(row.markup_rate) * 100, 2)}%`
-                          : "—"}
-                      </td>
+          {/* An estimate that is not labelled is a lie with a decimal point on
+              it. These orders ARE counted — the alternative was dropping the
+              operator's first months of trading out of every total — but the
+              rate behind them is the earliest on file, not the real one. */}
+          {totals.estimated > 0 && (
+            <Banner tone="info" title={`${totals.estimated} order(s) used an estimated rate`}>
+              These orders were placed before the first supplier rate was recorded for their pair,
+              so the earliest rate on file was used instead. They are counted in the totals above
+              and marked “estimated” in the table below. Recording earlier rates under Rates &amp;
+              Markup replaces the estimate with the real figure.
+            </Banner>
+          )}
+
+          {totals.skipped > 0 && (
+            <Banner tone="warning" title={`${totals.skipped} order(s) could not be valued`}>
+              These have no supplier rate on file for their pair at all, so there is nothing to
+              even estimate from. They are left out of the totals rather than counted as zero —
+              add the missing pair under Rates &amp; Markup and they will appear.
+            </Banner>
+          )}
+
+          {/* Not a gap. Saying so, because an operator who notices these
+              missing from the total will otherwise assume it is one. */}
+          {totals.cnyFundedPayments > 0 && (
+            <Banner
+              tone="info"
+              title={`${totals.cnyFundedPayments} payment(s) funded from a yuan balance`}
+            >
+              Their margin was already counted when that yuan was bought, so counting it again on
+              the spend would report the same trade twice. Deliberately excluded, not missing.
+            </Banner>
+          )}
+
+          {recent.length > 0 && (
+            <Card>
+              <h2 className="mb-3 text-base font-semibold text-foreground">
+                Last {recent.length} orders
+              </h2>
+              <div className="scroll-x">
+                <table className="w-full min-w-[44rem] text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-muted-foreground">
+                      <th scope="col" className="pb-2 font-medium">
+                        When
+                      </th>
+                      <th scope="col" className="pb-2 font-medium">
+                        Route
+                      </th>
+                      <th scope="col" className="pb-2 text-right font-medium">
+                        Paid
+                      </th>
+                      <th scope="col" className="pb-2 text-right font-medium">
+                        Got
+                      </th>
+                      <th scope="col" className="pb-2 text-right font-medium">
+                        Margin (USDT)
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+                  </thead>
+                  <tbody>
+                    {recent.map((order) => (
+                      <tr key={order.id} className="border-b border-border last:border-0">
+                        <td className="py-2 whitespace-nowrap text-muted-foreground">
+                          {new Date(order.createdAt).toLocaleDateString("en-GB")}
+                        </td>
+                        <td className="py-2 font-medium text-foreground">
+                          {order.routeLabel}
+                          {order.estimated && (
+                            <span className="ml-2 text-xs font-normal text-muted-foreground">
+                              estimated
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2 text-right tabular-nums text-foreground">
+                          {order.paidLabel}
+                        </td>
+                        <td className="py-2 text-right tabular-nums text-muted-foreground">
+                          {order.gotLabel}
+                        </td>
+                        <td className="py-2 text-right tabular-nums">
+                          {order.pnlUsdt == null ? (
+                            <span
+                              className="text-muted-foreground"
+                              title={order.skippedReason ?? undefined}
+                            >
+                              not valued
+                            </span>
+                          ) : (
+                            <span className="text-naira-light">{formatNumber(order.pnlUsdt)}</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
         </>
       )}
     </div>

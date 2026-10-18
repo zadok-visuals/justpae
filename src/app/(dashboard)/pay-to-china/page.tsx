@@ -5,6 +5,7 @@ import { PayToChinaForm } from "@/components/payToChina/PayToChinaForm";
 import { ActivityRows } from "@/components/transactions/ActivityRows";
 import { SectionHeader } from "@/components/ui/Primitives";
 import { fetchActivityPage } from "@/lib/transactions";
+import { parseCurrencyParam } from "@/lib/accounts/preselect";
 import type { SavedPayToChinaRecipient, Wallet } from "@/lib/types/database";
 
 export const metadata = { title: "Pay to China" };
@@ -21,12 +22,14 @@ export const dynamic = "force-dynamic";
  * Every figure comes from the server. See src/lib/actions/payToChina.ts for
  * why none of them can come from the browser.
  */
-export default async function PayToChinaPage() {
+export default async function PayToChinaPage(props: PageProps<"/pay-to-china">) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  const params = await props.searchParams;
 
   const [{ data: wallets }, { data: saved }, { data: profile }, { data: hasPin }, recent] =
     await Promise.all([
@@ -60,6 +63,10 @@ export default async function PayToChinaPage() {
         // again in SQL, which is the check that actually holds.
         kycApproved={profile?.kyc_status === "approved"}
         userId={user.id}
+        // The wallet the account page sent them here with. The form falls
+        // back on its own when that wallet is empty or absent — see its
+        // comment on why an unfunded preselection is worse than none.
+        initialCurrency={parseCurrencyParam(params.currency) ?? undefined}
       />
 
       {payToChinaRows.length > 0 && (

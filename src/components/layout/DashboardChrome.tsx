@@ -20,6 +20,7 @@ import {
   AdminIcon,
   LogOutIcon,
   SupportIcon,
+  SendIcon,
 } from "@/components/layout/NavIcons";
 import { BILLS_ENABLED } from "@/lib/flags";
 
@@ -54,8 +55,11 @@ import { BILLS_ENABLED } from "@/lib/flags";
  * reaching (Group 5), and reaching it only by tapping a card on Home is not
  * navigation.
  *
- * NOT HERE YET: Pay to China, which the sidebar is supposed to carry. Its
- * page arrives with Group 8 — see the note above the sidebar's own list.
+ * PAY TO CHINA IS SIDEBAR-ONLY, and that asymmetry is the point. The bottom
+ * bar has five slots and every one of them is a place people go repeatedly;
+ * Pay to China is a thing people DO, like Convert or Withdraw, and those
+ * reach it from Home's quick actions and from the wallet pages. The sidebar
+ * has the room, so on desktop it is one click rather than two.
  */
 const TABS = [
   { href: "/home", label: "Home", Icon: HomeIcon },
@@ -64,6 +68,16 @@ const TABS = [
   { href: "/transactions", label: "Activity", Icon: ActivityIcon },
   ...(BILLS_ENABLED ? [{ href: "/bills", label: "Bills", Icon: BillsIcon }] : []),
   { href: "/profile", label: "Profile", Icon: ProfileIcon },
+];
+
+/**
+ * The sidebar's list: the tab bar's, with Pay to China inserted next to
+ * Convert, which is the action it most resembles. Profile stays last.
+ */
+const SIDEBAR_LINKS = [
+  ...TABS.slice(0, -1),
+  { href: "/pay-to-china", label: "Pay to China", Icon: SendIcon },
+  TABS[TABS.length - 1]!,
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -207,12 +221,11 @@ export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <aside className="hidden w-60 shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar sm:flex">
-      {/* The sidebar carries the same destinations as the tab bar. It has room
-          for more and will take Pay to China when Group 8 builds the page and
-          the CNY wallet behind it; until then there is nothing to link to. */}
+      {/* The tab bar's destinations plus Pay to China, which the bar has no
+          room for — see the note on TABS. */}
       <nav aria-label="Sidebar" className="flex-1 px-3 py-3">
         <ul className="space-y-1">
-          {TABS.map(({ href, label, Icon }) => {
+          {SIDEBAR_LINKS.map(({ href, label, Icon }) => {
             const active = isActive(pathname, href);
             return (
               <li key={href}>
