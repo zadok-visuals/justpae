@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PublicSupportButton } from "@/components/support/PublicSupportButton";
 import { Mark } from "@/components/layout/Mark";
 
 /**
@@ -68,6 +69,11 @@ export function LegalPage({
           </Link>
         </div>
       </main>
+
+      {/* Terms and Privacy are where someone goes when they are uneasy about
+          something, which is exactly when being unable to find a way to ask
+          is worst. */}
+      <PublicSupportButton />
     </div>
   );
 }

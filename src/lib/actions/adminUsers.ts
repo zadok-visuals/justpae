@@ -59,6 +59,16 @@ export interface AdminUserSearchResult {
   createdAt: string;
   /** Null when this account is not an admin. */
   adminRole: AdminRole | null;
+  /**
+   * True when revoking this account would leave the installation with no
+   * superadmin at all — nobody able to grant a role again, and no way back in
+   * short of hand-written SQL against production.
+   *
+   * admin_revoke_role refuses it in SQL (0027), which is the control. This
+   * flag is only so the button is absent with a reason rather than present
+   * and guaranteed to fail.
+   */
+  isLastSuperadmin: boolean;
 }
 
 /**
@@ -178,6 +188,15 @@ async function attachRoles(
 
   const roles = new Map((admins ?? []).map((a) => [a.user_id, a.role]));
 
+  // Counted across the WHOLE roster, not across the rows in hand: whether
+  // this is the last superadmin is a fact about the installation, and the
+  // search that found this row almost never contains the others.
+  const { count: superadminCount } = await service
+    .from("admin_users")
+    .select("user_id", { count: "exact", head: true })
+    .eq("role", "superadmin")
+    .is("revoked_at", null);
+
   return rows.map((row) => ({
     id: row.id,
     email: row.email,
@@ -188,6 +207,7 @@ async function attachRoles(
     suspendedReason: row.suspended_reason,
     createdAt: row.created_at,
     adminRole: roles.get(row.id) ?? null,
+    isLastSuperadmin: roles.get(row.id) === "superadmin" && (superadminCount ?? 0) <= 1,
   }));
 }
 

@@ -5,6 +5,7 @@ import { CURRENCIES } from "@/lib/currencies";
 import { BILL_CATEGORIES } from "@/lib/providers/bills";
 import { BILLS_ENABLED, USD_COLLECTION_ENABLED } from "@/lib/flags";
 import { Analytics } from "@/components/analytics/Analytics";
+import { PublicSupportButton } from "@/components/support/PublicSupportButton";
 
 /**
  * The public landing page.
@@ -401,6 +402,11 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* Reaching a human without an account. Deliberately not the in-app
+          chat, which is per-account and has no row to write — see the
+          component. */}
+      <PublicSupportButton />
 
       {/* Public pages only — never the dashboard layout. See Analytics. */}
       <Analytics />

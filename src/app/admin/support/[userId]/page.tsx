@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Card } from "@/components/ui/Primitives";
 import { SupportReplyForm } from "@/components/admin/SupportReplyForm";
 import { loadSupportThreadForAdmin } from "@/lib/actions/support";
+import { buildThread } from "@/lib/support/thread";
 
 export const metadata = { title: "Support thread · Admin" };
 export const dynamic = "force-dynamic";
@@ -65,14 +66,25 @@ export default async function AdminSupportThreadPage(
         </Card>
       ) : (
         <ul className="space-y-3">
-          {messages.map((message) => {
+          {buildThread(messages, "admin").map((item) => {
+            if (item.kind === "separator") {
+              return (
+                <li key={item.key} className="flex items-center gap-3 py-1">
+                  <span aria-hidden="true" className="h-px flex-1 bg-border" />
+                  <span className="text-xs font-medium text-muted-foreground">{item.label}</span>
+                  <span aria-hidden="true" className="h-px flex-1 bg-border" />
+                </li>
+              );
+            }
+
+            const { message, status } = item;
             const fromUser = message.sender === "user";
             const attachmentUrl = message.attachment_ref
               ? attachmentUrls[message.attachment_ref]
               : undefined;
 
             return (
-              <li key={message.id} className={`flex ${fromUser ? "justify-start" : "justify-end"}`}>
+              <li key={item.key} className={`flex ${fromUser ? "justify-start" : "justify-end"}`}>
                 <div className="flex max-w-[85%] flex-col gap-1 sm:max-w-[70%]">
                   <div
                     className={`rounded-2xl px-3.5 py-2.5 ${
@@ -113,19 +125,27 @@ export default async function AdminSupportThreadPage(
                     )}
                   </div>
 
-                  <time
-                    dateTime={message.created_at}
-                    className={`font-mono text-[0.6875rem] text-muted-foreground ${
-                      fromUser ? "" : "text-right"
+                  <div
+                    className={`flex items-center gap-1.5 text-[0.6875rem] text-muted-foreground ${
+                      fromUser ? "" : "justify-end"
                     }`}
                   >
-                    {new Date(message.created_at).toLocaleString("en-GB", {
-                      day: "numeric",
-                      month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </time>
+                    <time dateTime={message.created_at} className="font-mono">
+                      {new Date(message.created_at).toLocaleString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </time>
+                    {/* On your own last reply only: whether the customer has
+                        opened the thread since you sent it. */}
+                    {status && (
+                      <span className={status === "seen" ? "font-medium text-primary" : ""}>
+                        · {status === "seen" ? "Seen" : "Sent"}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </li>
             );

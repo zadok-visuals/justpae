@@ -138,7 +138,14 @@ const depositAvailability: Record<string, DepositAvailability> = {
   NGN: { available: true, provider: "busha" },
   KES: { available: true, provider: "busha" },
   USDT: { available: true, provider: "busha" },
-  GHS: { available: false, reason: "Cedi deposits are coming soon." },
+  // Matches depositAvailability's real wording. A gallery fixture that says
+  // something the product no longer says is a fixture that teaches the wrong
+  // copy to whoever reads it next.
+  GHS: {
+    available: false,
+    reason:
+      "Cedi deposits are under maintenance while we finish setup with our Ghana collection partner. We'll let you know the moment they're back.",
+  },
 };
 
 const recipients: WithdrawalRecipient[] = [

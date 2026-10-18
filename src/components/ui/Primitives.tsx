@@ -75,6 +75,9 @@ const STATUS_LABELS: Record<string, { label: string; tone: StatusTone }> = {
   pending: { label: "Pending", tone: "pending" },
   processing: { label: "In progress", tone: "pending" },
   completed: { label: "Completed", tone: "success" },
+  // 0023's status, for a two-leg conversion whose first leg landed and whose
+  // second has not. Without an entry here it rendered as the raw enum value.
+  partially_completed: { label: "Partly done", tone: "pending" },
   failed: { label: "Failed", tone: "failed" },
   refunded: { label: "Refunded", tone: "neutral" },
 };

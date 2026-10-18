@@ -18,6 +18,7 @@ import {
   SUPPORT_ATTACHMENT_TYPES,
   SUPPORT_MESSAGE_MAX_LENGTH,
 } from "@/lib/support/constants";
+import { buildThread, type DeliveryStatus } from "@/lib/support/thread";
 import type { SupportMessage } from "@/lib/types/database";
 
 /**
@@ -50,12 +51,31 @@ function formatTime(iso: string): string {
   });
 }
 
+/**
+ * The date a run of messages belongs to.
+ *
+ * A horizontal rule with the day in the middle, which is the shape every
+ * chat uses, because it reads as "time passed here" rather than as another
+ * message. aria-hidden on the rules so a screen reader hears the date once.
+ */
+function DaySeparator({ label }: { label: string }) {
+  return (
+    <li className="flex items-center gap-3 py-1">
+      <span aria-hidden="true" className="h-px flex-1 bg-border" />
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      <span aria-hidden="true" className="h-px flex-1 bg-border" />
+    </li>
+  );
+}
+
 function Bubble({
   message,
   attachmentUrl,
+  status,
 }: {
   message: SupportMessage;
   attachmentUrl?: string;
+  status: DeliveryStatus | null;
 }) {
   const fromUser = message.sender === "user";
 
@@ -103,14 +123,23 @@ function Bubble({
           )}
         </div>
 
-        <time
-          dateTime={message.created_at}
-          className={`font-mono text-[0.6875rem] text-muted-foreground ${
-            fromUser ? "text-right" : ""
+        <div
+          className={`flex items-center gap-1.5 text-[0.6875rem] text-muted-foreground ${
+            fromUser ? "justify-end" : ""
           }`}
         >
-          {formatTime(message.created_at)}
-        </time>
+          <time dateTime={message.created_at} className="font-mono">
+            {formatTime(message.created_at)}
+          </time>
+          {/* Only on the last of your own run — see buildThread. "Seen" is
+              the one fact a sender wants and a column of "Sent" repeated
+              down five bubbles is not it. */}
+          {status && (
+            <span className={status === "seen" ? "font-medium text-primary" : ""}>
+              · {status === "seen" ? "Seen" : "Sent"}
+            </span>
+          )}
+        </div>
       </div>
     </li>
   );
@@ -243,8 +272,22 @@ export function SupportChat({
     formAction(formData);
   }
 
+  const items = buildThread(messages, "user");
+
   return (
     <div className="flex flex-col gap-4">
+      {/* PINNED, not a message in the thread. A reassurance that scrolls away
+          with the first reply is a reassurance nobody sees when they need it,
+          which is while they are waiting. It says what we will and will not
+          do, because the most expensive support outcome on a money product is
+          a customer giving their PIN to someone claiming to be us. */}
+      <p className="sticky top-0 z-10 rounded-lg border border-border bg-secondary px-3 py-2 text-xs text-muted-foreground">
+        A real person reads this and replies here, usually within a few hours.{" "}
+        <span className="font-medium text-foreground">
+          We will never ask for your PIN, your password or a verification code.
+        </span>
+      </p>
+
       {messages.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
           <p className="font-medium text-foreground">No messages yet</p>
@@ -255,15 +298,22 @@ export function SupportChat({
         </div>
       ) : (
         <ul className="flex flex-col gap-3">
-          {messages.map((message) => (
-            <Bubble
-              key={message.id}
-              message={message}
-              attachmentUrl={
-                message.attachment_ref ? attachmentUrls[message.attachment_ref] : undefined
-              }
-            />
-          ))}
+          {items.map((item) =>
+            item.kind === "separator" ? (
+              <DaySeparator key={item.key} label={item.label} />
+            ) : (
+              <Bubble
+                key={item.key}
+                message={item.message}
+                status={item.status}
+                attachmentUrl={
+                  item.message.attachment_ref
+                    ? attachmentUrls[item.message.attachment_ref]
+                    : undefined
+                }
+              />
+            ),
+          )}
         </ul>
       )}
       <div ref={endRef} />

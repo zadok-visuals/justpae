@@ -14,9 +14,17 @@ export default async function AdminKycPage() {
 
   const { data: profiles } = await admin
     .from("profiles")
-    .select("id, email, full_name, business_name, phone, country, kyc_type, kyc_status, created_at")
+    .select(
+      "id, email, full_name, business_name, phone, country, kyc_type, kyc_status, created_at, kyc_submitted_at",
+    )
     .eq("kyc_status", "pending")
-    .order("created_at");
+    // Oldest SUBMISSION first, which is the order a review queue is worked
+    // in. It used to order by created_at — account creation — so a user who
+    // signed up a year ago and submitted this morning jumped the queue ahead
+    // of someone who submitted last week. Nulls last: a pending row with no
+    // submission date predates 0027 and the backfill, and guessing where it
+    // belongs is worse than putting it at the end where it is visible.
+    .order("kyc_submitted_at", { ascending: true, nullsFirst: false });
 
   if (!profiles || profiles.length === 0) {
     return (
@@ -71,7 +79,16 @@ export default async function AdminKycPage() {
               {profile.country && (
                 <DetailRow label="Country">{countryName(profile.country)}</DetailRow>
               )}
+              {/* The real submission date (0027), not the account's creation
+                  date this row used to show under the same label. The two
+                  differ by months for anyone who signed up and verified
+                  later, and the queue is worked by this figure. */}
               <DetailRow label="Submitted">
+                {profile.kyc_submitted_at
+                  ? new Date(profile.kyc_submitted_at).toLocaleString("en-GB")
+                  : "Not recorded"}
+              </DetailRow>
+              <DetailRow label="Account created">
                 {new Date(profile.created_at).toLocaleDateString("en-GB")}
               </DetailRow>
             </div>

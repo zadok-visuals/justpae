@@ -71,6 +71,13 @@ export type Profile = {
   kyc_type: KycType | null;
   kyc_status: KycStatus;
   kyc_rejection_reason: string | null;
+  /**
+   * When the identity check was last SUBMITTED, which is not when the account
+   * was created and is not when any document row was written (0027). Null for
+   * an account that has never submitted. Written only by submit_kyc_profile,
+   * in the same statement that sets kyc_status, so the two cannot disagree.
+   */
+  kyc_submitted_at: string | null;
   country: CountryCode | null;
   /**
    * Phase 4 suspension. Not writable from a user session at any privilege: the
@@ -532,6 +539,45 @@ export type UsdCollectionAccount = {
 };
 
 /**
+ * One row of migration 0027's `admin_activity_ledger` — every money movement
+ * in the product, from `transactions`, `deposits` and `bill_payments`, with
+ * the user already joined on.
+ *
+ * `kind` is a plain string rather than a union of the three source enums
+ * because it genuinely is one: the view emits transaction types verbatim,
+ * `'deposit'`, and `'bill_' || category`. A union here would have to be kept
+ * in step with three Postgres enums by hand, and the page only ever renders
+ * it through `ledgerKindLabel`.
+ *
+ * `(source, id)` is the identity of a row. Ids are unique per table, not
+ * across them.
+ */
+export type AdminActivityLedgerRow = {
+  source: "transaction" | "deposit" | "bill";
+  id: string;
+  user_id: string;
+  user_email: string;
+  user_name: string | null;
+  kind: string;
+  /**
+   * Widened to include BillStatus, which carries `refunded` and the
+   * transaction enum does not. A bill row really can arrive with a status no
+   * transaction can have, and narrowing this to TransactionStatus would be
+   * the type lying about the data rather than describing it.
+   */
+  status: TransactionStatus | BillStatus;
+  currency: Currency;
+  amount: number;
+  target_currency: Currency | null;
+  target_amount: number | null;
+  fee: number | null;
+  provider: string | null;
+  reference: string | null;
+  decline_reason: string | null;
+  created_at: string;
+};
+
+/**
  * Two things in this type exist purely to satisfy @supabase/postgrest-js's
  * `GenericSchema` constraint, and both are load-bearing rather than
  * decoration — getting either wrong produces errors that look like the
@@ -541,7 +587,9 @@ export type UsdCollectionAccount = {
  *    client silently falls back to an untyped schema: every `.rpc()` call's
  *    args parameter resolves to `undefined` ("Argument of type {...} is not
  *    assignable to parameter of type 'undefined'") and every narrowed select
- *    resolves to `never`. There are no views, hence the empty mapped type.
+ *    resolves to `never`. One view now (0027's ledger), so the mapped type is
+ *    no longer empty — but it still has to carry `Relationships` for the same
+ *    reason the Tables entries do.
  *
  *  - `Relationships: []` on every Tables entry. Without the key, the
  *    select-query type parser resolves a narrowed select (e.g.
@@ -552,7 +600,9 @@ export type UsdCollectionAccount = {
  */
 export type Database = {
   public: {
-    Views: { [_ in never]: never };
+    Views: {
+      admin_activity_ledger: { Row: AdminActivityLedgerRow; Relationships: [] };
+    };
     Tables: {
       profiles: { Row: Profile; Insert: Partial<Profile> & { id: string; email: string }; Update: Partial<Profile>; Relationships: [] };
       admin_users: {

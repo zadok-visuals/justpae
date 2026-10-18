@@ -281,7 +281,17 @@ function UserRow({
             </Button>
           ) : null}
 
-          {isSuperadmin && user.adminRole && (
+          {/* The last superadmin keeps their access, and the control says
+              why rather than disappearing. admin_revoke_role refuses it in
+              SQL regardless — this is so nobody clicks a button that cannot
+              work, not the guard itself. */}
+          {isSuperadmin && user.adminRole && user.isLastSuperadmin && (
+            <p className="text-xs text-muted-foreground">
+              Last superadmin — grant superadmin to another account before revoking this one.
+            </p>
+          )}
+
+          {isSuperadmin && user.adminRole && !user.isLastSuperadmin && (
             <form action={revokeAction}>
               <input type="hidden" name="userId" value={user.id} />
               <SubmitButton
