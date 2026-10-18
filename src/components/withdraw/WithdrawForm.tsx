@@ -37,6 +37,11 @@ interface WithdrawFormProps {
   /** True once stage one (account type + phone) is on file. */
   hasBasics: boolean;
   rejectionReason: string | null;
+  /**
+   * From `?currency=` — already validated and already fallen back by
+   * src/lib/accounts/preselect.ts, so this is taken at face value.
+   */
+  initialCurrency?: Currency;
 }
 
 /**
@@ -108,6 +113,7 @@ function WithdrawFormFields({
   kycType,
   hasBasics,
   rejectionReason,
+  initialCurrency,
   state,
   formAction,
 }: WithdrawFormProps & {
@@ -121,7 +127,7 @@ function WithdrawFormFields({
   );
 
   const [currency, setCurrency] = useState<Currency>(
-    withdrawable[0]?.currency ?? wallets[0]?.currency ?? "NGN",
+    initialCurrency ?? withdrawable[0]?.currency ?? wallets[0]?.currency ?? "NGN",
   );
   const [amountText, setAmountText] = useState("");
   const [pin, setPin] = useState("");

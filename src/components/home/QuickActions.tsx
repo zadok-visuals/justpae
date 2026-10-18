@@ -6,30 +6,90 @@ import {
   BillsIcon,
   AirtimeIcon,
 } from "@/components/layout/NavIcons";
+import { AddMoneyMenu, type AddMoneyChoice } from "@/components/home/AddMoneyMenu";
+import { depositAvailability } from "@/lib/deposits/availability";
+import { USD_COLLECTION_ENABLED, BILLS_ENABLED } from "@/lib/flags";
+import { CURRENCIES } from "@/lib/currencies";
+import type { Wallet } from "@/lib/types/database";
+
+const COLUMN_CLASS: Record<number, string> = {
+  3: "sm:grid-cols-3",
+  4: "sm:grid-cols-4",
+  5: "sm:grid-cols-5",
+  6: "sm:grid-cols-6",
+};
 
 /**
- * The five things people come here to do, one tap from Home.
+ * The things people come here to do, one tap from Home.
  *
- * Airtime is listed separately from Bills even though it is a bill category,
- * because topping up a phone is by far the most frequent single action in this
- * market and burying it one level inside "Bills" makes the common case slower
- * than the rare ones.
+ * WHAT CHANGED AND WHY. This row used to advertise five actions regardless of
+ * whether any of them worked. "Receive" led to a coming-soon page, and "Bills"
+ * and "Airtime" led to screens behind a provider that has not been chosen —
+ * three of five tiles were dead ends, which is how a user learns to stop
+ * trusting the row. Each is now shown only when its flag is on, and the flags
+ * ship off, so what is on screen is what can be done.
  *
- * Scrolls horizontally on a narrow phone rather than wrapping to a second row
- * or shrinking the targets below a comfortable tap size.
+ * Add money replaces Receive as the first tile because it is the thing most
+ * people are actually here for, and it asks which wallet before navigating —
+ * see AddMoneyMenu.
+ *
+ * NOT HERE YET: Pay to China. Its page and the CNY wallet arrive with Group 8;
+ * a tile pointing at a route that does not exist would be the exact dead end
+ * this commit removes.
  */
-const ACTIONS = [
-  { href: "/receive", label: "Receive", Icon: ReceiveIcon },
-  { href: "/convert", label: "Convert", Icon: ConvertIcon },
-  { href: "/withdraw", label: "Withdraw", Icon: WithdrawIcon },
-  { href: "/bills", label: "Bills", Icon: BillsIcon },
-  { href: "/bills/airtime", label: "Airtime", Icon: AirtimeIcon },
-];
+export function QuickActions({ wallets }: { wallets: Wallet[] }) {
+  // Config order, so the sheet does not reshuffle between loads.
+  const order = CURRENCIES.map((c) => c.code);
+  const choices: AddMoneyChoice[] = [...wallets]
+    .sort((a, b) => order.indexOf(a.currency) - order.indexOf(b.currency))
+    .map((wallet) => {
+      // USD is funded by being sent to, not by depositing — the same split the
+      // account pages make, from the same availability module.
+      if (wallet.currency === "USD") {
+        return {
+          currency: wallet.currency,
+          href: "/receive",
+          disabledReason: USD_COLLECTION_ENABLED
+            ? null
+            : "Dollar receiving details are coming soon.",
+        };
+      }
+      const availability = depositAvailability(wallet.currency);
+      return {
+        currency: wallet.currency,
+        href: `/deposit?currency=${wallet.currency}`,
+        disabledReason: availability.available ? null : availability.reason,
+      };
+    });
 
-export function QuickActions() {
+  const links = [
+    { href: "/convert", label: "Convert", Icon: ConvertIcon },
+    { href: "/withdraw", label: "Withdraw", Icon: WithdrawIcon },
+    ...(USD_COLLECTION_ENABLED
+      ? [{ href: "/receive", label: "Receive USD", Icon: ReceiveIcon }]
+      : []),
+    ...(BILLS_ENABLED
+      ? [
+          { href: "/bills", label: "Bills", Icon: BillsIcon },
+          { href: "/bills/airtime", label: "Airtime", Icon: AirtimeIcon },
+        ]
+      : []),
+  ];
+
+  // The grid tracks the real number of tiles rather than a hardcoded five —
+  // with the flags off that left two empty columns and three tiles stranded
+  // at the left edge of a desktop screen. Written as whole literal class
+  // names because Tailwind scans source text: a template-built `sm:grid-cols-
+  // ${n}` produces no CSS at all.
+  const columnClass = COLUMN_CLASS[links.length + 1] ?? "sm:grid-cols-3";
+
   return (
-    <div className="snap-rail -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:grid sm:grid-cols-5 sm:px-0">
-      {ACTIONS.map(({ href, label, Icon }) => (
+    <div
+      className={`snap-rail -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:grid sm:px-0 ${columnClass}`}
+    >
+      <AddMoneyMenu choices={choices} />
+
+      {links.map(({ href, label, Icon }) => (
         <Link
           key={href}
           href={href}

@@ -53,6 +53,14 @@ interface ConvertFormProps {
    * countdown.
    */
   rateBoard: UsdtPairDisplay[];
+  /**
+   * The source wallet the page resolved `routes` for — from `?currency=`, or
+   * the first wallet. The form MUST open on this one: `routes` describes the
+   * destinations reachable out of it and nothing else, so opening on a
+   * different source would show one wallet's availability under another
+   * wallet's name.
+   */
+  initialFrom: Currency;
 }
 
 /**
@@ -91,6 +99,7 @@ function ConvertFormFields({
   routes,
   hasPin,
   rateBoard,
+  initialFrom,
   state,
   formAction,
 }: ConvertFormProps & {
@@ -98,8 +107,8 @@ function ConvertFormFields({
   formAction: (formData: FormData) => void;
 }) {
   const router = useRouter();
-  const [from, setFrom] = useState<Currency>(wallets[0]?.currency ?? "USD");
-  const [to, setTo] = useState<Currency>(() => firstAvailable(routes, wallets[0]?.currency));
+  const [from, setFrom] = useState<Currency>(initialFrom);
+  const [to, setTo] = useState<Currency>(() => firstAvailable(routes, initialFrom));
 
   // Which field the user last typed in. The OTHER one is the derived value,
   // so the number under their cursor never reformats itself mid-keystroke.
@@ -332,9 +341,15 @@ function ConvertFormFields({
             setFrom(next);
             if (next === to) setTo(firstAvailable(routes, next));
             // The whole route table is per-source, so changing the source
-            // means the availability data on screen is now for the wrong
-            // currency. A reload is the honest way to get the right one.
-            router.refresh();
+            // means the availability on screen is now for the wrong currency.
+            //
+            // router.refresh() used to be what ran here, and it could not
+            // work: the page resolved routes for a source it read from the
+            // URL (or, before that, the first wallet), so re-rendering the
+            // same URL re-resolved the same source. Pushing the new source
+            // into the query is what actually asks the server the new
+            // question — and it leaves a back button that means something.
+            router.replace(`/convert?currency=${next}`, { scroll: false });
           }}
         />
 

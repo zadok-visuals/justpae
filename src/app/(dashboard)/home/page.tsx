@@ -66,7 +66,7 @@ export default async function HomePage() {
 
         <section>
           <SectionHeader title="Quick actions" />
-          <QuickActions />
+          <QuickActions wallets={(wallets ?? []) as Wallet[]} />
         </section>
 
         <section>

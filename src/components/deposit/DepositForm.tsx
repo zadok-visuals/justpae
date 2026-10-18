@@ -8,20 +8,28 @@ import { Button, SubmitButton } from "@/components/ui/Button";
 import { Banner, Card, DetailRow } from "@/components/ui/Primitives";
 import { CopyField } from "@/components/ui/CopyButton";
 import { SelectField } from "@/components/ui/Field";
+import { StepIndicator } from "@/components/ui/StepIndicator";
 import { getDepositQuote, initiateDeposit, checkDepositStatus } from "@/lib/actions/deposits";
 import type { DepositAvailability } from "@/lib/deposits/availability";
 import { fiatMinimumDeposit } from "@/lib/busha/limits";
 import { usePolling, isFinalStatus } from "@/lib/hooks/usePolling";
+import { useCountdown, formatCountdown } from "@/lib/hooks/useCountdown";
 import { currencyMeta, formatAmount } from "@/lib/currencies";
 import type { Currency, Wallet } from "@/lib/types/database";
 
 /**
- * Deposit.
+ * Deposit, in three named steps.
  *
- * Two steps, deliberately: price it, then commit. The quote step is where the
- * provider's fee becomes visible, and the fee is real — a 2,000 naira deposit
- * credits 1,900 after a 100 naira charge. Hiding that until after the money is
- * sent is how a support ticket gets written.
+ * THE STEPS ARE LABELLED because the middle one is where money becomes
+ * irreversible and the screen used to pass through it without saying so. The
+ * quote step is where the provider's fee becomes visible, and the fee is real
+ * — a 2,000 naira deposit credits 1,900 after a 100 naira charge. Hiding that
+ * until after the money is sent is how a support ticket gets written.
+ *
+ *   1. How much      amount, with the minimum enforced before any round trip
+ *   2. Check it      what you transfer, the fee, what lands
+ *   3. Send it       the generated account or address, the exact amount, the
+ *                    expiry clock, and the status polling itself
  *
  * Once instructions exist, the screen polls its own status and self-heals. It
  * does not wait for a webhook: for this account the provider's webhook has
@@ -32,15 +40,21 @@ import type { Currency, Wallet } from "@/lib/types/database";
 export function DepositForm({
   wallets,
   availability,
+  initialCurrency,
 }: {
   wallets: Wallet[];
   availability: Record<string, DepositAvailability>;
+  /**
+   * From `?currency=` — see src/lib/accounts/preselect.ts. Already validated
+   * and already fallen back, so this component takes it at face value.
+   */
+  initialCurrency?: Currency;
 }) {
   const router = useRouter();
 
   const depositable = wallets.filter((w) => availability[w.currency]?.available);
   const [currency, setCurrency] = useState<Currency>(
-    depositable[0]?.currency ?? wallets[0]?.currency ?? "NGN",
+    initialCurrency ?? depositable[0]?.currency ?? wallets[0]?.currency ?? "NGN",
   );
   const [amountText, setAmountText] = useState("");
 
@@ -94,6 +108,8 @@ export function DepositForm({
 
   return (
     <div className="space-y-4">
+      <StepIndicator step={quoteState.quoteId ? 2 : 1} total={3} />
+
       <Card className="space-y-3">
         <SelectField
           label="Deposit into"
@@ -184,7 +200,11 @@ export function DepositForm({
             </Banner>
           )}
 
-          <SubmitButton pendingLabel="Getting your details…">Get payment details</SubmitButton>
+          {/* "Generate", not "get": the next screen's account number does not
+              already exist and is not the user's own. It is created for this
+              one transfer, and naming the action that way is the first place
+              the user is told so. */}
+          <SubmitButton pendingLabel="Generating…">Generate account details</SubmitButton>
         </form>
       )}
     </div>
@@ -213,6 +233,21 @@ function DepositInstructions({
   const [status, setStatus] = useState<"pending" | "processing" | "completed" | "failed">("pending");
   const router = useRouter();
 
+  // THE COUNTDOWN, and the bug it is written around.
+  //
+  // useCountdown returns 0 for a missing deadline, exactly as it does for a
+  // passed one. Rendering "expired" off that number alone is how the
+  // reference implementation ended up telling every user their details had
+  // expired the instant they appeared — the provider simply had not sent an
+  // expires_at, and absent read as elapsed. So the two cases are separated
+  // here: `expiresAt` being present is what makes a clock meaningful at all,
+  // and only then does reaching zero mean anything.
+  const expiresAt = bankDetails?.expiresAt || cryptoAddress?.expiresAt || "";
+  const hasExpiry = expiresAt !== "" && !Number.isNaN(new Date(expiresAt).getTime());
+  const secondsLeft = useCountdown(hasExpiry ? expiresAt : undefined);
+  const expired = hasExpiry && secondsLeft === 0;
+  const settled = status === "completed" || status === "failed";
+
   // Every poll re-checks the provider server-side and credits immediately if
   // funds have landed. Shared with the withdrawal and conversion detail views
   // through usePolling, so all three stop on a final status by the same rule
@@ -240,6 +275,8 @@ function DepositInstructions({
 
   return (
     <div className="space-y-4">
+      <StepIndicator step={3} total={3} />
+
       {status === "completed" ? (
         <Banner tone="success" title="Money received">
           Your {currency} wallet has been credited.
@@ -248,10 +285,30 @@ function DepositInstructions({
         <Banner tone="danger" title="That deposit didn't go through">
           Nothing was taken. You can start again.
         </Banner>
+      ) : expired ? (
+        // Expiry is not a failure and must not read as one. Nothing has been
+        // taken, nothing is owed — the window simply closed, and the only
+        // thing the user has to do is ask for fresh details.
+        <Banner tone="warning" title="These details have expired">
+          Don&apos;t send anything to them now. Start again and we&apos;ll generate a new
+          account for you.
+        </Banner>
       ) : (
         <Banner tone="info" title="Waiting for your transfer">
           Send the exact amount shown below. This page updates itself the moment the money
           arrives — you can leave it open.
+        </Banner>
+      )}
+
+      {/* THE SINGLE MOST EXPENSIVE DEPOSIT MISTAKE is treating these details
+          as a standing account and sending to them again next week. They are
+          generated per transfer and they die. Said here, in the open, rather
+          than as a footnote under the account number. */}
+      {!settled && (
+        <Banner tone="warning" title="For this one transfer only">
+          {cryptoAddress
+            ? "This address was created for this deposit and expires. Don't save it or reuse it for a future deposit — generate fresh details each time."
+            : "This account was created for this deposit and expires. Don't save it as a beneficiary or send to it again — generate fresh details each time."}
         </Banner>
       )}
 
@@ -260,7 +317,7 @@ function DepositInstructions({
           send is the provider's grossed-up figure, not what they typed. Showing
           it only at the review step and then hiding it is how a transfer goes
           out for the wrong amount. */}
-      {grossAmount && status !== "completed" && status !== "failed" && (
+      {grossAmount && !settled && (
         <Card>
           <div className="pb-3">
             <CopyField
@@ -297,15 +354,40 @@ function DepositInstructions({
         </Card>
       )}
 
-      {(bankDetails?.expiresAt || cryptoAddress?.expiresAt) && (
+      {hasExpiry && !settled && (
+        <Card className="flex items-baseline justify-between gap-3">
+          <span className="text-sm text-muted-foreground">
+            {expired ? "Details expired" : "Details expire in"}
+          </span>
+          <span
+            // Announced politely so a screen-reader user hears the expiry
+            // once rather than every tick of the clock.
+            aria-live={expired ? "polite" : "off"}
+            className={`font-mono text-sm font-medium tabular-nums ${
+              expired
+                ? "text-destructive"
+                : secondsLeft <= 60
+                  ? "text-primary"
+                  : "text-foreground"
+            }`}
+          >
+            {expired ? "—" : formatCountdown(secondsLeft)}
+          </span>
+        </Card>
+      )}
+
+      {hasExpiry && !settled && (
         <p className="text-center text-xs text-muted-foreground">
-          These details expire{" "}
-          {new Date(bankDetails?.expiresAt ?? cryptoAddress!.expiresAt).toLocaleString("en-GB")}
+          Expires {new Date(expiresAt).toLocaleString("en-GB")}
         </p>
       )}
 
-      <Button variant="secondary" fullWidth onClick={onDone}>
-        {status === "completed" ? "Back to home" : "I'll finish this later"}
+      <Button variant={expired && !settled ? "primary" : "secondary"} fullWidth onClick={onDone}>
+        {status === "completed"
+          ? "Back to home"
+          : expired
+            ? "Start again"
+            : "I'll finish this later"}
       </Button>
     </div>
   );

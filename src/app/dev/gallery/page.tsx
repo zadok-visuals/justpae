@@ -200,7 +200,7 @@ export default function DevGallery() {
 
             <section>
               <SectionHeader title="Quick actions" />
-              <QuickActions />
+              <QuickActions wallets={wallets} />
             </section>
 
             <section>
@@ -238,6 +238,7 @@ export default function DevGallery() {
                 wallets={wallets}
                 routes={routes}
                 hasPin
+                initialFrom="NGN"
                 rateBoard={[
                   { currency: "NGN", buyPrice: 1387.65, sellPrice: 1357.44, unavailableReason: null },
                   { currency: "KES", buyPrice: 130.08, sellPrice: 128.11, unavailableReason: null },

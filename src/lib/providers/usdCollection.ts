@@ -22,6 +22,51 @@ import { USD_COLLECTION_ENABLED } from "@/lib/flags";
  *
  * Nothing else in the app needs to change: /receive, the webhook route and the
  * usd_collection_accounts table are all already built against this interface.
+ *
+ * ── A CANDIDATE, FOUND IN THE PROVIDER'S OWN DOCS (Group 6e research) ──────
+ *
+ * Our existing provider documents persistent per-end-user accounts, which is
+ * exactly the shape this interface wants. Recorded here rather than built,
+ * because every line below is read off public documentation and none of it
+ * has been exercised against this account's credentials:
+ *
+ *   POST /v1/customers                      creates an end user. Individual
+ *                                           needs email, type, country_id,
+ *                                           phone, birth_date, first/last
+ *                                           name, a full address object and
+ *                                           has_accepted_terms.
+ *   PUT  /v1/customers/{id}                 can add a BVN afterwards.
+ *   GET  /v1/virtual_bank_accounts/{code}   the dedicated account for one
+ *                                           currency. Takes an
+ *                                           X-BU-PROFILE-ID header and
+ *                                           returns account_name,
+ *                                           account_number, bank_name,
+ *                                           bank_code, status — a persistent
+ *                                           row with its own created_at, not
+ *                                           a per-transfer allocation.
+ *
+ * Two things make this a real lead rather than a hope. The response carries a
+ * `meta` naming ACH and WIRE as payment methods, which is a USD rail and not
+ * an NGN one — so the endpoint is plausibly the answer to BOTH the dollar
+ * receiving details this file exists for AND a standing naira account number.
+ * And the account is keyed to a customer profile, which is what makes an
+ * incoming payment attributable without the reference code above.
+ *
+ * What is NOT known, and must be confirmed before any of it is built:
+ *   - whether this account's API key has the virtual_bank_accounts:read scope
+ *     at all, and whether the Customers API is enabled on it;
+ *   - what X-BU-PROFILE-ID is in terms of our own data, and how it relates to
+ *     a customer id;
+ *   - whether USD is actually an accepted `code`, or only NGN. The docs show
+ *     the parameter as a free currency string and list no supported set.
+ *   - NGN virtual accounts require the customer's BVN on file, and requests
+ *     without one fail `err_bvn_verification_required`. Collecting a BVN is a
+ *     KYC change with its own consequences — it is not a field to add to the
+ *     onboarding form on the strength of a docs page.
+ *
+ * Deliberately not built in this run. The next step is a read-only probe of
+ * GET /v1/customers with the live key to establish whether the API is even
+ * enabled, which costs nothing and moves no money.
  */
 
 export interface UsdReceivingDetails {
