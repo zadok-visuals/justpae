@@ -44,7 +44,18 @@ different route. The table records the justpae commit that did it.
 * **ported** — the behaviour exists in justpae; the commit that brought it is named.
 * **not applicable** — branding, copy, testimonials, social links, JesDanPay-only
   infrastructure, or something superseded inside JesDanPay's own history.
-* **to port in this run** — genuinely missing, and assigned to a group below.
+* **ported, re-expressed** — the behaviour exists, but deliberately not the
+  way JesDanPay implements it. Used for exactly one row, where copying the
+  implementation would mean copying a hole.
+* **to port in this run** — genuinely missing when this table was written.
+  **No row carries this status any more**; the column is kept so the history
+  of the pass is readable.
+
+## Final status
+
+Closed out at the end of Group 12. Every one of the 56 commits in the window
+is either ported or recorded as not applicable, with the justpae commit that
+did it named. Nothing is outstanding.
 
 ## The table
 
@@ -85,9 +96,9 @@ different route. The table records the justpae commit that did it.
 | 33 | `f7f043d` | Rejected-KYC experience — no redirects, dashboard usable | **ported** | `48b879b` + `src/components/kyc/KycStatusBanner.tsx`. |
 | 34 | `7560490` | Make the Klasha encryption secret length diagnosable | **ported** | Comment-level; the note survives in justpae's `.env.local.example` and `klasha/client.ts`. |
 | 35 | `baf2440` | Fix GHS deposit button silently doing nothing | **ported** | justpae gates GHS behind `KLASHA_GHS_DEPOSIT_ENABLED` with an explicit unavailable reason in `src/lib/deposits/availability.ts`, so the dead click cannot occur. |
-| 36 | `12af39c` | Expiry countdown on the bank-transfer deposit screen | **to port in this run** | `src/lib/hooks/useCountdown.ts` exists but only `ConvertForm` uses it. The deposit screen has no countdown. **Group 6c**. |
+| 36 | `12af39c` | Expiry countdown on the bank-transfer deposit screen | **ported** | **Group 6c** — `src/components/deposit/DepositForm.tsx` uses `useCountdown` / `formatCountdown`, the same hook `ConvertForm` already used. |
 | 37 | `adfd785` | Replace placeholder testimonial names with real ones | **not applicable** | JesDanPay's customers, on JesDanPay's landing page. |
-| 38 | `2d0e440` | Fix countdown showing "Expired" immediately | **to port in this run** | The off-by-one (server expiry parsed in the wrong unit) is a real bug to avoid when building **Group 6c**'s countdown. Recorded so it is not re-introduced. |
+| 38 | `2d0e440` | Fix countdown showing "Expired" immediately | **ported** (avoided) | The off-by-one was a server expiry parsed in the wrong unit. Group 6c's countdown treats a missing deadline and a zero deadline as distinct (`hasExpiry`), so the bug was never introduced here. |
 | 39 | `7ec3db1` | Remove customer-facing mentions of Busha and Klasha | **ported** | `355c781` and the standing repo rule. Re-verified by grep in **Group 12**. |
 | 40 | `9b4d3be` | Changes to Landing page | **not applicable** | JesDanPay testimonial copy. |
 | 41 | `996fc1e` | Hmm | **not applicable** | One-line testimonial copy edit. |
@@ -95,17 +106,17 @@ different route. The table records the justpae commit that did it.
 | 43 | `2a459d6` | Stop logging routine rate-probe noise; stop probing GHS | **ported** | `5fae662` — `src/lib/busha/rate.ts`. |
 | 44 | `8b9ff58` | Dashboard-first signup, country-aware identity, KYC-approved email | **ported** | `48b879b` + migration 0020 `save_onboarding_basics`, which (unlike JesDanPay's) cannot write `kyc_status`. |
 | 45 | `df86576` | Split KYC into quick onboarding + separate ID submission | **ported** | `48b879b` — `src/app/onboarding/kyc/*` and `KycTypeSelector.tsx`. |
-| 46 | `06f7795` | RMB QR-only crash, copyable admin payment details, proof upload | **to port in this run** | **Group 8d.3, 8f.2, 8f.3**. QR-only must work; proof goes to a private bucket with signed URLs. |
-| 47 | `9a2ea16` | RMB send form, admin RMB queue, notification emails | **to port in this run** | **Group 8d, 8e, 8f**. JesDanPay's `create_rmb_manual_transaction(_v2)` is `authenticated`-callable with caller-supplied amounts — **not** reproduced. |
+| 46 | `06f7795` | RMB QR-only crash, copyable admin payment details, proof upload | **ported** | **Group 8d.3 / 8f.2 / 8f.3** — a QR-only recipient works (`qrCodePath`, no text details required); payment details are copyable on the admin queue; the proof goes to the private `pay-to-china-proof` bucket and is served by signed URL. |
+| 47 | `9a2ea16` | RMB send form, admin RMB queue, notification emails | **ported, re-expressed** | **Groups 8d / 8e / 8f**. JesDanPay's `create_rmb_manual_transaction(_v2)` is `authenticated`-callable with caller-supplied amounts and is deliberately NOT reproduced — justpae's `create_pay_to_china_request` takes only ids, reads its figures from a server-written quote row, and is revoked from `public, anon, authenticated`. Migration 0026's invariant list names both JesDanPay functions under `must_not_exist`, so porting them later fails the assertion loudly. |
 | 48 | `df0f4c7` | Stale balance after deposit; PNL in USDT; tier/min in local currency | **ported** | **Group 8b** (minimums in the user's own currency) and **Group 8h** (PNL in USDT — every route converted at the supplier rate in force, in `src/lib/admin/pnlMath.ts`, under unit test). The stale-balance half is already handled by justpae's `revalidatePath` discipline. |
 | 49 | `d78ed70` | Every transaction with its user; dashboard financials | **ported** | **Group 9a** — migration 0027's `admin_activity_ledger` view unions transactions, deposits and bill_payments with the profile joined on; `/admin/transactions` pages it with `.range` and one extra row, filters by user, type, status, currency and date, and is linked from the admin nav. |
-| 50 | `98bec16` | Record and show the CNY amount on every RMB request | **to port in this run** | **Group 8d** — the target CNY is computed server-side and stored on the transaction. |
+| 50 | `98bec16` | Record and show the CNY amount on every RMB request | **ported** | **Group 8d** — the target CNY is computed server-side into `pay_to_china_quotes` and written to `transactions.target_amount`; what was actually delivered lands in `actual_target_amount` on completion, and **Group 8h**'s margin report prefers the second over the first. |
 | 51 | `857b9ca` | Email both sides of the support chat | **ported** | `73c4604` — `sendSupportMessageEmail` in `src/lib/email.ts`, called from `src/lib/actions/support.ts`. |
 | 52 | `89304ae` | Real social links in footer/SEO; GHS coming soon everywhere | **not applicable** (social) / **ported** (GHS) | JesDanPay's social accounts are JesDanPay's. GHS unavailability says "under maintenance" everywhere it appears — verified by grep in **Group 9g**; the one stale "coming soon" left was a dev-gallery fixture, now matching the real wording. |
 | 53 | `b7c5983` | CNY tier pricing matches the USDT rate; KES before GHS; logged-out floating support; chat loading | **ported** | **Group 8b** (pricing), **Group 9g** (KES before GHS — already the order in `CURRENCIES`, with GHS last because it is under maintenance), **Group 9e** (`PublicSupportButton` on the landing page, both legal pages and the auth shell — email, not the in-app chat, which is per-account and has no row an anonymous visitor could write). |
 | 54 | `3f7ad14` | Chat timestamps/seen/pinned note/images; Pay to China in PNL; completion emails; withdraw any funded currency | **ported** | Withdraw-any-funded-currency is migration 0016; completion emails are `73c4604`; attachments and Pay to China in PNL landed in Group 8. **Group 9d** adds Sent/Seen, day separators (Today / Yesterday / date) and the pinned reassurance note, on both the customer and the admin side, from one tested module (`src/lib/support/thread.ts`). |
 | 55 | `ae243ba` | PNL: fall back to the earliest supplier rate, marked estimated | **ported** | **Group 8h** — `src/lib/admin/supplierRate.ts` returns `{ rate, estimated }`, falling back to the earliest rate on file and returning null only when the pair has no rate at all. Counted, flagged per order, tallied in a summary banner. `src/lib/admin/supplierRate.test.ts` covers in-force / fallback / null / wrong-pair / wrong-base. |
-| 56 | `b3a913d` | GHS "coming soon" → "maintenance"; remove CNY tiers card | **to port in this run** | **Group 9g** (GHS wording) and **Group 8b** (tiers price but never display). This is JesDanPay's current end state and therefore the one to adopt. |
+| 56 | `b3a913d` | GHS "coming soon" → "maintenance"; remove CNY tiers card | **ported** | **Group 9g** (every GHS unavailability string says "under maintenance"; verified by grep) and **Group 8b** (the ladder prices and never displays — `cny_tier_rates` has RLS on with no read policy, so a customer session cannot fetch it even if a future component asks). |
 
 ## Rollup
 
@@ -115,10 +126,24 @@ five. The split ones are `d919651`, `03d2587`, `62bdafc`, `89304ae`, `3f7ad14`.
 
 | Status | Count |
 | --- | --- |
-| ported (fully) | 27 |
-| ported in part, remainder assigned below | 5 |
+| ported | 45 |
 | not applicable | 11 |
-| to port in this run | 13 (+ the 5 partials) |
+| outstanding | 0 |
+
+All 56 are closed. The five that were split — `d919651`, `03d2587`,
+`62bdafc`, `89304ae`, `3f7ad14` — have had both halves done and are counted
+once each above.
+
+One commit is marked "ported, re-expressed" rather than ported: `9a2ea16`.
+Its behaviour exists; its security model deliberately does not. See "Things
+JesDanPay does that justpae will not" below.
+
+The one row that is not a code change is `03d2587`'s per-user drill-down.
+JesDanPay has `admin/users/[id]`; justpae has no equivalent page, and Group
+9a answered the same need differently — `/admin/transactions?search=<email>`
+is reachable from every row's user cell and shows that account's whole
+history. A dedicated page would add a second place to maintain the same
+query. Recorded as a decision, not an omission.
 
 ## What "to port" maps to
 
