@@ -12,6 +12,7 @@ import { NotificationBell } from "@/components/layout/NotificationBell";
 import { useUnreadCounts } from "@/components/layout/UnreadCountsContext";
 import {
   HomeIcon,
+  AccountsIcon,
   ActivityIcon,
   ConvertIcon,
   BillsIcon,
@@ -20,6 +21,7 @@ import {
   LogOutIcon,
   SupportIcon,
 } from "@/components/layout/NavIcons";
+import { BILLS_ENABLED } from "@/lib/flags";
 
 /**
  * The app chrome.
@@ -39,11 +41,28 @@ import {
  * hydration mismatch.
  */
 
+/**
+ * The destinations, and the one rule about them: A TAB THAT LEADS NOWHERE IS
+ * WORSE THAN A MISSING TAB.
+ *
+ * Bills was a permanent fixture here and led to a screen behind a provider
+ * that has not been chosen — a fifth of the bar, on every screen, going to a
+ * coming-soon page. It is now gated on BILLS_ENABLED, which ships off, and
+ * reappears in both the bar and the sidebar the moment the flag flips.
+ *
+ * Accounts takes the slot it leaves. Every wallet now has a page worth
+ * reaching (Group 5), and reaching it only by tapping a card on Home is not
+ * navigation.
+ *
+ * NOT HERE YET: Pay to China, which the sidebar is supposed to carry. Its
+ * page arrives with Group 8 — see the note above the sidebar's own list.
+ */
 const TABS = [
   { href: "/home", label: "Home", Icon: HomeIcon },
-  { href: "/transactions", label: "Activity", Icon: ActivityIcon },
+  { href: "/accounts", label: "Accounts", Icon: AccountsIcon },
   { href: "/convert", label: "Convert", Icon: ConvertIcon },
-  { href: "/bills", label: "Bills", Icon: BillsIcon },
+  { href: "/transactions", label: "Activity", Icon: ActivityIcon },
+  ...(BILLS_ENABLED ? [{ href: "/bills", label: "Bills", Icon: BillsIcon }] : []),
   { href: "/profile", label: "Profile", Icon: ProfileIcon },
 ];
 
@@ -188,6 +207,9 @@ export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <aside className="hidden w-60 shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar sm:flex">
+      {/* The sidebar carries the same destinations as the tab bar. It has room
+          for more and will take Pay to China when Group 8 builds the page and
+          the CNY wallet behind it; until then there is nothing to link to. */}
       <nav aria-label="Sidebar" className="flex-1 px-3 py-3">
         <ul className="space-y-1">
           {TABS.map(({ href, label, Icon }) => {

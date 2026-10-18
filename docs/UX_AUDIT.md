@@ -203,3 +203,43 @@ Nothing in 0010–0019 is modified. No grant, policy or trigger is loosened.
 See the final summary. Carried here so the list has one home: whether customer
 copy should avoid the word "exchange"; whether to add a blog; and the items the
 audit itself turned up, recorded there rather than decided silently.
+
+---
+
+# Addendum — Group 7c: route reachability
+
+Re-audited at `674e0af`. The rule: every route under `src/app` except `/dev`
+must have a link from inside the app, or a deliberate non-link entry point
+(an email link, an OAuth redirect, a provider callback). A page with neither
+is a page nobody can reach and nobody maintains.
+
+Method: for each route, grep the whole of `src/` for a reference to its path,
+excluding the route's own `page.tsx`. Counting references rather than reading
+them would miss a path that appears only inside a `redirect()`, so every
+low-count result below was read.
+
+| Route | Entry point | Status |
+| --- | --- | --- |
+| `/`, `/login`, `/signup`, `/forgot-password`, `/reset-password` | Public nav, each other | reachable |
+| `/home` | Tab bar, sidebar, wordmark | reachable |
+| `/accounts`, `/accounts/[currency]` | **Added in Group 7a** (tab bar + sidebar); Home's wallet cards and "All accounts" since Group 5 | fixed |
+| `/convert` | Tab bar, sidebar, Home action, every account page | reachable |
+| `/transactions` | Tab bar, sidebar, Home "See all", account page "See all" | reachable |
+| `/profile` | Tab bar, sidebar, desktop avatar | reachable |
+| `/deposit` | Home's Add money sheet, account pages | reachable |
+| `/withdraw` | Home action, account pages | reachable |
+| `/receive` | Home action (flag-gated), USD account page | reachable |
+| `/support` | **Added in Group 7b** to Profile; desktop header icon already | fixed |
+| `/terms`, `/privacy` | Public footer, and **added in Group 7b** to Profile — a signed-in user never sees the public footer again | fixed |
+| `/onboarding/kyc`, `/individual`, `/business` | KYC banner on Home, Profile and Withdraw | reachable |
+| `/onboarding/kyc/status` | KYC banner while pending — **and now Profile unconditionally**, so an approved user can still see what is on file | fixed |
+| `/bills`, `/bills/[category]` | Home action and tab bar, **both now gated on `BILLS_ENABLED`** | deliberately unreachable while the flag is off |
+| `/admin` and all nine admin pages | Admin nav in `src/app/admin/layout.tsx`; `/admin` itself from Profile and the sidebar | reachable |
+| `/auth/callback`, `/auth/confirm`, `/auth/verify` | Email links and the OAuth redirect — deliberate non-link entry points | reachable by design |
+| `/api/webhooks/*`, `/api/cron/*` | Provider callbacks and the scheduler | not user-facing, by design |
+| `/dev/gallery`, `/dev/loading-states` | Out of scope per the brief | n/a |
+
+Nothing was found that is both user-facing and unreachable. The three "fixed"
+rows were reachable only by accident — a card tap, an icon with no label, or
+a footer that signing in removes — which is the same problem one step short
+of being invisible.

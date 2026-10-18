@@ -161,6 +161,45 @@ export default async function ProfilePage() {
           </Card>
         )}
 
+        {/* HELP AND LEGAL.
+            Support was reachable only from an icon in the desktop header and
+            nowhere at all in the mobile chrome; Terms and Privacy were linked
+            from the public footer, which a signed-in user never sees again
+            after they log in. A user who has agreed to terms is entitled to
+            re-read them without signing out to find them. */}
+        <Card>
+          <h2 className="text-base font-semibold text-foreground">Help and legal</h2>
+          <ul className="mt-1">
+            {[
+              { href: "/support", label: "Contact support", hint: "Chat with our team" },
+              {
+                href: "/onboarding/kyc/status",
+                label: "Verification status",
+                hint: "What we have on file",
+              },
+              { href: "/terms", label: "Terms of service", hint: null },
+              { href: "/privacy", label: "Privacy policy", hint: null },
+            ].map((item) => (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className="flex min-h-11 items-center justify-between gap-3 border-b border-border py-2 last:border-b-0"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-foreground">{item.label}</span>
+                    {item.hint && (
+                      <span className="block text-xs text-muted-foreground">{item.hint}</span>
+                    )}
+                  </span>
+                  <span aria-hidden="true" className="shrink-0 text-muted-foreground">
+                    →
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+
         <form action={logOut}>
           {/* SubmitButton, not a plain Button: sign-out ends in a redirect and
               the round trip is visible, so the button has to disable and spin

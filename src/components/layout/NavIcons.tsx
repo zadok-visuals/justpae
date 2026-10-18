@@ -80,6 +80,21 @@ export function ReceiveIcon(props: IconProps) {
   );
 }
 
+/**
+ * Accounts — a stack of cards, one per wallet. Deliberately not a wallet or a
+ * bank: a wallet already means "balance" on Home's cards, and a bank building
+ * means somewhere money goes OUT to, which is Withdraw.
+ */
+export function AccountsIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="8" width="18" height="12" rx="2" />
+      <path d="M6 8V6a2 2 0 0 1 2-2h11" />
+      <path d="M16.5 14h.5" />
+    </Icon>
+  );
+}
+
 export function DepositIcon(props: IconProps) {
   return (
     <Icon {...props}>
