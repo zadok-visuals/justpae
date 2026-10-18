@@ -60,7 +60,7 @@ export default async function HomePage() {
         />
 
         <section>
-          <SectionHeader title="Your wallets" />
+          <SectionHeader title="Your wallets" action={{ href: "/accounts", label: "All accounts" }} />
           <WalletCards wallets={(wallets ?? []) as Wallet[]} />
         </section>
 

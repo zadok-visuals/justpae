@@ -33,8 +33,12 @@ export function depositAvailability(currency: Currency): DepositAvailability {
       ? { available: true, provider: "klasha" }
       : {
           available: false,
+          // "Under maintenance", not "coming soon". Cedi deposits are a thing
+          // this product is supposed to do and cannot do today; "coming soon"
+          // reads as a feature that was never promised, which is the wrong
+          // expectation to set for somebody holding cedis right now.
           reason:
-            "Cedi deposits are coming soon — we're finishing setup with our Ghana collection partner.",
+            "Cedi deposits are under maintenance while we finish setup with our Ghana collection partner. We'll let you know the moment they're back.",
         };
   }
 

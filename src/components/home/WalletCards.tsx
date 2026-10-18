@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { currencyMeta, formatAmount } from "@/lib/currencies";
 import type { Currency, Wallet } from "@/lib/types/database";
 
@@ -26,27 +27,41 @@ const WASHES: Record<Currency, string> = {
   USDT: "from-ink-raised to-card",
 };
 
+/**
+ * Each card is a LINK to that wallet's own page.
+ *
+ * A balance on its own is a dead end: it says how much, and nothing about
+ * what can be done with it. Tapping the figure is the obvious gesture for
+ * "tell me more about this money", and before /accounts/[currency] existed it
+ * did nothing at all — which taught people the cards were decoration.
+ *
+ * `<a>` wrapping the whole card rather than a "View" affordance in the
+ * corner: the tap target is then the card, which on a phone is the difference
+ * between hitting it and hunting for it.
+ */
 function WalletCard({ wallet }: { wallet: Wallet }) {
   const meta = currencyMeta(wallet.currency);
 
   return (
-    <article
+    <Link
+      href={`/accounts/${wallet.currency}`}
+      aria-label={`${meta.label} account, balance ${formatAmount(wallet.currency, wallet.balance)}`}
       className={`snap-item flex min-w-[15rem] shrink-0 flex-col justify-between gap-5 rounded-xl border border-border bg-gradient-to-br p-4 sm:min-w-0 ${
         WASHES[wallet.currency]
       }`}
     >
-      <div className="flex items-center gap-2">
+      <span className="flex items-center gap-2">
         <span aria-hidden="true" className="text-lg leading-none">
           {meta.flag}
         </span>
         <span className="text-sm font-medium text-foreground">{wallet.currency}</span>
         <span className="truncate text-xs text-muted-foreground">{meta.label}</span>
-      </div>
+      </span>
 
-      <p className="font-display text-2xl font-semibold tabular-nums text-foreground">
+      <span className="font-display text-2xl font-semibold tabular-nums text-foreground">
         {formatAmount(wallet.currency, wallet.balance)}
-      </p>
-    </article>
+      </span>
+    </Link>
   );
 }
 
