@@ -7,12 +7,14 @@ import { LiveRefresh } from "@/components/ui/LiveRefresh";
 import { listRoutesFrom } from "@/lib/actions/convert";
 import { resolveRateBoard } from "@/lib/rates/display";
 import { parseCurrencyParam, preselectCurrency } from "@/lib/accounts/preselect";
+import { startRouteTiming } from "@/lib/perf/timing";
 import type { Wallet } from "@/lib/types/database";
 
 export const metadata = { title: "Convert" };
 export const dynamic = "force-dynamic";
 
 export default async function ConvertPage(props: PageProps<"/convert">) {
+  const endRouteTiming = startRouteTiming("/convert");
   const supabase = await createClient();
   const {
     data: { user },
@@ -32,6 +34,7 @@ export default async function ConvertPage(props: PageProps<"/convert">) {
   const list = (wallets ?? []) as Wallet[];
 
   if (list.length < 2) {
+    endRouteTiming();
     return (
       <PageShell title="Convert">
         <EmptyState
@@ -69,6 +72,8 @@ export default async function ConvertPage(props: PageProps<"/convert">) {
     // three, and the one shown here is the one this form will quote.
     resolveRateBoard(),
   ]);
+
+  endRouteTiming();
 
   return (
     <PageShell

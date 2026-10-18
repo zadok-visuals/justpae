@@ -44,6 +44,13 @@ import { createCipheriv, createDecipheriv } from "node:crypto";
  *      parse first and falls back to decryption.
  */
 
+import {
+  MOCK_MISS,
+  MockProviderMissError,
+  e2eProviderMocksEnabled,
+  mockKlashaRequest,
+} from "@/lib/e2e/mockProviders";
+
 const BASE_URL = process.env.KLASHA_API_BASE_URL ?? "https://dev.kcookery.com";
 
 export class KlashaError extends Error {
@@ -151,6 +158,15 @@ async function request<T>(
   options: { method: "GET" | "POST"; body?: unknown },
   isRetry = false,
 ): Promise<T> {
+  // See the identical hook in src/lib/busha/client.ts. Placed before the
+  // credential read and before getValidToken(), so a test run neither needs
+  // nor can use real Klasha credentials.
+  if (e2eProviderMocksEnabled()) {
+    const mocked = mockKlashaRequest(path, options.method, options.body);
+    if (mocked === MOCK_MISS) throw new MockProviderMissError("klasha", options.method, path);
+    return mocked as T;
+  }
+
   const publicKey = process.env.KLASHA_PUBLIC_KEY;
   if (!publicKey) throw new KlashaError("KLASHA_PUBLIC_KEY is not configured", 500);
 

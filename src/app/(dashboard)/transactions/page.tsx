@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/Primitives";
 import { fetchActivityPage, type ActivityFilter, type ActivityFilters as Filters } from "@/lib/transactions";
 import type { TransactionStatus } from "@/lib/types/database";
 import { isCurrency } from "@/lib/currencies";
+import { startRouteTiming } from "@/lib/perf/timing";
 
 export const metadata = { title: "Activity" };
 export const dynamic = "force-dynamic";
@@ -26,6 +27,7 @@ const VALID_FILTERS: ActivityFilter[] = [
 const VALID_STATUSES = ["pending", "processing", "completed", "failed", "refunded"];
 
 export default async function TransactionsPage(props: PageProps<"/transactions">) {
+  const endRouteTiming = startRouteTiming("/transactions");
   const supabase = await createClient();
   const {
     data: { user },
@@ -39,6 +41,7 @@ export default async function TransactionsPage(props: PageProps<"/transactions">
   const page = parsePage(params.page);
 
   const { rows, hasMore } = await fetchActivityPage(supabase, user.id, filters, page, PAGE_SIZE);
+  endRouteTiming();
 
   const hasAnyFilter =
     filters.filter !== "all" || !!filters.status || !!filters.from || !!filters.to || !!filters.search;

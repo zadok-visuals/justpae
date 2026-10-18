@@ -10,6 +10,7 @@ import { logOut } from "@/lib/actions/auth";
 import { isAdmin } from "@/lib/auth/admin";
 import { getBanks, type BushaBank } from "@/lib/busha/client";
 import { countryName } from "@/lib/countries";
+import { startRouteTiming } from "@/lib/perf/timing";
 import type { Currency, Wallet, WithdrawalRecipient } from "@/lib/types/database";
 
 export const metadata = { title: "Profile" };
@@ -23,6 +24,7 @@ export const dynamic = "force-dynamic";
  * both listing the same five things is one navigation item too many.
  */
 export default async function ProfilePage() {
+  const endRouteTiming = startRouteTiming("/profile");
   const supabase = await createClient();
   const {
     data: { user },
@@ -62,6 +64,8 @@ export default async function ProfilePage() {
   } catch (err) {
     console.error("[profile] bank list unavailable", err);
   }
+
+  endRouteTiming();
 
   // USD is excluded: there is no payout channel for it on this account. USD is
   // spent by converting it, so offering a USD destination would be offering

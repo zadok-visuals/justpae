@@ -4,12 +4,14 @@ import { PageShell } from "@/components/layout/PageShell";
 import { DepositForm } from "@/components/deposit/DepositForm";
 import { depositAvailability } from "@/lib/deposits/availability";
 import { parseCurrencyParam, preselectCurrency } from "@/lib/accounts/preselect";
+import { startRouteTiming } from "@/lib/perf/timing";
 import type { Wallet } from "@/lib/types/database";
 
 export const metadata = { title: "Add money" };
 export const dynamic = "force-dynamic";
 
 export default async function DepositPage(props: PageProps<"/deposit">) {
+  const endRouteTiming = startRouteTiming("/deposit");
   const supabase = await createClient();
   const {
     data: { user },
@@ -37,6 +39,8 @@ export default async function DepositPage(props: PageProps<"/deposit">) {
     list.filter((w) => availability[w.currency]?.available).map((w) => w.currency),
     list.map((w) => w.currency),
   );
+
+  endRouteTiming();
 
   return (
     <PageShell

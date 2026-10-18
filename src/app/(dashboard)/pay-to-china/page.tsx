@@ -6,6 +6,7 @@ import { ActivityRows } from "@/components/transactions/ActivityRows";
 import { SectionHeader } from "@/components/ui/Primitives";
 import { fetchActivityPage } from "@/lib/transactions";
 import { parseCurrencyParam } from "@/lib/accounts/preselect";
+import { startRouteTiming } from "@/lib/perf/timing";
 import type { SavedPayToChinaRecipient, Wallet } from "@/lib/types/database";
 
 export const metadata = { title: "Pay to China" };
@@ -23,6 +24,7 @@ export const dynamic = "force-dynamic";
  * why none of them can come from the browser.
  */
 export default async function PayToChinaPage(props: PageProps<"/pay-to-china">) {
+  const endRouteTiming = startRouteTiming("/pay-to-china");
   const supabase = await createClient();
   const {
     data: { user },
@@ -46,6 +48,8 @@ export default async function PayToChinaPage(props: PageProps<"/pay-to-china">) 
       supabase.rpc("has_transaction_pin"),
       fetchActivityPage(supabase, user.id, { filter: "all" }, 0, 5),
     ]);
+
+  endRouteTiming();
 
   const payToChinaRows = recent.rows.filter((row) => row.type === "pay_to_china");
 

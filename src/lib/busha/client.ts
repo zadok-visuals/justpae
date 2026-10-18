@@ -23,6 +23,14 @@
  * counterpart, so do not assume sandbox works before trying it.
  */
 
+import {
+  MOCK_MISS,
+  MockProviderMissError,
+  e2eProviderMocksEnabled,
+  mockBushaRequest,
+} from "@/lib/e2e/mockProviders";
+import { timed } from "@/lib/perf/timing";
+
 const BASE_URL = process.env.BUSHA_API_BASE_URL ?? "https://api.busha.io";
 
 export class BushaError extends Error {
@@ -53,18 +61,34 @@ async function request<T>(
    */
   options: { method: "GET" | "POST"; body?: unknown; revalidate?: number; quiet?: boolean },
 ): Promise<T> {
+  // The end-to-end suite's one hook into this file. Before the key is read and
+  // before any socket is opened, so a test run cannot reach the live API even
+  // with a real key in the environment. e2eProviderMocksEnabled() is false
+  // unless the flag is set AND src/lib/e2e/guard.ts agrees this is a local
+  // build — see that file for why NODE_ENV is the wrong question.
+  if (e2eProviderMocksEnabled()) {
+    const mocked = mockBushaRequest(path, options.method, options.body);
+    if (mocked === MOCK_MISS) throw new MockProviderMissError("busha", options.method, path);
+    return mocked as T;
+  }
+
   const apiKey = process.env.BUSHA_API_KEY;
   if (!apiKey) throw new BushaError("BUSHA_API_KEY is not configured", 500);
 
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method: options.method,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: options.body ? JSON.stringify(options.body) : undefined,
-    ...(options.revalidate != null ? { next: { revalidate: options.revalidate } } : {}),
-  });
+  // Timed here rather than at each call site: this is the single place every
+  // provider request passes through, so one wrapper attributes all of them.
+  // Free when PERF_TIMING is off.
+  const res = await timed(`busha ${options.method} ${path.split("?")[0]}`, () =>
+    fetch(`${BASE_URL}${path}`, {
+      method: options.method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      ...(options.revalidate != null ? { next: { revalidate: options.revalidate } } : {}),
+    }),
+  );
 
   const json = await res.json().catch(() => null);
   if (!res.ok || json?.status === "error") {

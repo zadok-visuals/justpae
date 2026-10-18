@@ -10,6 +10,7 @@ import { LiveRefresh } from "@/components/ui/LiveRefresh";
 import { KycStatusBanner } from "@/components/kyc/KycStatusBanner";
 import { fetchRecentActivity } from "@/lib/transactions";
 import { resolveRateBoard } from "@/lib/rates/display";
+import { startRouteTiming } from "@/lib/perf/timing";
 import type { Wallet } from "@/lib/types/database";
 
 export const metadata = { title: "Home" };
@@ -27,6 +28,7 @@ export const metadata = { title: "Home" };
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  const endRouteTiming = startRouteTiming("/home");
   const supabase = await createClient();
   const {
     data: { user },
@@ -46,6 +48,8 @@ export default async function HomePage() {
     // for that currency alone rather than failing this render.
     resolveRateBoard(),
   ]);
+
+  endRouteTiming();
 
   const firstName = profile?.full_name?.trim().split(/\s+/)[0] ?? null;
 

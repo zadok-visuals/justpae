@@ -12,7 +12,11 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "node --test --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \"src/**/*.test.ts\"",
-    "emails:build": "node --experimental-strip-types scripts/build-emails.ts"
+    "emails:build": "node --experimental-strip-types scripts/build-emails.ts",
+    "e2e": "playwright test",
+    "e2e:public": "playwright test --project=public",
+    "e2e:responsive": "playwright test --project=mobile-375 --project=tablet-768 --project=desktop-1280 --project=desktop-1440",
+    "e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",
@@ -24,6 +28,7 @@
     "sonner": "^2.0.8"
   },
   "devDependencies": {
+    "@playwright/test": "1.48.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.5",

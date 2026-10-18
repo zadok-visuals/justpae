@@ -3,6 +3,7 @@ import { requireAdminUser } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card } from "@/components/ui/Primitives";
 import { formatAmount } from "@/lib/currencies";
+import { startRouteTiming } from "@/lib/perf/timing";
 import type { AdminDashboardStats } from "@/lib/types/database";
 
 export const metadata = { title: "Admin" };
@@ -43,6 +44,7 @@ const ZERO: AdminDashboardStats = {
 };
 
 export default async function AdminPage() {
+  const endRouteTiming = startRouteTiming("/admin");
   await requireAdminUser();
   const admin = createAdminClient();
 
@@ -58,6 +60,8 @@ export default async function AdminPage() {
       .order("created_at", { ascending: false })
       .range(0, 9),
   ]);
+
+  endRouteTiming();
 
   if (error) console.error("[admin] dashboard stats failed", error);
   const failedDeposits = failed ?? [];

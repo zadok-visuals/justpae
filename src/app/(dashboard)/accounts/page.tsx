@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { EmptyState } from "@/components/ui/Primitives";
 import { currencyMeta, formatAmount, CURRENCIES } from "@/lib/currencies";
+import { startRouteTiming } from "@/lib/perf/timing";
 import type { Currency, Wallet } from "@/lib/types/database";
 
 export const metadata = { title: "Accounts" };
@@ -25,6 +26,7 @@ export const dynamic = "force-dynamic";
  * the one wallet the user actually opened.
  */
 export default async function AccountsPage() {
+  const endRouteTiming = startRouteTiming("/accounts");
   const supabase = await createClient();
   const {
     data: { user },
@@ -33,6 +35,7 @@ export default async function AccountsPage() {
 
   const { data } = await supabase.from("wallets").select("*").eq("user_id", user.id);
   const wallets = (data ?? []) as Wallet[];
+  endRouteTiming();
 
   // Config order, not database order, so rows don't reshuffle between loads.
   const ordered = [...wallets].sort(

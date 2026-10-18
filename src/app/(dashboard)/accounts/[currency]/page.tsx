@@ -11,6 +11,7 @@ import { fetchActivityPage } from "@/lib/transactions";
 import { listRoutesFrom } from "@/lib/actions/convert";
 import { resolveRateBoard, localRateCurrencies } from "@/lib/rates/display";
 import { currencyMeta, formatAmount, isCurrency, USD_CONVERSION_UNAVAILABLE } from "@/lib/currencies";
+import { startRouteTiming } from "@/lib/perf/timing";
 import type { Currency, Wallet } from "@/lib/types/database";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +45,7 @@ export default async function AccountPage(props: PageProps<"/accounts/[currency]
   if (!isCurrency(raw)) notFound();
   const currency: Currency = raw;
 
+  const endRouteTiming = startRouteTiming(`/accounts/${currency}`);
   const supabase = await createClient();
   const {
     data: { user },
@@ -69,6 +71,8 @@ export default async function AccountPage(props: PageProps<"/accounts/[currency]
     fetchActivityPage(supabase, user.id, { currency }, 0, RECENT_LIMIT),
     loadRatesFor(currency),
   ]);
+
+  endRouteTiming();
 
   const wallet = walletRow as Wallet | null;
 

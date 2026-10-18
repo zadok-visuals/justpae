@@ -1,5 +1,17 @@
 import path from "path";
 import type { NextConfig } from "next";
+import { assertE2eProviderMocksAreSafe } from "./src/lib/e2e/guard";
+
+/**
+ * Runs at module scope, which means it runs during `next build`. A build that
+ * sets E2E_MOCK_PROVIDERS in a hosted environment therefore FAILS rather than
+ * producing a deployable artefact with fake payment providers inside it.
+ *
+ * It is the first statement in the file on purpose: nothing else about the
+ * config should be allowed to succeed first and make the failure look like a
+ * different problem.
+ */
+assertE2eProviderMocksAreSafe();
 
 const nextConfig: NextConfig = {
   turbopack: {
