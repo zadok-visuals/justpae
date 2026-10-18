@@ -50,10 +50,18 @@ test.describe("a verified account", () => {
 
   test("accounts lists one row per wallet and each row opens", async ({ page }) => {
     await page.goto("/accounts");
-    const rows = page.locator("ul li a");
+
+    // SCOPED TO main. `ul li a` unscoped matched the SIDEBAR's nav list first
+    // — it is earlier in the document than the page content — so this test
+    // clicked "Home" and then asserted it was on an account page. It failed
+    // with "received /home", which reads like an app bug and was a selector
+    // picking up the chrome.
+    const rows = page.locator("main ul li a[href^='/accounts/']");
     await expect(rows.first()).toBeVisible();
+
+    const href = await rows.first().getAttribute("href");
     await rows.first().click();
-    await expect(page).toHaveURL(/\/accounts\/[A-Z]{3,4}/);
+    await expect(page).toHaveURL(new RegExp(`${href}$`));
     await expect(page.getByText(/balance/i).first()).toBeVisible();
   });
 
@@ -66,7 +74,17 @@ test.describe("a verified account", () => {
 
   test("the deposit screen prices a quote through the mock provider", async ({ page }) => {
     await page.goto("/deposit?currency=NGN");
-    const amount = page.getByLabel(/amount/i).first();
+
+    // The field's label is "How much are you sending?", not anything
+    // containing "amount" — getByLabel(/amount/i) matched nothing and spent
+    // the full 45-second test timeout waiting for it.
+    //
+    // Addressed by the label the user actually reads. NOT by name=amount:
+    // AmountInput puts that on a HIDDEN input carrying the parsed number,
+    // while the visible control is an unnamed text field holding the
+    // comma-formatted string — filling the hidden one is not possible and
+    // would not exercise the formatting anyway.
+    const amount = page.getByLabel(/how much are you sending/i).first();
     await amount.fill("5000");
     const quote = page.getByRole("button", { name: /continue|review|get a quote/i }).first();
     if (await quote.count()) {
