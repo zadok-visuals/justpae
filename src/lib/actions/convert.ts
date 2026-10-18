@@ -6,7 +6,12 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Currency } from "@/lib/types/database";
 import * as busha from "@/lib/busha/client";
-import { resolveRoute, resolveRoutesFrom, type ConversionRoute } from "@/lib/rates/routes";
+import { resolveRoute, resolveRoutesFrom, type ConversionRoute, type RouteKind } from "@/lib/rates/routes";
+import {
+  buyPriceFromFiatToUsdtRate,
+  sellPriceFromUsdtToFiatRate,
+  bridgeLegPrices,
+} from "@/lib/rates/pairPricing";
 import { applyMarkupToAmount } from "@/lib/rates/markup";
 import { getMinimumConversionAmount } from "@/lib/busha/limits";
 import { toCustomerError, toRpcError } from "@/lib/provider-error";
@@ -69,6 +74,31 @@ export interface ConversionQuote {
    * number.
    */
   minimumSourceAmount: number;
+  /**
+   * Which shape of conversion this is, so the confirmation can name the rate
+   * it is actually using rather than showing one unlabelled number.
+   */
+  kind: RouteKind;
+  /**
+   * The rate in the terms the customer reads it in — the same
+   * local-per-1-USDT orientation as the rate board on Home, /convert and the
+   * account pages, so the figure they agree to is recognisably the one they
+   * were shown. See src/lib/rates/pairPricing.ts.
+   *
+   * A one-leg conversion fills exactly one of these (buying USDT fills
+   * `buyPrice`, selling it fills `sellPrice`) and the figure is the
+   * CUSTOMER's, markup included. A bridged fiat-to-fiat conversion fills both
+   * with its two provider leg prices — one markup covers the whole journey,
+   * and it is disclosed as its own row, so splitting it across the legs would
+   * invent a second markup calculation. Either way these reconcile with the
+   * composite `customerRate` the conversion settles at.
+   */
+  directionRates: {
+    buyPrice: number | null;
+    sellPrice: number | null;
+    /** True when buyPrice/sellPrice are the two provider legs of a bridge. */
+    bridged: boolean;
+  };
 }
 
 export interface QuoteState {
@@ -121,7 +151,43 @@ export async function quoteConversion(params: {
       sourceUsdtEquivalent,
       belowMinimum: sourceAmount < minimumSourceAmount,
       minimumSourceAmount,
+      kind: route.kind,
+      directionRates: directionRatesFor(route),
     },
+  };
+}
+
+/**
+ * The rate the confirmation shows, in the direction the user is going.
+ *
+ * Derived here, server-side, off the same resolved route that priced the
+ * quote — never recomputed on the client from a rate it was handed, which
+ * would let the two disagree about the number being agreed to.
+ */
+function directionRatesFor(
+  route: Extract<ConversionRoute, { available: true }>,
+): ConversionQuote["directionRates"] {
+  if (route.kind === "fiat_to_usdt") {
+    return {
+      buyPrice: buyPriceFromFiatToUsdtRate(route.customerRate),
+      sellPrice: null,
+      bridged: false,
+    };
+  }
+
+  if (route.kind === "usdt_to_fiat") {
+    return {
+      buyPrice: null,
+      sellPrice: sellPriceFromUsdtToFiatRate(route.customerRate),
+      bridged: false,
+    };
+  }
+
+  const legs = bridgeLegPrices(route);
+  return {
+    buyPrice: legs?.buyPrice ?? null,
+    sellPrice: legs?.sellPrice ?? null,
+    bridged: true,
   };
 }
 

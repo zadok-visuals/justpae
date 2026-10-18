@@ -5,6 +5,7 @@ import { ConvertForm } from "@/components/convert/ConvertForm";
 import { EmptyState } from "@/components/ui/Primitives";
 import { LiveRefresh } from "@/components/ui/LiveRefresh";
 import { listRoutesFrom } from "@/lib/actions/convert";
+import { resolveRateBoard } from "@/lib/rates/display";
 import type { Wallet } from "@/lib/types/database";
 
 export const metadata = { title: "Convert" };
@@ -44,7 +45,13 @@ export default async function ConvertPage() {
   // refreshes the page, which re-resolves for the new source — the
   // alternative is resolving every source's routes up front, which is one
   // live provider lookup per pair on every page view.
-  const routes = await listRoutesFrom(list[0].currency);
+  const [routes, rateBoard] = await Promise.all([
+    listRoutesFrom(list[0].currency),
+    // Both sides of every local pair, from the same resolver Home's strip and
+    // the account pages use — so "Buy USDT at" means the same number on all
+    // three, and the one shown here is the one this form will quote.
+    resolveRateBoard(),
+  ]);
 
   return (
     <PageShell
@@ -52,7 +59,12 @@ export default async function ConvertPage() {
       subtitle="Move money between your wallets at live rates."
       back={{ href: "/home", label: "Home" }}
     >
-      <ConvertForm wallets={list} routes={routes} hasPin={hasPin === true} />
+      <ConvertForm
+        wallets={list}
+        routes={routes}
+        hasPin={hasPin === true}
+        rateBoard={rateBoard}
+      />
       {/* Re-resolves route availability while the screen is open, so a pair
           that came back (or went away) is not still being advertised as it was
           on first load. Longer than Home's interval and with no timestamp: the

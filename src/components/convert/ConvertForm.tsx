@@ -6,8 +6,10 @@ import { toast } from "sonner";
 import { AmountInput, formatAmountInput, parseAmount } from "@/components/ui/AmountInput";
 import { PinField } from "@/components/ui/PinField";
 import { SubmitButton } from "@/components/ui/Button";
-import { Banner, Card } from "@/components/ui/Primitives";
-import { ConfirmDialog, useConfirm } from "@/components/ui/ConfirmDialog";
+import { Banner, Card, SectionHeader } from "@/components/ui/Primitives";
+import { ConfirmDialog, useConfirm, type ConfirmRow } from "@/components/ui/ConfirmDialog";
+import { BuySellRates } from "@/components/rates/BuySellRates";
+import type { UsdtPairDisplay } from "@/lib/rates/display";
 import { useCountdown, formatCountdown } from "@/lib/hooks/useCountdown";
 import {
   quoteConversion,
@@ -43,6 +45,14 @@ interface ConvertFormProps {
   wallets: Wallet[];
   routes: RouteAvailability[];
   hasPin: boolean;
+  /**
+   * The buy/sell board, resolved server-side. Shown BELOW the form rather
+   * than beside the amount: it answers "what is a USDT worth today", which is
+   * a different question from "what will this specific conversion give me" —
+   * and the quote above already answers the second one, to the kobo, with a
+   * countdown.
+   */
+  rateBoard: UsdtPairDisplay[];
 }
 
 /**
@@ -80,6 +90,7 @@ function ConvertFormFields({
   wallets,
   routes,
   hasPin,
+  rateBoard,
   state,
   formAction,
 }: ConvertFormProps & {
@@ -207,6 +218,80 @@ function ConvertFormFields({
     belowMinimum ||
     insufficient ||
     pin.length < 4;
+
+  /**
+   * What the confirmation actually says, including THE RATE BEING USED.
+   *
+   * The dialog used to show one unlabelled "Rate" line in quote-per-base
+   * terms: for a naira holder buying USDT that read "1 NGN = ₮0.000724",
+   * which is the correct number and tells nobody anything. The board on this
+   * same screen says "Buy USDT at ₦1,387.65", and the figure the user agrees
+   * to has to be recognisably that one.
+   *
+   * So the direction gets named. Buying USDT shows the buy price; selling it
+   * shows the sell price; a bridged fiat-to-fiat conversion shows both of its
+   * legs, because there genuinely are two prices and showing only their
+   * product hides the trade being made with the user's money. All of it is
+   * resolved server-side on the quote (see directionRatesFor in
+   * src/lib/actions/convert.ts) — the client never derives a rate it then
+   * presents as the one that binds.
+   *
+   * The composite "Rate" line stays underneath in every case. It is the one
+   * figure that, with the amounts, is arithmetically checkable by the reader.
+   */
+  function confirmRows(intent: ConversionQuote): ConfirmRow[] {
+    const { buyPrice, sellPrice, bridged } = intent.directionRates;
+    const rows: ConfirmRow[] = [
+      { label: "You send", value: formatAmount(intent.from, intent.sourceAmount) },
+      {
+        label: "You receive",
+        value: formatAmount(intent.to, intent.targetAmount),
+        emphasis: true,
+      },
+    ];
+
+    if (bridged) {
+      if (buyPrice != null) {
+        rows.push({
+          label: `Step 1 · buy USDT with ${intent.from}`,
+          value: `${formatAmount(intent.from, buyPrice)} per USDT`,
+        });
+      }
+      if (sellPrice != null) {
+        rows.push({
+          label: `Step 2 · sell USDT for ${intent.to}`,
+          value: `${formatAmount(intent.to, sellPrice)} per USDT`,
+        });
+      }
+    } else if (buyPrice != null) {
+      rows.push({
+        label: `Buy USDT at`,
+        value: `${formatAmount(intent.from, buyPrice)} per USDT`,
+      });
+    } else if (sellPrice != null) {
+      rows.push({
+        label: `Sell USDT at`,
+        value: `${formatAmount(intent.to, sellPrice)} per USDT`,
+      });
+    }
+
+    rows.push(
+      {
+        label: "Rate",
+        value: formatRate(intent.from, intent.to, intent.customerRate),
+      },
+      {
+        label: "Our spread",
+        value: `${formatNumber(intent.markupRate * 100, 2)}%`,
+      },
+      {
+        label: confirmExpired ? "Rate expired" : "Rate held for",
+        value: confirmExpired ? "—" : formatCountdown(confirmSecondsLeft),
+      },
+    );
+
+    return rows;
+  }
 
   return (
     <>
@@ -358,45 +443,29 @@ function ConvertFormFields({
       </SubmitButton>
     </form>
 
+    {/* The board, after the form. Two prices per local currency, both the
+        customer's own with the spread already in them — so the number here
+        and the number the quote above settles at are the same number read
+        two different ways, rather than a headline rate that quietly turns
+        into something worse at submit. */}
+    {rateBoard.length > 0 && (
+      <section className="mt-6">
+        <SectionHeader title="Today's rates" />
+        <BuySellRates rates={rateBoard} />
+      </section>
+    )}
+
     <ConfirmDialog
       open={confirm.open}
       title="Confirm this conversion"
       body={
         confirmExpired
           ? "This rate has expired. Close this and we'll price it again."
-          : "The rate below is the one we'll settle at."
+          : confirm.intent?.directionRates.bridged
+            ? "This conversion trades through USDT in two steps. Both prices, and the one spread we charge across the whole conversion, are below."
+            : "The rate below is the one we'll settle at."
       }
-      rows={
-        confirm.intent
-          ? [
-              {
-                label: "You send",
-                value: formatAmount(confirm.intent.from, confirm.intent.sourceAmount),
-              },
-              {
-                label: "You receive",
-                value: formatAmount(confirm.intent.to, confirm.intent.targetAmount),
-                emphasis: true,
-              },
-              {
-                label: "Rate",
-                value: formatRate(
-                  confirm.intent.from,
-                  confirm.intent.to,
-                  confirm.intent.customerRate,
-                ),
-              },
-              {
-                label: "Our spread",
-                value: `${formatNumber(confirm.intent.markupRate * 100, 2)}%`,
-              },
-              {
-                label: confirmExpired ? "Rate expired" : "Rate held for",
-                value: confirmExpired ? "—" : formatCountdown(confirmSecondsLeft),
-              },
-            ]
-          : undefined
-      }
+      rows={confirm.intent ? confirmRows(confirm.intent) : undefined}
       confirmLabel={confirmExpired ? "Rate expired" : "Convert"}
       cancelLabel="Go back"
       confirmDisabled={confirmExpired}

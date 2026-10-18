@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { WalletCards } from "@/components/home/WalletCards";
 import { QuickActions } from "@/components/home/QuickActions";
-import { RatesStrip } from "@/components/home/RatesStrip";
+import { BuySellRates } from "@/components/rates/BuySellRates";
 import { ActivityRows } from "@/components/transactions/ActivityRows";
 import { ActivityFilters } from "@/components/transactions/ActivityFilters";
 import {
@@ -205,12 +205,18 @@ export default function DevGallery() {
 
             <section>
               <SectionHeader title="Today's rates" />
-              <RatesStrip
+              <BuySellRates
+                variant="strip"
                 rates={[
-                  { base: "USD", quote: "NGN", customerRate: 1525.4 },
-                  { base: "USDT", quote: "NGN", customerRate: 1518.22 },
-                  { base: "USD", quote: "GHS", customerRate: null },
-                  { base: "USD", quote: "KES", customerRate: 129.44 },
+                  { currency: "NGN", buyPrice: 1387.65, sellPrice: 1357.44, unavailableReason: null },
+                  {
+                    currency: "GHS",
+                    buyPrice: null,
+                    sellPrice: null,
+                    unavailableReason:
+                      "USDT/GHS isn't quoted by our liquidity provider yet, so this route is unavailable. Convert via another wallet in the meantime.",
+                  },
+                  { currency: "KES", buyPrice: 130.08, sellPrice: 128.11, unavailableReason: null },
                 ]}
               />
             </section>
@@ -228,7 +234,15 @@ export default function DevGallery() {
             </Section>
 
             <Section title="Convert">
-              <ConvertForm wallets={wallets} routes={routes} hasPin />
+              <ConvertForm
+                wallets={wallets}
+                routes={routes}
+                hasPin
+                rateBoard={[
+                  { currency: "NGN", buyPrice: 1387.65, sellPrice: 1357.44, unavailableReason: null },
+                  { currency: "KES", buyPrice: 130.08, sellPrice: 128.11, unavailableReason: null },
+                ]}
+              />
             </Section>
 
             <Section title="Withdraw">
