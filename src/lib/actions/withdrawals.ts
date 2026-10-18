@@ -94,7 +94,7 @@ async function parseRecipientFields(
     try {
       banks = await getBanks();
     } catch (err) {
-      return { error: toCustomerError(err, "withdrawals.parseRecipientFields") };
+      return { error: toCustomerError(err, "withdrawals.parseRecipientFields", { currency, action: "withdrawal" }) };
     }
     if (!banks.some((b) => b.code === bankCode && b.name === bankName)) {
       return { error: "Select your bank from the list." };
@@ -393,7 +393,7 @@ export async function requestWithdrawal(
   try {
     equivalentUsd = await usdEquivalent(currency, amount);
   } catch (err) {
-    return { error: toCustomerError(err, "withdrawals.requestWithdrawal.minimum") };
+    return { error: toCustomerError(err, "withdrawals.requestWithdrawal.minimum", { currency, action: "withdrawal" }) };
   }
   if (equivalentUsd < MINIMUM_WITHDRAWAL_USDT_THRESHOLD) {
     // Stated in the currency the user is actually holding. The old wording

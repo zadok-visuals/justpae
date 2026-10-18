@@ -171,7 +171,17 @@ export async function getDepositQuote(
       currency,
     };
   } catch (err) {
-    return { error: toCustomerError(err, "deposits.getDepositQuote") };
+    // The context is what turns "we couldn't complete that" into something the
+    // user can act on: a provider minimum refusal now names the currency and,
+    // where we have a confirmed figure, the floor itself. See
+    // src/lib/providers/failure.ts.
+    return {
+      error: toCustomerError(err, "deposits.getDepositQuote", {
+        currency,
+        action: "deposit",
+        formattedMinimum: minimum != null ? formatAmount(currency, minimum) : undefined,
+      }),
+    };
   }
 }
 
@@ -248,7 +258,13 @@ export async function initiateDeposit(
   try {
     transfer = await busha.createTransfer(quoteId);
   } catch (err) {
-    return { error: toCustomerError(err, "deposits.initiateDeposit") };
+    return {
+      error: toCustomerError(err, "deposits.initiateDeposit", {
+        currency,
+        action: "deposit",
+        formattedMinimum: minimum != null ? formatAmount(currency, minimum) : undefined,
+      }),
+    };
   }
 
   const admin = createAdminClient();
@@ -342,7 +358,12 @@ async function initiateKlashaGhsDeposit(
       redirectUrl: `${appUrl}/home`,
     });
   } catch (err) {
-    return { error: toCustomerError(err, "deposits.initiateKlashaGhsDeposit") };
+    return {
+      error: toCustomerError(err, "deposits.initiateKlashaGhsDeposit", {
+        currency: "GHS",
+        action: "deposit",
+      }),
+    };
   }
 
   const admin = createAdminClient();

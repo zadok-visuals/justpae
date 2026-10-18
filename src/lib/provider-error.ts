@@ -1,3 +1,12 @@
+// A relative, extension-bearing import, not the "@/" alias: provider-error.ts
+// is exercised by a plain `node --test` run, which has no path-alias resolver.
+// Same reason as src/lib/cny/priceCore.ts and src/lib/admin/pnlMath.ts.
+import {
+  type ProviderMessageContext,
+  classifyProviderFailure,
+  customerMessageFor,
+} from "./providers/failure.ts";
+
 /**
  * Never show a payment provider's own error text (or our env-var config
  * guards) to customers — it can name the provider directly, and its wording
@@ -5,12 +14,56 @@
  * configured" and raw provider error messages were rendered straight into a
  * deposit UI before a helper like this existed.
  *
- * Log the real error server-side (visible in the deployment logs) and return
- * one clean, provider-agnostic message to show instead.
+ * WHAT CHANGED, and why the one-size message was not good enough. Returning a
+ * single sentence for every provider failure is safe but useless: a customer
+ * fifty naira below a minimum and a customer hitting a provider outage were
+ * told the identical "try again in a moment", and only one of them could ever
+ * succeed by doing so. src/lib/providers/failure.ts classifies the failure and
+ * supplies OUR copy for it — the provider's words are read, never shown.
+ *
+ * Pass `message` to make the copy concrete (the currency, the known minimum,
+ * what the user was doing). Omit it and the classification still applies; the
+ * wording is just less specific.
+ *
+ * Logging is the other half, and the more important half for diagnosis. Every
+ * call writes ONE structured entry carrying the provider's HTTP status, its
+ * verbatim body, and the classification we derived from them — so a support
+ * question ("why did this customer see that?") is answered by one log line
+ * rather than by correlating two.
  */
-export function toCustomerError(err: unknown, context: string): string {
-  console.error(`[${context}]`, err);
-  return "We couldn't complete that right now. Please try again in a moment, or contact support if it continues.";
+export function toCustomerError(
+  err: unknown,
+  context: string,
+  message: ProviderMessageContext = {},
+): string {
+  const status = typeof err === "object" && err !== null && "status" in err
+    ? (err as { status?: unknown }).status
+    : undefined;
+  const body = typeof err === "object" && err !== null && "body" in err
+    ? (err as { body?: unknown }).body
+    : undefined;
+  const text = err instanceof Error ? err.message : typeof err === "string" ? err : undefined;
+
+  const failure = classifyProviderFailure(
+    typeof status === "number" ? status : undefined,
+    text,
+  );
+
+  console.error(`[${context}] provider call failed`, {
+    failure,
+    status: status ?? null,
+    // The verbatim provider payload. This is the field that answers "what
+    // exactly did they say", which is the question every provider
+    // investigation starts with.
+    body: body ?? null,
+    message: text ?? null,
+    currency: message.currency ?? null,
+    // The error object itself last, so a stack is still available for a
+    // failure that turned out not to be a provider refusal at all.
+    error: err,
+  });
+
+  return customerMessageFor(failure, message);
 }
 
 /**

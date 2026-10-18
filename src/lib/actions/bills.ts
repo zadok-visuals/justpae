@@ -73,7 +73,7 @@ export async function validateBillCustomer(
       outstandingAmount: result.outstandingAmount ?? null,
     };
   } catch (err) {
-    return { error: toCustomerError(err, "bills.validateBillCustomer") };
+    return { error: toCustomerError(err, "bills.validateBillCustomer", { action: "payment" }) };
   }
 }
 
@@ -198,7 +198,7 @@ export async function payBill(
     });
     revalidatePath("/home");
     revalidatePath("/transactions");
-    return { error: toCustomerError(err, "bills.payBill") };
+    return { error: toCustomerError(err, "bills.payBill", { action: "payment" }) };
   }
 }
 

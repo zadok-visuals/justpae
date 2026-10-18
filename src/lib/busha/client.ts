@@ -37,6 +37,15 @@ export class BushaError extends Error {
   constructor(
     message: string,
     public status: number,
+    /**
+     * The provider's verbatim error payload. Carried on the error rather than
+     * only written to a console line at the throw site, so the server action
+     * that catches this can log the full status AND body together with its own
+     * context (which user, which currency, which amount) — one entry that
+     * explains the failure instead of two that have to be correlated by
+     * timestamp. Never rendered to a customer; see src/lib/providers/failure.ts.
+     */
+    public body?: unknown,
   ) {
     super(message);
     this.name = "BushaError";
@@ -108,7 +117,7 @@ async function request<T>(
     const detail = json?.error?.details ?? json?.error?.errors ?? json?.error?.fields;
     const detailText =
       detail != null ? ` — ${typeof detail === "string" ? detail : JSON.stringify(detail)}` : "";
-    throw new BushaError(`${message}${detailText}`, res.status);
+    throw new BushaError(`${message}${detailText}`, res.status, json?.error ?? json);
   }
   return json.data as T;
 }

@@ -46,10 +46,33 @@ const KEY = process.env.BUSHA_API_KEY;
 const BASE = process.env.BUSHA_API_BASE_URL ?? "https://api.busha.io";
 const QUOTE_ONLY = process.argv.includes("--quote-only");
 
+/**
+ * The two "no key" cases are different problems and used to print the same
+ * advice, which sent at least one investigation down the wrong path: the
+ * variable being ABSENT means --env-file was forgotten, and the variable
+ * being PRESENT BUT EMPTY means the env file is a skeleton copied from
+ * .env.local.example and never filled in. The second looks like success from
+ * the outside — the file exists, the name is in it, the command was right —
+ * so it is worth naming explicitly.
+ */
 if (!KEY) {
-  console.error(
-    "Missing BUSHA_API_KEY.\n" + "Run with: node --env-file=.env.local scripts/busha-probe.mjs",
-  );
+  const declared = "BUSHA_API_KEY" in process.env;
+  if (declared) {
+    console.error(
+      "BUSHA_API_KEY is declared but EMPTY.\n" +
+        "\n" +
+        "The env file was loaded — the variable is there — but it has no value,\n" +
+        "which is what .env.local.example ships. There is no live key on this\n" +
+        "machine, so no live probe can run here at all. Fill BUSHA_API_KEY in\n" +
+        ".env.local with the real Business API secret key, or run this on a\n" +
+        "machine that already has one.",
+    );
+  } else {
+    console.error(
+      "BUSHA_API_KEY is not set.\n" +
+        "Run with: node --env-file=.env.local scripts/busha-probe.mjs",
+    );
+  }
   process.exit(1);
 }
 
@@ -158,6 +181,28 @@ for (const [base, counter] of PAIRS) {
   );
 }
 
+// ── 3. What can this account actually do? ─────────────────────────────────
+//
+// One of the candidate causes for the deposit failure is not the request shape
+// at all: an account whose verification is incomplete, or whose deposit
+// product was never enabled, is refused no matter how correct the body is.
+// These are plain GETs, so they stay inside the read-only part of this script.
+//
+// READ THE RESULT CAREFULLY. A 404 here means "this API has no such route",
+// NOT "your account cannot do this" — the endpoint names below are informed
+// guesses at a surface the docs do not fully enumerate, and a uniform 404 for
+// all of them is a fact about the API, not about the account. What is
+// diagnostic is a 401/403 (the key lacks the scope) or a 200 whose body says
+// the account is pending.
+console.error("\nAccount capability (GET only; 404 = no such route, not a verdict):");
+for (const path of ["/v1/accounts", "/v1/balances", "/v1/wallets", "/v1/me", "/v1/business"]) {
+  const res = await get(path);
+  const summary = res.ok
+    ? `OK ${JSON.stringify(res.json?.data ?? res.json).slice(0, 220)}`
+    : res.raw.slice(0, 180);
+  console.error(`  ${path.padEnd(14)} HTTP ${res.status}  ${summary}`);
+}
+
 if (!QUOTE_ONLY) {
   console.error("\nDone. Nothing was created and no money moved.");
   console.error("Pass --quote-only to also price the three deposit quotes.");
@@ -193,6 +238,31 @@ function describe(res) {
     );
   }
   return `HTTP ${res.status}  body=${res.raw}`;
+}
+
+/**
+ * THE CONTROL, and the single most useful line this script prints.
+ *
+ * The Group 2 report is "deposit quotes fail while the Home rates work" — but
+ * Home's rates come from GET /v1/pairs, which proves nothing about whether
+ * this account can POST a quote at all. A cross-currency quote (the shape the
+ * convert flow uses, with no pay_in) isolates that:
+ *
+ *   control FAILS  -> POST /v1/quotes is refused for this account generally.
+ *                     The deposit body is not the problem; the account, the
+ *                     key's scope or the product enablement is.
+ *   control PASSES  -> quoting works and the difference is the deposit shape:
+ *                     same-currency, or the pay_in object, or the amount.
+ *
+ * Without this line every deposit failure below is ambiguous between those
+ * two, which is exactly the ambiguity that has kept this bug open.
+ */
+console.error("\nControl — a cross-currency quote with no pay_in (what convert sends):");
+{
+  const body = { source_currency: "NGN", target_currency: "USDT", source_amount: "20000" };
+  const res = await postQuote(body);
+  console.error(`    request : ${JSON.stringify(body)}`);
+  console.error(`    response: ${res.ok ? "HTTP 200 OK — POST /v1/quotes works for this account" : `HTTP ${res.status}  body=${res.raw}`}`);
 }
 
 console.error("\nDeposit quotes (POST /v1/quotes — a price lookup, not a transfer):");

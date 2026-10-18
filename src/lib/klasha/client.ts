@@ -57,6 +57,8 @@ export class KlashaError extends Error {
   constructor(
     message: string,
     public status: number,
+    /** The provider's verbatim error payload — see BushaError.body. */
+    public body?: unknown,
   ) {
     super(message);
     this.name = "KlashaError";
@@ -193,6 +195,7 @@ async function request<T>(
     throw new KlashaError(
       json?.message ?? json?.error ?? `Klasha request failed (${res.status})`,
       res.status,
+      json,
     );
   }
   return (json.data ?? json) as T;

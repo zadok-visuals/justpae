@@ -129,7 +129,7 @@ export async function quoteConversion(params: {
   try {
     route = await resolveRoute(from, to);
   } catch (err) {
-    return { error: toCustomerError(err, "convert.quoteConversion") };
+    return { error: toCustomerError(err, "convert.quoteConversion", { currency: from, action: "conversion" }) };
   }
 
   if (!route.available) return { unavailableReason: route.reason };
@@ -329,7 +329,7 @@ export async function executeConversion(
   try {
     route = await resolveRoute(from, to);
   } catch (err) {
-    return { error: toCustomerError(err, "convert.executeConversion") };
+    return { error: toCustomerError(err, "convert.executeConversion", { currency: from, action: "conversion" }) };
   }
   if (!route.available) return { error: route.reason };
   // Re-bound as a const so the narrowing survives into the step closures
@@ -541,7 +541,8 @@ export async function executeConversion(
       }
     },
 
-    describeProviderError: (err) => toCustomerError(err, "convert.executeConversion"),
+    describeProviderError: (err) =>
+      toCustomerError(err, "convert.executeConversion", { currency: from, action: "conversion" }),
   });
 
   if (!outcome.ok) {
