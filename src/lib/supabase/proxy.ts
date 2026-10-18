@@ -2,36 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/types/database";
 import { requireEnv } from "@/lib/supabase/env";
-
-/**
- * Paths reachable without a session. Prefix-matched, so "/auth" covers
- * /auth/callback, /auth/confirm and /auth/verify.
- *
- * "/" is checked for an EXACT match below rather than folded in here —
- * startsWith("/") matches every path and would disable auth gating entirely.
- */
-const PUBLIC_PATHS = [
-  "/login",
-  "/signup",
-  "/auth",
-  "/forgot-password",
-  "/reset-password",
-  // The two pages someone reads BEFORE deciding to hand over a government ID.
-  // Putting either behind sign-in would defeat the point of publishing them.
-  "/privacy",
-  "/terms",
-];
-
-/**
- * /dev/gallery is the component gallery used for the 375px/1440px viewport
- * check. It is session-free so it can be opened without a Supabase project,
- * and it is gated TWICE: the page itself calls notFound() outside development,
- * and this list only admits it in development. Either gate alone would do; both
- * are here because a dev-only route that leaks into production is the kind of
- * thing a single flipped condition causes.
- */
-const DEV_ONLY_PUBLIC_PATHS =
-  process.env.NODE_ENV === "development" ? ["/dev/"] : [];
+import { isProtectedPath, isPublicPath } from "@/lib/routes/access";
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -62,12 +33,13 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const isPublicPath =
-    pathname === "/" ||
-    PUBLIC_PATHS.some((path) => pathname.startsWith(path)) ||
-    DEV_ONLY_PUBLIC_PATHS.some((path) => pathname.startsWith(path));
+  const isPublic = isPublicPath(pathname, process.env.NODE_ENV === "development");
 
-  if (!user && !isPublicPath) {
+  // Only a route this app actually defines is worth redirecting. An unknown
+  // URL falls through untouched so Next can answer its own 404 — see the long
+  // note in src/lib/routes/access.ts for why that is the right trade here, and
+  // for the test that stops a new protected route from being left off the list.
+  if (!user && !isPublic && isProtectedPath(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";

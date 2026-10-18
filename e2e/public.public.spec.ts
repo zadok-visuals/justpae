@@ -31,12 +31,23 @@ test.describe("public pages render", () => {
    * Customer copy never says "exchange" and never names a provider. Asserted
    * rather than reviewed, because this is the rule most likely to be broken
    * by a one-line copy change nobody re-reads the whole page after.
+   *
+   * /privacy is the single exception to the provider half, and deliberately
+   * so: a privacy policy has to say who the data is shared with, by name. A
+   * disclosure required by law is not the marketing leak this rule exists to
+   * catch, and the alternative — "we share your details with an unnamed third
+   * party" — is a worse document. It is still checked for "exchange", which
+   * has no such justification anywhere.
    */
+  const PROVIDER_NAME_EXEMPT = new Set(["/privacy"]);
+
   test("public copy avoids the forbidden words", async ({ page }) => {
     for (const path of ["/", "/terms", "/privacy", "/login", "/signup"]) {
       await page.goto(path);
       const text = await page.locator("body").innerText();
-      expect(text, `${path} must not name a provider`).not.toMatch(/busha|klasha/i);
+      if (!PROVIDER_NAME_EXEMPT.has(path)) {
+        expect(text, `${path} must not name a provider`).not.toMatch(/busha|klasha/i);
+      }
       // "exchange rate" is the one legitimate use in customer copy; the banned
       // sense is "exchange" as the name of the action.
       const bannedExchange = text.match(/\bexchanges?\b(?!\s+rate)/gi);
@@ -104,7 +115,49 @@ test.describe("signed-out visitors cannot reach money screens", () => {
   }
 });
 
-test("an unknown route 404s rather than erroring", async ({ page }) => {
-  const response = await page.goto("/this-route-does-not-exist");
-  expect(response?.status()).toBe(404);
+/**
+ * The two directions of the same proxy decision, which is why they are one
+ * describe block. The gate above proves a real protected route redirects; what
+ * follows proves the redirect is scoped to routes that EXIST.
+ *
+ * Both matter together. Gating alone was satisfied by the old behaviour of
+ * redirecting literally everything, which answered 200 for every mistyped URL
+ * and made a dead link indistinguishable from a live one — the exact signal
+ * the QA pass relies on.
+ */
+test.describe("unknown routes are 404s, not login redirects", () => {
+  for (const path of [
+    "/this-route-does-not-exist",
+    "/qwqwqw",
+    // Near-misses of real routes: the prefix check must match whole segments,
+    // not any path that happens to start with the same letters.
+    "/accountsomething",
+    "/administrators",
+    "/home-equity-loans",
+  ]) {
+    test(`${path} 404s`, async ({ page }) => {
+      const response = await page.goto(path);
+      expect(response?.status()).toBe(404);
+      // And it looks like a 404 to a person, not like a login form.
+      await expect(page).not.toHaveURL(/\/login/);
+    });
+  }
+
+  test("a real protected route still redirects, so the 404 pass-through did not open a hole", async ({
+    page,
+  }) => {
+    const response = await page.goto("/convert");
+    expect(response?.status()).toBe(200);
+    await expect(page).toHaveURL(/\/login/);
+  });
+
+  test("an unknown path under a protected prefix redirects rather than leaking its absence", async ({
+    page,
+  }) => {
+    // /admin is gated as a whole subtree. A signed-out visitor learns nothing
+    // about which admin pages exist, which is the one place that distinction
+    // is worth keeping.
+    await page.goto("/admin/not-a-real-admin-page");
+    await expect(page).toHaveURL(/\/login/);
+  });
 });
