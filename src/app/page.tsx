@@ -384,19 +384,19 @@ export default function LandingPage() {
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-            <Link href="/login" className="text-muted-foreground hover:text-foreground">
+            <Link href="/login" className="inline-flex min-h-11 items-center text-muted-foreground hover:text-foreground">
               Sign in
             </Link>
-            <Link href="/signup" className="text-muted-foreground hover:text-foreground">
+            <Link href="/signup" className="inline-flex min-h-11 items-center text-muted-foreground hover:text-foreground">
               Create an account
             </Link>
             {/* A money product that asks for a government ID has to publish
                 both of these and link them from the page where someone decides
                 to sign up. */}
-            <Link href="/privacy" className="text-muted-foreground hover:text-foreground">
+            <Link href="/privacy" className="inline-flex min-h-11 items-center text-muted-foreground hover:text-foreground">
               Privacy
             </Link>
-            <Link href="/terms" className="text-muted-foreground hover:text-foreground">
+            <Link href="/terms" className="inline-flex min-h-11 items-center text-muted-foreground hover:text-foreground">
               Terms
             </Link>
           </div>

@@ -243,3 +243,100 @@ Nothing was found that is both user-facing and unreachable. The three "fixed"
 rows were reachable only by accident — a card tap, an icon with no label, or
 a footer that signing in removes — which is the same problem one step short
 of being invisible.
+
+---
+
+# Addendum — Group 10: responsiveness sweep
+
+Audited at `4712bcc`, against the six failure modes the brief names:
+horizontal page overflow, clipped text, tap targets under 44px, overlapping
+fixed elements, modals taller than the screen that do not scroll, and tables
+outside their scroll wrapper.
+
+## Method, and what it could not cover
+
+Two passes, because neither alone is honest:
+
+1. **Static.** Every `<table>` in `src/` checked for an `overflow-x-auto` /
+   `.scroll-x` ancestor; every fixed pixel and `rem` width checked against a
+   360px viewport; every modal primitive read for a height bound.
+2. **Measured in a real browser** at 360, 375, 768 and 1440, by walking the
+   DOM rather than by eye. For each width: `scrollWidth - clientWidth` for
+   page overflow, every visible element's bounding box against the viewport's
+   right edge, and every `a`/`button`/`input`/`select`/`textarea` measured for
+   a sub-44px height. Measuring beats looking — a 2px overflow and a 40px tap
+   target are both invisible in a screenshot and both real.
+
+**What the measured pass could not reach, stated plainly:** every route behind
+authentication. This environment has no test credentials for the linked
+project, and entering real ones is not something this pass would do. So the
+dashboard and admin screens were covered by the static pass plus
+`/dev/gallery`, which renders the shared primitives — fields, pills, wallet
+cards, sheets, the chrome — against fixtures with no session. The components
+on those pages are therefore measured; the page-level compositions are not.
+`/admin/transactions`, added in Group 9, is the one new composition that has
+had no measured pass. Listed below as outstanding rather than quietly
+omitted.
+
+## Findings
+
+| # | Tag | Finding | Status |
+| --- | --- | --- | --- |
+| 10.1 | **UX** | Landing footer: `Sign in`, `Create an account`, `Privacy` and `Terms` were 20px tall — less than half the 44px minimum, on the page most likely to be opened on a phone. | fixed in Group 10 |
+| 10.2 | **UX** | Legal pages: the header's `Privacy` / `Terms` links (20px) and `← Back to justpae` (19px). These are the only navigation on those two pages. | fixed in Group 10 |
+| 10.3 | **UX** | Desktop header icon buttons — Support, the notification bell and the profile avatar — were `size-10` (40px). Four pixels under, on three controls present on every signed-in screen. | fixed in Group 10 |
+| 10.4 | **BROKEN** | `PublicSupportButton`'s panel hung off the bottom of the window from `sm` up. `sm:bottom-auto` on an absolutely positioned box leaves both `top` and `bottom` auto, so it falls back to its static position — the top of its container — and, being out of flow, does not grow that container either. Measured at 1440: bottom edge at 1022px in a 900px window. Introduced in Group 9e and caught by this sweep. | fixed in Group 10 (`sm:bottom-full sm:mb-2`) |
+| 10.5 | MINOR | Inline prose links (`support@justpae.com` in the Terms body) measure 19px. Deliberately exempt: an inline link in a paragraph cannot be 44px tall without breaking the paragraph, and it is not a tap target in the sense the rule is about. | not a defect |
+
+## Checked and already correct
+
+Recorded so a later pass does not re-derive them:
+
+| Area | Result |
+| --- | --- |
+| Horizontal page overflow | Zero at 360, 375, 768 and 1440 on every page reachable without a session. No element extends past the right edge outside a deliberate scroller. |
+| Tables outside a scroll wrapper | None. All four UI tables (`/admin/rates`, `/admin/transactions`, `/admin/pnl`, `CnyRateForms`) sit inside `.scroll-x`. The fifth `<table>` is in `src/lib/email/layout.ts`, where a table IS the layout mechanism and a scroll wrapper would be meaningless. |
+| Modals taller than the screen | `Modal.tsx` sets no height bound, which looked like a defect and is not: the UA stylesheet gives `dialog` both `max-height: calc(100% - 38px)` and `overflow-y: auto`, and `max-w-md` overrides only the width. Verified by rendering a 3000px-tall dialog with the component's exact classes — it clamped to 742px in a 780px window and scrolled. |
+| `SheetPanel` | `w-full` with `max-h-[88dvh]` on a phone, `sm:w-[26rem]` from `sm` up. Correct at every width. |
+| Notification dropdown | `fixed inset-x-4 … sm:absolute sm:right-0 sm:w-80` with `max-h-[70dvh] overflow-y-auto`. On-screen at 360. (Also Group 9f.) |
+| Form fields | The inner `<input>` measures 42px, but the tap target is the bordered wrapper, which is 44px (`h-11`) or 56px (`min-h-14`). Not a finding. |
+| Checkboxes | 20px, but each sits inside a `<label>` measuring 46px, which is the real hit area. Not a finding. |
+| Wide `min-w` values | `min-w-[44rem]` / `[48rem]` on tables and `min-w-[15rem]` on wallet cards are all inside horizontal scrollers. Intended. |
+
+## Outstanding
+
+| # | Area | Reason |
+| --- | --- | --- |
+| 10.6 | Measured pass on authenticated routes — the dashboard pages and all eleven admin pages, `/admin/transactions` especially | No test credentials in this environment. Covered statically and through `/dev/gallery`'s rendering of the shared primitives, which is not the same as measuring the composed page. Needs one pass by someone who can sign in. |
+
+---
+
+# Addendum — Group 11: status of every finding above
+
+The brief asks for a status column: fixed in commit X, or remaining with the
+reason. Group 10's own table already carries one. This closes out the
+original audit, whose findings predate it.
+
+Sections 1–7 of this document were written against `bae6644`-era code and
+fixed across Phases 1–5 and Groups 0–9. Rather than restate 60 rows, the
+status is recorded by section, with the commit that closed it. Anything still
+open is listed individually, because an open finding hidden inside a summary
+is an open finding nobody will act on.
+
+| Section | Status |
+| --- | --- |
+| 1. Landing | Closed. 1.1 (no Terms/Privacy) by `1845212`; 1.2 (sitemap/robots) and 1.3 (share images) by `1845212`; 1.4 (`public/lovable-uploads`) **in Group 11** — confirmed unreferenced anywhere in the repo, then deleted. |
+| 2. Favicon, icons, install | Closed by `1845212`: `icon.svg`, `favicon.ico`, `apple-icon.png`, `public/icon-192.png` / `icon-512.png`, `manifest.ts`. |
+| 3. Signup → verify → first screen | Closed by `48b879b` (dashboard-first signup) and the Group 7 loading boundaries. |
+| 4. The `verify?email=` leftover | Closed by `48b879b`. |
+| 5. KYC | Closed by `48b879b` (two-stage split, stepped forms, `government_id` not `selfie`, branching banner) and `5fae662` (uploads that survive a phone photo). The submission DATE, which this section did not catch, is **Group 9b** / migration 0028. |
+| 6. Money screens | Closed across Groups 4–6: two-leg conversions (`0024`), conversion holds (`0022`), the deposit countdown (Group 6c), wallet preselection (`src/lib/accounts/preselect.ts`). |
+| 7. Route reachability | Closed in Group 7c — see that addendum. Pay to China, the one route left unreachable there, is linked from the sidebar, Home and every fundable wallet page as of **Group 8 part 2**. |
+
+## Still open
+
+| # | Finding | Why it is still open |
+| --- | --- | --- |
+| 10.6 | No measured responsiveness pass on authenticated routes | No test credentials in this environment. See the Group 10 addendum's method note. |
+| 11.1 | The Privacy Policy names Busha and Klasha as sub-processors | Not an oversight and not safe to "fix" silently. The standing rule is that customer copy never names a provider; a privacy policy disclosing who data is shared with is the one place where naming them is arguably a legal obligation rather than a leak. Predates this run (`1845212`). Left as-is pending a decision from the owner — recorded in the Group 12 reply rather than resolved unilaterally. |
+| 11.2 | Group 6d — the live Busha probe | A hard safety stop, not a task. There is no Busha sandbox on this project: the configured base URL is production and the key is live. `scripts/busha-probe.mjs` is committed, read-only (GETs only, no quote, no transfer, never logs the key) and has deliberately never been run from here. It needs the owner. |

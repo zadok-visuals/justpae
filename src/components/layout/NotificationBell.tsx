@@ -95,7 +95,7 @@ export function NotificationBell({ initialUnreadCount }: { initialUnreadCount: n
         onClick={handleToggle}
         aria-expanded={open}
         aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
-        className="relative flex size-10 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+        className="relative flex size-11 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
       >
         <BellIcon className="size-5" />
         {unread > 0 && (

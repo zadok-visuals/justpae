@@ -68,9 +68,18 @@ export function PublicSupportButton() {
           ref={panelRef}
           role="dialog"
           aria-label="Contact support"
-          // inset-x-4 on a phone so a fixed-width panel cannot push the page
-          // sideways on a 360px screen; a normal anchored panel from sm up.
-          className="fixed inset-x-4 bottom-20 rounded-xl border border-border bg-card p-4 shadow-lg sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:w-80"
+          // Phone: anchored to the VIEWPORT with inset-x-4, so a fixed-width
+          // panel cannot push the page sideways on a 360px screen.
+          //
+          // Desktop: anchored to the BUTTON, and `bottom-full` rather than
+          // `bottom-auto` is load-bearing. An absolutely positioned box with
+          // both top and bottom auto falls back to its static position — the
+          // top of this container — and since it is out of flow it does not
+          // grow the container either, so it hangs downward off the bottom of
+          // the window. bottom-full puts its bottom edge on the button's top
+          // edge, which is where a panel opened from a bottom-corner button
+          // belongs.
+          className="fixed inset-x-4 bottom-20 rounded-xl border border-border bg-card p-4 shadow-lg sm:absolute sm:inset-x-auto sm:bottom-full sm:right-0 sm:mb-2 sm:w-80"
         >
           <p className="text-sm font-semibold text-foreground">Need a hand?</p>
           <p className="mt-1 text-sm text-muted-foreground">

@@ -37,3 +37,9 @@ yarn-error.log*
 /supabase/.branches
 /supabase/.temp
 /supabase/.env
+
+# Agent worktrees live under .claude/ in a working checkout. .claude/launch.json
+# IS committed — it is how `npm run dev` gets started for a preview — so the
+# directory cannot be ignored wholesale; this ignores the one thing in it that
+# is a scratch checkout of this same repo.
+/.claude/worktrees

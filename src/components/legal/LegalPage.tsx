@@ -31,10 +31,10 @@ export function LegalPage({
             </span>
           </Link>
           <nav className="flex items-center gap-4 text-sm">
-            <Link href="/privacy" className="text-muted-foreground hover:text-foreground">
+            <Link href="/privacy" className="inline-flex min-h-11 items-center text-muted-foreground hover:text-foreground">
               Privacy
             </Link>
-            <Link href="/terms" className="text-muted-foreground hover:text-foreground">
+            <Link href="/terms" className="inline-flex min-h-11 items-center text-muted-foreground hover:text-foreground">
               Terms
             </Link>
           </nav>
@@ -64,7 +64,10 @@ export function LegalPage({
         </div>
 
         <div className="mt-12 border-t border-border pt-6">
-          <Link href="/" className="text-sm font-medium text-primary">
+          <Link
+            href="/"
+            className="inline-flex min-h-11 items-center text-sm font-medium text-primary"
+          >
             ← Back to justpae
           </Link>
         </div>

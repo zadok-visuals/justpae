@@ -165,7 +165,7 @@ export function TopBar({ userName }: { userName: string }) {
         <Link
           href="/profile"
           aria-label="Profile"
-          className="ml-1 flex size-10 items-center justify-center rounded-full bg-sidebar-accent text-sm font-semibold text-foreground"
+          className="ml-1 flex size-11 items-center justify-center rounded-full bg-sidebar-accent text-sm font-semibold text-foreground"
         >
           {initialsFor(userName)}
         </Link>
@@ -186,7 +186,7 @@ function SupportLink({ unread }: { unread: number }) {
     <Link
       href="/support"
       aria-label={unread > 0 ? `Support, ${unread} unread` : "Support"}
-      className="relative flex size-10 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+      className="relative flex size-11 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
     >
       <SupportIcon className="size-5" />
       {unread > 0 && (
