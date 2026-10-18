@@ -366,3 +366,111 @@ export async function sendRecipientChangedEmail(params: {
     ],
   });
 }
+
+// ── Pay to China ────────────────────────────────────────────────────────────
+//
+// Four emails over one request's life, because a Pay to China request is the
+// only money movement in this product that a HUMAN settles — it can sit for
+// hours, and silence over those hours is indistinguishable from the money
+// having vanished. Every state change says so.
+//
+// None of them names a payout provider or says "exchange", same rule as every
+// other message in this file.
+
+export async function sendPayToChinaSubmittedEmail(params: {
+  to: string;
+  amount: string;
+  cnyAmount: string;
+}): Promise<boolean> {
+  return sendEmail({
+    to: params.to,
+    subject: "We've got your China payment request",
+    preheader: `${params.amount} to send ${params.cnyAmount} to your recipient.`,
+    heading: "Your payment request is in",
+    bodyParagraphs: [
+      `We've taken <strong>${escapeHtml(params.amount)}</strong> from your wallet to send <strong>${escapeHtml(params.cnyAmount)}</strong> to your recipient in China.`,
+      "Our team pays these by hand, so it isn't instant. We'll email you the moment it's on its way, and again with the receipt once it lands.",
+    ],
+    closingParagraphs: [
+      "If anything is wrong with the recipient details, tell us now — we can stop a payment that hasn't gone out yet, and your money comes straight back.",
+    ],
+  });
+}
+
+export async function sendPayToChinaProcessingEmail(params: {
+  to: string;
+  cnyAmount: string;
+}): Promise<boolean> {
+  return sendEmail({
+    to: params.to,
+    subject: "Your China payment is being paid now",
+    preheader: `${params.cnyAmount} is being sent to your recipient.`,
+    heading: "We're paying your recipient",
+    bodyParagraphs: [
+      `<strong>${escapeHtml(params.cnyAmount)}</strong> is being sent to your recipient in China right now.`,
+    ],
+    closingParagraphs: ["We'll send you the receipt as soon as it's confirmed."],
+  });
+}
+
+export async function sendPayToChinaCompletedEmail(params: {
+  to: string;
+  cnyAmount: string;
+}): Promise<boolean> {
+  return sendEmail({
+    to: params.to,
+    subject: "Your China payment has landed",
+    preheader: `${params.cnyAmount} reached your recipient.`,
+    heading: "Paid",
+    bodyParagraphs: [
+      `<strong>${escapeHtml(params.cnyAmount)}</strong> has reached your recipient in China.`,
+    ],
+    closingParagraphs: [
+      "The payment receipt is attached to this transaction in your account — open it to see the proof of payment.",
+    ],
+  });
+}
+
+export async function sendPayToChinaRejectedEmail(params: {
+  to: string;
+  amount: string;
+  reason: string;
+}): Promise<boolean> {
+  return sendEmail({
+    to: params.to,
+    subject: "We couldn't send your China payment",
+    preheader: `${params.amount} has been returned to your wallet.`,
+    heading: "We couldn't send that payment",
+    bodyParagraphs: [
+      // THE REFUND IS THE FIRST THING SAID. A customer reading "we couldn't
+      // pay your supplier" wants to know where their money is before they
+      // want to know why, and burying that under the reason is how a support
+      // ticket gets written in the ninety seconds before they read on.
+      `<strong>${escapeHtml(params.amount)}</strong> is back in your wallet in full.`,
+      `The reason: ${escapeHtml(params.reason)}`,
+    ],
+    closingParagraphs: [
+      "Fix the details and try again, or contact us if you'd like a hand with it.",
+    ],
+  });
+}
+
+/** Operational alert, to the ops inbox, on every new request. */
+export async function sendAdminPayToChinaAlertEmail(params: {
+  to: string[];
+  userEmail: string;
+  amount: string;
+  cnyAmount: string;
+  payoutMethod: string;
+}): Promise<boolean> {
+  return sendEmail({
+    to: params.to,
+    subject: `Pay to China — ${params.cnyAmount} for ${params.userEmail}`,
+    preheader: `${params.amount} debited; ${params.cnyAmount} to pay by ${params.payoutMethod}.`,
+    heading: "A China payment is waiting",
+    bodyParagraphs: [
+      `<strong>${escapeHtml(params.userEmail)}</strong> paid <strong>${escapeHtml(params.amount)}</strong> to send <strong>${escapeHtml(params.cnyAmount)}</strong> by ${escapeHtml(params.payoutMethod)}.`,
+    ],
+    button: { label: "Open the queue", href: `${appUrl()}/admin/pay-to-china` },
+  });
+}

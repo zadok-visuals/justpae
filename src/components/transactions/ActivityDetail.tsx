@@ -7,6 +7,7 @@ import { usePolling, isFinalStatus } from "@/lib/hooks/usePolling";
 import { DetailRow, SkeletonText, StatusPill } from "@/components/ui/Primitives";
 import { CopyButton, CopyField } from "@/components/ui/CopyButton";
 import { Button } from "@/components/ui/Button";
+import { Lightbox } from "@/components/ui/Lightbox";
 import { formatAmount, formatNumber, formatRate } from "@/lib/currencies";
 import { getActivityDetail, type ActivityDetail as Detail } from "@/lib/actions/activity";
 import type { ActivitySource } from "@/lib/transactions";
@@ -89,6 +90,8 @@ function DetailBody({ detail }: { detail: Detail }) {
   const isConversion = detail.source === "transaction" && detail.type === "convert";
   const isWithdrawal = detail.source === "transaction" && detail.type === "withdrawal";
   const isBill = detail.source === "bill";
+  const isPayToChina = detail.source === "transaction" && detail.type === "pay_to_china";
+  const [proofOpen, setProofOpen] = useState(false);
 
   return (
     <div className="pb-2">
@@ -154,6 +157,12 @@ function DetailBody({ detail }: { detail: Detail }) {
           </DetailRow>
         )}
 
+        {isPayToChina && detail.targetAmount != null && (
+          <DetailRow label={detail.status === "completed" ? "They received" : "They receive"}>
+            {formatAmount("CNY", detail.targetAmount)}
+          </DetailRow>
+        )}
+
         {detail.fee != null && detail.fee > 0 && (
           <DetailRow label="Fee">{formatAmount(detail.sourceCurrency, detail.fee)}</DetailRow>
         )}
@@ -215,6 +224,46 @@ function DetailBody({ detail }: { detail: Detail }) {
           This withdrawal is above our instant limit, so our team reviews it before it goes out.
         </p>
       )}
+
+      {isPayToChina && !isFinalStatus(detail.status) && (
+        <p className="mt-3 text-sm text-muted-foreground">
+          Our team pays these by hand, so it isn&apos;t instant. We&apos;ll email you when
+          it&apos;s on its way and again with the receipt once it lands.
+        </p>
+      )}
+
+      {/* THE PROOF OF PAYMENT. A manual payout's whole credibility problem is
+          that the customer has only our word for it; a photograph of the
+          payment landing in the recipient's app is the answer. Thumbnail
+          here, full size in a lightbox, from a signed URL that expires. */}
+      {isPayToChina && detail.proofUrl && (
+        <div className="mt-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Payment receipt
+          </p>
+          <button
+            type="button"
+            onClick={() => setProofOpen(true)}
+            className="block w-full overflow-hidden rounded-xl border border-border"
+          >
+            {/* A short-lived signed storage URL — nothing next/image can
+                optimise, and deliberately so. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={detail.proofUrl}
+              alt="Proof that your payment reached your recipient"
+              className="max-h-60 w-full object-contain"
+            />
+          </button>
+          <p className="mt-1.5 text-center text-xs text-muted-foreground">Tap to enlarge</p>
+          <Lightbox
+            open={proofOpen}
+            src={detail.proofUrl}
+            alt="Proof that your payment reached your recipient"
+            onClose={() => setProofOpen(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -229,14 +278,32 @@ function StatusTimeline({ detail }: { detail: Detail }) {
   const done = detail.status === "completed";
   const inFlight = detail.status === "processing";
 
+  const isPayToChina = detail.source === "transaction" && detail.type === "pay_to_china";
+
   const steps = [
-    { label: "Created", state: "done" as const },
+    { label: isPayToChina ? "Requested" : "Created", state: "done" as const },
     {
-      label: detail.source === "deposit" ? "Funds received" : "Sent to provider",
+      label:
+        detail.source === "deposit"
+          ? "Funds received"
+          : isPayToChina
+            ? // A person is doing this one, and saying "sent to provider"
+              // about a human would be both wrong and unreassuring.
+              "Being paid in China"
+            : "Sent to provider",
       state: done || inFlight ? ("done" as const) : failed ? ("failed" as const) : ("current" as const),
     },
     {
-      label: detail.status === "refunded" ? "Refunded" : failed ? "Failed" : "Completed",
+      label:
+        detail.status === "refunded"
+          ? "Refunded"
+          : failed
+            ? isPayToChina
+              ? "Returned to your wallet"
+              : "Failed"
+            : isPayToChina
+              ? "Paid"
+              : "Completed",
       state: done
         ? ("done" as const)
         : failed

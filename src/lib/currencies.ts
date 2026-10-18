@@ -3,13 +3,15 @@ import type { Currency } from "@/lib/types/database";
 /**
  * THE one place the currency list lives.
  *
- * Adding a currency (CNY being the obvious next one) is: add the value to the
- * Postgres `currency` enum in a new migration, then add an entry here. Every
- * selector, wallet grid, rate strip, deposit/withdraw/convert route table and
- * formatter reads from this module — nothing else enumerates currencies.
+ * Adding a currency is: add the value to the Postgres `currency` enum in a
+ * new migration, then add an entry here. Every selector, wallet grid, rate
+ * strip, deposit/withdraw/convert route table and formatter reads from this
+ * module — nothing else enumerates currencies.
  *
- * Deliberately NOT built now: CNY and everything RMB. The entry is absent, not
- * commented out, so no half-wired code path exists for it.
+ * THE ORDER OF THE ARRAY IS THE DISPLAY ORDER, everywhere. Wallet cards, the
+ * accounts list, every picker. GHS is last because it is under maintenance
+ * and an unusable option belongs at the bottom of a list, not in the middle
+ * of one.
  */
 export interface CurrencyMeta {
   code: Currency;
@@ -18,8 +20,19 @@ export interface CurrencyMeta {
   flag: string;
   /** Minor units a balance is displayed with. */
   decimals: number;
-  /** Crypto currencies skip bank-style recipient fields and use an address. */
-  kind: "fiat" | "crypto";
+  /**
+   * How this balance is backed.
+   *
+   *   fiat       a real currency a provider holds for us.
+   *   crypto     a real on-chain balance.
+   *   synthetic  an internal obligation, with nothing held anywhere. CNY is
+   *              the only one: no provider holds yuan for this business, so a
+   *              CNY balance exists because we created it by selling the
+   *              customer one, and it is discharged by Pay to China or by
+   *              converting back out. It can never be withdrawn — the schema
+   *              enforces that in 0026, not just the UI.
+   */
+  kind: "fiat" | "crypto" | "synthetic";
   /** Which country (if any) this is the local currency of. */
   country?: string;
 }
@@ -27,9 +40,17 @@ export interface CurrencyMeta {
 export const CURRENCIES: CurrencyMeta[] = [
   { code: "USD", label: "US Dollar", symbol: "$", flag: "🇺🇸", decimals: 2, kind: "fiat" },
   { code: "NGN", label: "Nigerian Naira", symbol: "₦", flag: "🇳🇬", decimals: 2, kind: "fiat", country: "NG" },
-  { code: "GHS", label: "Ghanaian Cedi", symbol: "₵", flag: "🇬🇭", decimals: 2, kind: "fiat", country: "GH" },
-  { code: "KES", label: "Kenyan Shilling", symbol: "KSh", flag: "🇰🇪", decimals: 2, kind: "fiat", country: "KE" },
+  // Deliberately NO `country`. A `country` here means "signing up from there
+  // provisions this wallet and bills can be paid in it" (see
+  // LOCAL_WALLET_COUNTRIES, derived from this field) — and neither is true of
+  // CNY. Every user gets a CNY wallet regardless of where they are, because
+  // Pay to China is offered to all of them.
+  { code: "CNY", label: "Chinese Yuan", symbol: "¥", flag: "🇨🇳", decimals: 2, kind: "synthetic" },
   { code: "USDT", label: "Tether USD", symbol: "₮", flag: "₮", decimals: 2, kind: "crypto" },
+  { code: "KES", label: "Kenyan Shilling", symbol: "KSh", flag: "🇰🇪", decimals: 2, kind: "fiat", country: "KE" },
+  // Last, deliberately: cedis are under maintenance, and an option nobody can
+  // use belongs at the bottom of every list rather than the middle of one.
+  { code: "GHS", label: "Ghanaian Cedi", symbol: "₵", flag: "🇬🇭", decimals: 2, kind: "fiat", country: "GH" },
 ];
 
 export const CURRENCY_CODES: Currency[] = CURRENCIES.map((c) => c.code);

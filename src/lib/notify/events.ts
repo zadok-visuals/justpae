@@ -5,6 +5,12 @@ import {
   sendConversionCompletedEmail,
   sendWithdrawalCompletedEmail,
   sendWithdrawalFailedEmail,
+  sendPayToChinaSubmittedEmail,
+  sendPayToChinaProcessingEmail,
+  sendPayToChinaCompletedEmail,
+  sendPayToChinaRejectedEmail,
+  sendAdminPayToChinaAlertEmail,
+  adminNotificationRecipients,
 } from "@/lib/email";
 import type { Currency } from "@/lib/types/database";
 
@@ -305,4 +311,162 @@ export async function notifyWithdrawalFailed(
       error: err instanceof Error ? err.message : err,
     });
   }
+}
+
+// ── Pay to China ────────────────────────────────────────────────────────────
+//
+// WHY THESE DO NOT USE claimTransaction.
+//
+// The claim above is an exactly-once marker for an event that several
+// independent processes might each commit — a webhook, a cron and a server
+// action all racing to announce one completion. A Pay to China request has no
+// such race: every state change is made by one admin, in one request, and the
+// SQL function guards the transition (only a pending request can start, only
+// a pending or processing one can complete or be rejected). So a second
+// announcement cannot happen — and using the one-shot claim here would be
+// actively wrong, because the FIRST of the four messages would consume the
+// marker and silence the three that follow it.
+
+/** A request was submitted: tell the customer, and wake the ops inbox. */
+export async function notifyPayToChinaSubmitted(transactionId: string): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    const { data: tx } = await admin
+      .from("transactions")
+      .select("user_id, amount, currency, target_amount")
+      .eq("id", transactionId)
+      .maybeSingle();
+    if (!tx || tx.target_amount == null) return;
+
+    const amount = formatAmount(tx.currency as Currency, tx.amount);
+    const cnyAmount = formatAmount("CNY", tx.target_amount);
+
+    await insertNotification(admin, tx.user_id, {
+      title: "China payment requested",
+      body: `${amount} to send ${cnyAmount}. We'll update you as it goes out.`,
+      href: "/transactions",
+    });
+
+    const to = await emailFor(admin, tx.user_id);
+    if (to) await sendPayToChinaSubmittedEmail({ to, amount, cnyAmount });
+
+    // The admin alert is what makes the queue a queue, rather than a page
+    // somebody has to remember to open.
+    const adminRecipients = adminNotificationRecipients();
+    if (adminRecipients.length > 0) {
+      const { data: recipient } = await admin
+        .from("pay_to_china_recipients")
+        .select("payout_method")
+        .eq("transaction_id", transactionId)
+        .maybeSingle();
+
+      await sendAdminPayToChinaAlertEmail({
+        to: adminRecipients,
+        userEmail: to ?? tx.user_id,
+        amount,
+        cnyAmount,
+        payoutMethod: recipient?.payout_method ?? "an unknown method",
+      });
+    }
+  } catch (err) {
+    console.error("[notify.notifyPayToChinaSubmitted] threw", {
+      transactionId,
+      error: err instanceof Error ? err.message : err,
+    });
+  }
+}
+
+/**
+ * A request moved on. One function for all three later states: the lookup and
+ * the failure handling are identical and only the words differ.
+ */
+export async function notifyPayToChinaStatus(
+  transactionId: string,
+  state: "processing" | "completed" | "rejected",
+  options: { reason?: string } = {},
+): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    const { data: tx } = await admin
+      .from("transactions")
+      .select("user_id, amount, currency, target_amount, actual_target_amount, payment_proof_ref")
+      .eq("id", transactionId)
+      .maybeSingle();
+    if (!tx) return;
+
+    const amount = formatAmount(tx.currency as Currency, tx.amount);
+    // What actually landed, when it differs from what was quoted — the email
+    // has to agree with the receipt the customer is about to look at.
+    const delivered = tx.actual_target_amount ?? tx.target_amount;
+    const cnyAmount = delivered != null ? formatAmount("CNY", delivered) : "your payment";
+    const to = await emailFor(admin, tx.user_id);
+
+    if (state === "processing") {
+      await insertNotification(admin, tx.user_id, {
+        title: "Paying your recipient now",
+        body: `${cnyAmount} is being sent in China.`,
+        href: "/transactions",
+      });
+      if (to) await sendPayToChinaProcessingEmail({ to, cnyAmount });
+      return;
+    }
+
+    if (state === "completed") {
+      await insertNotificationWithAttachment(admin, tx.user_id, {
+        title: "China payment landed",
+        body: `${cnyAmount} reached your recipient. The payment receipt is on the transaction.`,
+        href: "/transactions",
+        attachmentRef: tx.payment_proof_ref,
+      });
+      if (to) await sendPayToChinaCompletedEmail({ to, cnyAmount });
+      return;
+    }
+
+    const reason = options.reason ?? "We couldn't complete that payment.";
+    await insertNotification(admin, tx.user_id, {
+      title: "China payment returned",
+      body: `${amount} is back in your wallet. ${reason}`,
+      href: "/transactions",
+    });
+    if (to) await sendPayToChinaRejectedEmail({ to, amount, reason });
+  } catch (err) {
+    console.error("[notify.notifyPayToChinaStatus] threw", {
+      transactionId,
+      state,
+      error: err instanceof Error ? err.message : err,
+    });
+  }
+}
+
+/**
+ * A notification that carries a file.
+ *
+ * admin_send_notification has no attachment parameter, and widening its
+ * signature would mean a migration touching a function four other callers
+ * already use. The column (0026) is set in a follow-up update instead, and a
+ * failure there costs the proof LINK rather than the notification — which is
+ * the right half to lose, since the proof is also on the transaction itself.
+ */
+async function insertNotificationWithAttachment(
+  admin: AdminClient,
+  userId: string,
+  params: { title: string; body: string; href?: string; attachmentRef: string | null },
+): Promise<void> {
+  await insertNotification(admin, userId, params);
+  if (!params.attachmentRef) return;
+
+  const { data: latest } = await admin
+    .from("notifications")
+    .select("id")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!latest) return;
+  const { error } = await admin
+    .from("notifications")
+    .update({ attachment_ref: params.attachmentRef })
+    .eq("id", latest.id);
+  if (error) console.error("[notify] attachment link failed", { userId, error });
 }

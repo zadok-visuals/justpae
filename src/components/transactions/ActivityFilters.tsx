@@ -18,6 +18,7 @@ const TABS: { value: ActivityFilter; label: string }[] = [
   { value: "deposits", label: "Deposits" },
   { value: "withdrawals", label: "Withdrawals" },
   { value: "conversions", label: "Conversions" },
+  { value: "china", label: "China" },
   { value: "bills", label: "Bills" },
   { value: "airtime", label: "Airtime" },
 ];

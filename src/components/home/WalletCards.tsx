@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { currencyMeta, formatAmount } from "@/lib/currencies";
+import { CURRENCIES, currencyMeta, formatAmount } from "@/lib/currencies";
 import type { Currency, Wallet } from "@/lib/types/database";
 
 /**
@@ -22,9 +22,10 @@ import type { Currency, Wallet } from "@/lib/types/database";
 const WASHES: Record<Currency, string> = {
   USD: "from-naira/25 to-card",
   NGN: "from-gold/25 to-card",
-  GHS: "from-gold-dark/30 to-card",
-  KES: "from-naira-light/20 to-card",
+  CNY: "from-gold-dark/25 to-card",
   USDT: "from-ink-raised to-card",
+  KES: "from-naira-light/20 to-card",
+  GHS: "from-gold-dark/30 to-card",
 };
 
 /**
@@ -92,7 +93,10 @@ export function WalletCards({ wallets }: { wallets: Wallet[] }) {
   );
 }
 
-const ORDER: Currency[] = ["USD", "NGN", "GHS", "KES", "USDT"];
+// Config order — src/lib/currencies.ts is the one place the display order
+// lives, so a currency added or reordered there moves here too rather than
+// needing a second list kept in step by hand.
+const ORDER: Currency[] = CURRENCIES.map((c) => c.code);
 function orderIndex(currency: Currency): number {
   const index = ORDER.indexOf(currency);
   return index === -1 ? ORDER.length : index;

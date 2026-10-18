@@ -30,6 +30,7 @@ export type ActivityFilter =
   | "deposits"
   | "withdrawals"
   | "conversions"
+  | "china"
   | "bills"
   | "airtime";
 
@@ -80,6 +81,7 @@ function sourcesFor(filter: ActivityFilter): ActivitySource[] {
       return ["deposit"];
     case "withdrawals":
     case "conversions":
+    case "china":
       return ["transaction"];
     case "bills":
     case "airtime":
@@ -195,6 +197,7 @@ async function queryTransactions(
 
   if (filter === "withdrawals") query = query.eq("type", "withdrawal");
   if (filter === "conversions") query = query.eq("type", "convert");
+  if (filter === "china") query = query.eq("type", "pay_to_china");
   if (filters.status && filters.status !== "refunded") query = query.eq("status", filters.status);
   // `refunded` exists only on bill_payments, so this source contributes nothing.
   if (filters.status === "refunded") return [];
@@ -204,7 +207,16 @@ async function queryTransactions(
     // A conversion has a source AND a target currency. Matching only the
     // source would hide a NGN→USDT conversion from the USDT view, where the
     // user is precisely looking for the credit it produced.
-    query = query.or(`currency.eq.${filters.currency},target_currency.eq.${filters.currency}`);
+    //
+    // A PAY TO CHINA ROW IS THE EXCEPTION, and it matters. Its target
+    // currency is CNY, but that yuan goes to a recipient in China — it never
+    // touches the user's own CNY wallet. Matching it on the target side would
+    // put "you received ¥2,000" in the CNY account's activity for money that
+    // left. It appears under whichever wallet actually paid for it, and only
+    // there.
+    query = query.or(
+      `currency.eq.${filters.currency},and(target_currency.eq.${filters.currency},type.neq.pay_to_china)`,
+    );
   }
   if (filters.search) query = query.ilike("provider_reference", `%${filters.search}%`);
 
@@ -222,21 +234,31 @@ async function queryTransactions(
       t.target_currency === filters.currency;
 
     const isWithdrawal = t.type === "withdrawal";
+    // A Pay to China request is money LEAVING, always. Its target amount is
+    // what a third party in China receives, not a credit to this user — so
+    // it is never the "in" side of anything, whatever a currency filter
+    // matched on.
+    const isPayToChina = t.type === "pay_to_china";
+    const showTargetSide = matchedTargetOnly && !isPayToChina;
 
     return {
       id: t.id,
       source: "transaction" as const,
       type: t.type,
-      direction: isWithdrawal ? ("out" as const) : matchedTargetOnly ? ("in" as const) : ("out" as const),
-      amount: matchedTargetOnly ? (t.target_amount ?? t.amount) : t.amount,
-      currency: matchedTargetOnly ? (t.target_currency as Currency) : t.currency,
+      direction: isWithdrawal || isPayToChina ? ("out" as const) : showTargetSide ? ("in" as const) : ("out" as const),
+      amount: showTargetSide ? (t.target_amount ?? t.amount) : t.amount,
+      currency: showTargetSide ? (t.target_currency as Currency) : t.currency,
       status: t.status,
       reference: t.provider_reference,
       targetCurrency: t.target_currency,
       targetAmount: t.target_amount,
       title: isWithdrawal
         ? `Withdrawal to ${t.currency}`
-        : `${t.currency} to ${t.target_currency ?? "—"}`,
+        : isPayToChina
+          ? // Not "NGN to CNY", which reads as a conversion the user now
+            // holds the proceeds of. They do not: it went to China.
+            "Payment to China"
+          : `${t.currency} to ${t.target_currency ?? "—"}`,
       created_at: t.created_at,
     };
   });

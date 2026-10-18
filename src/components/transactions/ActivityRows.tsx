@@ -28,7 +28,10 @@ import {
 function iconFor(row: UnifiedActivity) {
   if (row.source === "deposit") return ReceiveIcon;
   if (row.source === "bill") return row.type === "airtime" ? AirtimeIcon : BillsIcon;
-  return row.type === "withdrawal" ? WithdrawIcon : ConvertIcon;
+  // A Pay to China request takes the withdraw mark, not the convert one: it
+  // is money leaving, and the convert arrows would say the user still has it
+  // in another wallet.
+  return row.type === "withdrawal" || row.type === "pay_to_china" ? WithdrawIcon : ConvertIcon;
 }
 
 /**

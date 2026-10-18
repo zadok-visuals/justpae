@@ -5,6 +5,7 @@ import { Wordmark } from "@/components/layout/Mark";
 const TABS = [
   { href: "/admin/kyc", label: "Verification" },
   { href: "/admin/withdrawals", label: "Withdrawals" },
+  { href: "/admin/pay-to-china", label: "Pay to China" },
   { href: "/admin/rates", label: "Rates" },
   { href: "/admin/pnl", label: "Margin" },
   { href: "/admin/support", label: "Support" },

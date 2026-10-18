@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Currency, TransactionStatus } from "@/lib/types/database";
 import { isMostRecentForCurrency, type ActivitySource } from "@/lib/transactions";
 import { toRpcError } from "@/lib/provider-error";
+import { describePayToChinaRecipient } from "@/lib/payToChina/describe";
 
 /**
  * Full detail for one activity row.
@@ -47,6 +48,13 @@ export interface ActivityDetail {
    */
   balanceAfter: number | null;
   isMostRecent: boolean;
+  /**
+   * A short-lived signed URL for the payment receipt on a completed Pay to
+   * China request. SIGNED, never public: the proof lives in a private bucket
+   * whose folder is the customer's own id, and minting a URL per view is
+   * what keeps it that way. Null for everything else.
+   */
+  proofUrl: string | null;
 }
 
 export interface ActivityDetailState {
@@ -139,6 +147,7 @@ async function depositDetail(
       requiresExtraVerification: false,
       balanceAfter,
       isMostRecent,
+      proofUrl: null,
     },
   };
 }
@@ -192,6 +201,7 @@ async function billDetail(
       requiresExtraVerification: false,
       balanceAfter,
       isMostRecent,
+      proofUrl: null,
     },
   };
 }
@@ -233,10 +243,41 @@ async function transactionDetail(
     }
   } else if (tx.type === "convert") {
     description = `${tx.currency} to ${tx.target_currency ?? "—"}`;
+  } else if (tx.type === "pay_to_china") {
+    // The recipient SNAPSHOT for this request, not the user's saved list —
+    // the receipt has to show who was actually paid, even if the saved
+    // recipient has been edited since.
+    const { data: recipient } = await supabase
+      .from("pay_to_china_recipients")
+      .select("*")
+      .eq("transaction_id", tx.id)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    description = recipient ? describePayToChinaRecipient(recipient) : null;
   }
 
   const resolvedTargetAmount = tx.actual_target_amount ?? tx.target_amount;
   const isConversion = tx.type === "convert" && tx.target_currency != null;
+
+  // ── The payment receipt ──────────────────────────────────────────────────
+  // A signed URL minted per view, valid for five minutes. The bucket is
+  // private and the folder is this customer's own id; a public URL would
+  // make a photograph of somebody's payment permanently reachable by anyone
+  // who ever saw the link.
+  let proofUrl: string | null = null;
+  if (tx.type === "pay_to_china" && tx.payment_proof_ref) {
+    const { data: signed, error: signError } = await supabase.storage
+      .from("pay-to-china-proof")
+      .createSignedUrl(tx.payment_proof_ref, 300);
+    if (signError) {
+      console.error("[activity] could not sign the payment proof", {
+        transactionId: tx.id,
+        error: signError.message,
+      });
+    }
+    proofUrl = signed?.signedUrl ?? null;
+  }
 
   // The balance lookup targets the currency the detail view describes as the
   // relevant one, so the two cannot disagree about which wallet is meant.
@@ -273,6 +314,7 @@ async function transactionDetail(
       requiresExtraVerification: tx.requires_extra_verification,
       balanceAfter,
       isMostRecent,
+      proofUrl,
     },
   };
 }

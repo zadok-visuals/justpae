@@ -19,6 +19,7 @@ import { CURRENCY_CODES, formatAmount, isUsdPair, USD_CONVERSION_UNAVAILABLE } f
 import { isPinLockedError, isWrongPinError, resolvePinError } from "@/lib/pin";
 import { notifyConversionCompleted } from "@/lib/notify/events";
 import { runConversion, type ProviderResult } from "@/lib/convert/sequence";
+import { quoteCnyConversion } from "@/lib/cny/pricing";
 
 /**
  * /convert's server side.
@@ -133,6 +134,12 @@ export async function quoteConversion(params: {
 
   if (!route.available) return { unavailableReason: route.reason };
 
+  // A CNY pair is priced by the size ladder, not by the route's indicative
+  // rate — see resolveCnyRoute, whose figures are a floor rather than a
+  // price. This is where the real amount finally exists, so this is where the
+  // real price is resolved.
+  if (route.kind === "cny_ledger") return quoteCnyPair(from, to, amount, field);
+
   const sourceAmount = field === "source" ? amount : amount / route.customerRate;
   const targetAmount = field === "source" ? amount * route.customerRate : amount;
   const sourceUsdtEquivalent = sourceAmount * route.sourceUsdtRate;
@@ -153,6 +160,58 @@ export async function quoteConversion(params: {
       minimumSourceAmount,
       kind: route.kind,
       directionRates: directionRatesFor(route),
+    },
+  };
+}
+
+/**
+ * A CNY conversion, priced.
+ *
+ * Separate from the provider path above because almost nothing is shared: no
+ * pair lookup, no bridge, and a rate that depends on the size of the order.
+ * What IS shared is the shape of the answer — the same ConversionQuote, with
+ * the same expiry and the same minimum gate — so /convert renders a CNY
+ * conversion with no idea that it is one.
+ */
+async function quoteCnyPair(
+  from: Currency,
+  to: Currency,
+  amount: number,
+  field: "source" | "target",
+): Promise<QuoteState> {
+  const direction = to === "CNY" ? "to_cny" : "from_cny";
+  const nonCnyCurrency = to === "CNY" ? from : to;
+
+  const quote = await quoteCnyConversion({
+    direction,
+    nonCnyCurrency,
+    amount,
+    amountSide: field,
+  });
+
+  if (!quote.available) return { unavailableReason: quote.reason };
+
+  const minimumSourceAmount = getMinimumConversionAmount(from, quote.sourceUsdtRate);
+
+  return {
+    quote: {
+      from,
+      to,
+      sourceAmount: quote.sourceAmount,
+      targetAmount: quote.targetAmount,
+      providerRate: quote.providerRate ?? quote.tierRate,
+      markupRate: quote.markupRate,
+      customerRate: quote.customerRate,
+      expiresAt: new Date(Date.now() + QUOTE_TTL_SECONDS * 1000).toISOString(),
+      sourceUsdtEquivalent: quote.sourceAmount * quote.sourceUsdtRate,
+      belowMinimum: quote.sourceAmount < minimumSourceAmount,
+      minimumSourceAmount,
+      kind: "cny_ledger",
+      // A yuan conversion has no USDT buy or sell price to show: the USDT leg
+      // is internal plumbing, not something the customer trades at. The
+      // confirmation falls back to the composite rate row, which for this
+      // route is the only rate there is.
+      directionRates: { buyPrice: null, sellPrice: null, bridged: false },
     },
   };
 }
@@ -181,6 +240,14 @@ function directionRatesFor(
       sellPrice: sellPriceFromUsdtToFiatRate(route.customerRate),
       bridged: false,
     };
+  }
+
+  // A yuan conversion reaches this function only if the branch above it in
+  // quoteConversion is ever removed. It has no USDT buy or sell price to
+  // show — the USDT leg is internal plumbing — and it is certainly not a
+  // bridge, which is what the fall-through below would call it.
+  if (route.kind === "cny_ledger") {
+    return { buyPrice: null, sellPrice: null, bridged: false };
   }
 
   const legs = bridgeLegPrices(route);
@@ -279,6 +346,15 @@ export async function executeConversion(
   }
 
   const admin = createAdminClient();
+
+  // A yuan conversion has no provider leg to order anything around, so it
+  // takes a shorter path: hold, write the quote, settle — all three against
+  // this database and nothing else. Branching here rather than inside
+  // runConversion keeps that sequence's three guarantees about a provider
+  // call meaning exactly what they say.
+  if (liveRoute.kind === "cny_ledger") {
+    return executeCnyConversion({ userId: user.id, email: user.email, from, to, amount, pin });
+  }
 
   // ── THE ORDER IS THE FIX ─────────────────────────────────────────────────
   //
@@ -498,6 +574,117 @@ export async function executeConversion(
   revalidatePath("/home");
   revalidatePath("/transactions");
   return { transactionId: outcome.transactionId };
+}
+
+/**
+ * A yuan conversion, executed.
+ *
+ * Three steps, one database, no provider:
+ *
+ *   1. begin_conversion_hold — suspension, PIN, destination wallet, balance,
+ *      and the debit. The SAME function the provider path uses; nothing about
+ *      it needed changing to accept a new currency, and reusing it is what
+ *      guarantees a CNY conversion cannot skip a check the others make.
+ *   2. The price, recomputed server-side from scratch, written to a
+ *      conversion_quotes row with the service role. Whatever the browser was
+ *      showing is irrelevant.
+ *   3. settle_cny_conversion — writes the ledger row from that quote, credits
+ *      the target wallet through complete_conversion, and consumes both the
+ *      hold and the quote. Atomic.
+ *
+ * There is no "provider failed" path because there is no provider. The only
+ * failure after the hold is this server's own, and it releases.
+ */
+async function executeCnyConversion(params: {
+  userId: string;
+  /** Only so a PIN lockout can be emailed, exactly as the provider path does. */
+  email: string | null | undefined;
+  from: Currency;
+  to: Currency;
+  amount: number;
+  pin: string;
+}): Promise<ExecuteConversionState> {
+  const { userId, email, from, to, amount, pin } = params;
+  const admin = createAdminClient();
+
+  // Priced BEFORE the hold, deliberately: a pricing failure then costs the
+  // user nothing and leaves nothing to release. The figures are recomputed
+  // here rather than carried from the browser's quote — same rule as every
+  // other money path in this file.
+  const priced = await quoteCnyConversion({
+    direction: to === "CNY" ? "to_cny" : "from_cny",
+    nonCnyCurrency: to === "CNY" ? from : to,
+    amount,
+    amountSide: "source",
+  });
+  if (!priced.available) return { error: priced.reason };
+
+  const minimum = getMinimumConversionAmount(from, priced.sourceUsdtRate);
+  if (amount < minimum) {
+    return { error: `The minimum conversion is ${formatAmount(from, minimum)}.` };
+  }
+
+  const { data: holdId, error: holdError } = await admin.rpc("begin_conversion_hold", {
+    p_user_id: userId,
+    p_source_currency: from,
+    p_target_currency: to,
+    p_source_amount: round2(amount),
+    p_pin: pin,
+  });
+
+  if (holdError) {
+    if (isWrongPinError(holdError) || isPinLockedError(holdError)) {
+      return { error: await resolvePinError({ userId, email, error: holdError }) };
+    }
+    return { error: toRpcError(holdError, "convert") };
+  }
+  if (!holdId) return { error: "Could not start that conversion." };
+
+  const { data: quoteRow, error: quoteError } = await admin
+    .from("conversion_quotes")
+    .insert({
+      user_id: userId,
+      source_currency: from,
+      target_currency: to,
+      source_amount: round2(amount),
+      target_amount: priced.targetAmount,
+      provider_rate: priced.providerRate ?? priced.tierRate,
+      markup_rate: priced.markupRate,
+      customer_rate: priced.customerRate,
+      raw_target_amount: priced.rawTargetAmount,
+      expires_at: new Date(Date.now() + QUOTE_TTL_SECONDS * 1000).toISOString(),
+    })
+    .select("id")
+    .single();
+
+  if (quoteError || !quoteRow) {
+    console.error("[convert.executeCnyConversion] quote write failed", { userId, error: quoteError });
+    await releaseHold(admin, holdId, userId, "Quote write failed.");
+    return { error: "Could not complete that conversion. Please try again." };
+  }
+
+  const { data: transactionId, error: settleError } = await admin.rpc("settle_cny_conversion", {
+    p_user_id: userId,
+    p_hold_id: holdId,
+    p_quote_id: quoteRow.id,
+  });
+
+  if (settleError || !transactionId) {
+    console.error("[convert.executeCnyConversion] settle failed", { userId, error: settleError });
+    await releaseHold(admin, holdId, userId, "Ledger write failed.");
+    return { error: toRpcError(settleError, "convert") };
+  }
+
+  // settle_cny_conversion completes the row in the same transaction, so the
+  // notification is owed immediately rather than by a poll — and the claim in
+  // notifyConversionCompleted is what stops it doubling up if any other path
+  // ever reaches this row.
+  await notifyConversionCompleted(transactionId);
+
+  revalidatePath("/home");
+  revalidatePath("/accounts");
+  revalidatePath("/transactions");
+  return { transactionId };
 }
 
 export interface ConversionStatusState {

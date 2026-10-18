@@ -1,9 +1,12 @@
+import type { Currency } from "@/lib/types/database";
+
 /**
  * Below this, Busha's own minimum rejects the request with a generic error
  * after the user has already submitted. Enforced client-side (disable submit,
  * explain why) AND server-side (can't be bypassed) in every conversion flow.
  *
- * No imports of its own, deliberately — safe to use from both Client
+ * No RUNTIME imports, deliberately — the one import above is a type and is
+ * erased at compile time, so this stays safe to use from both Client
  * Components and server actions.
  */
 export const MINIMUM_USDT_EQUIVALENT = 10;
@@ -20,15 +23,15 @@ export const MINIMUM_USDT_EQUIVALENT = 10;
  * the point. getMinimumConversionAmount below is what keeps them honest if real
  * rates drift against them.
  */
-export const MINIMUM_CONVERSION_AMOUNT: Record<
-  "USD" | "NGN" | "GHS" | "KES" | "USDT",
-  number
-> = {
+export const MINIMUM_CONVERSION_AMOUNT: Record<Currency, number> = {
   USD: 10,
   NGN: 15000,
   GHS: 150,
   KES: 1500,
   USDT: 10,
+  // ~10 USDT at the 6.5-6.6 CNY/USDT band in the ladder, rounded up to a
+  // figure a person would actually say out loud.
+  CNY: 100,
 };
 
 /**
@@ -36,12 +39,13 @@ export const MINIMUM_CONVERSION_AMOUNT: Record<
  * no longer clears the real floor. Keeps the adjusted number looking chosen
  * rather than like an exchange-rate artefact.
  */
-const MINIMUM_ROUNDING_STEP: Record<"USD" | "NGN" | "GHS" | "KES" | "USDT", number> = {
+const MINIMUM_ROUNDING_STEP: Record<Currency, number> = {
   USD: 1,
   NGN: 500,
   GHS: 10,
   KES: 100,
   USDT: 1,
+  CNY: 10,
 };
 
 /**
@@ -60,7 +64,7 @@ const MINIMUM_ROUNDING_STEP: Record<"USD" | "NGN" | "GHS" | "KES" | "USDT", numb
  * server would then reject.
  */
 export function getMinimumConversionAmount(
-  currency: "USD" | "NGN" | "GHS" | "KES" | "USDT",
+  currency: Currency,
   usdtPerUnit?: number | null,
 ): number {
   const configured = MINIMUM_CONVERSION_AMOUNT[currency];

@@ -11,11 +11,18 @@ export type DocumentStatus = "pending" | "approved" | "rejected";
  * every user gets one regardless of country (see handle_new_user). The local
  * wallet (NGN/GHS/KES) is provisioned from the signup country.
  *
- * To add a currency later (CNY is the obvious candidate): add the value to the
- * Postgres enum in its own migration, then add one entry to CURRENCIES in
- * src/lib/currencies.ts. Nothing else in the app hardcodes the list.
+ * To add a currency: add the value to the Postgres enum in its own migration
+ * (it cannot be added and used in the same transaction — see 0025), then add
+ * one entry to CURRENCIES in src/lib/currencies.ts. Nothing else in the app
+ * hardcodes the list.
+ *
+ * CNY (0025) is unlike every other entry here: it is a SYNTHETIC ledger
+ * balance. No provider holds yuan for this business, so a CNY balance is an
+ * internal obligation — created by converting into it, discharged by spending
+ * it through Pay to China or converting back out. It cannot be withdrawn, and
+ * 0026 enforces that with a trigger rather than leaving it to the UI.
  */
-export type Currency = "USD" | "NGN" | "GHS" | "KES" | "USDT";
+export type Currency = "USD" | "NGN" | "GHS" | "KES" | "USDT" | "CNY";
 
 /**
  * Free-form ISO 3166-1 alpha-2, not a fixed enum — a user's real country is
@@ -24,7 +31,13 @@ export type Currency = "USD" | "NGN" | "GHS" | "KES" | "USDT";
  */
 export type CountryCode = string;
 
-export type TransactionType = "convert" | "withdrawal";
+/**
+ * 'pay_to_china' (migration 0025) is deliberately its own type rather than a
+ * 'convert' or a 'withdrawal'. Both of those have automated provider paths,
+ * webhook settlement and refund rules that simply do not apply to a request a
+ * person fulfils by hand and photographs the receipt of.
+ */
+export type TransactionType = "convert" | "withdrawal" | "pay_to_china";
 export type TransactionProvider = "busha" | "klasha" | "manual";
 /**
  * 'partially_completed' (migration 0023) is a conversion-only terminal state:
@@ -203,6 +216,12 @@ export type Transaction = {
    *  exactly-once marker from 0018 — completed and failed are mutually
    *  exclusive, so one stamp per row covers both. */
   notified_at: string | null;
+  /**
+   * Path inside the private 'pay-to-china-proof' bucket (0026). Set by an
+   * admin when a Pay to China request is completed — the screenshot of the
+   * payment actually landing. Read through a signed URL, never a public one.
+   */
+  payment_proof_ref: string | null;
   created_at: string;
 };
 
@@ -283,6 +302,10 @@ export type Notification = {
   body: string;
   /** Relative in-app path only, enforced by a check constraint. */
   href: string | null;
+  /** Path into a private bucket, for a notification that carries a file —
+   *  today only a Pay to China payment proof (0026). Read through a signed
+   *  URL; the bucket is never public. */
+  attachment_ref: string | null;
   created_by: string | null;
   created_at: string;
 };
@@ -337,6 +360,98 @@ export type ConversionQuoteRow = {
   /** Markup-adjusted USDT leg 1 delivered. Written by server code from the
    *  provider's own leg-1 response; it is what a partial completion credits. */
   leg1_target_amount: number | null;
+  expires_at: string;
+  consumed_at: string | null;
+  created_at: string;
+};
+
+// ── CNY and Pay to China (migration 0026) ──────────────────────────────────
+
+export type PayoutMethod = "alipay" | "wechat" | "bank";
+
+/**
+ * The CNY size ladder: CNY per 1 USDT, by order size.
+ *
+ * PRICES, NEVER DISPLAYS. The table has RLS on and no policy at all, so a
+ * customer session cannot read it — see 0026 for why that is a schema
+ * property rather than a component decision.
+ */
+export type CnyTierRate = {
+  tier_min_cny: number;
+  tier_max_cny: number;
+  usdt_to_cny_rate: number;
+  updated_at: string;
+};
+
+/** Singleton. Fiat and USDT payers carry genuinely different agreed spreads. */
+export type CnyMarkupRate = {
+  id: boolean;
+  fiat_markup_rate: number;
+  usdt_markup_rate: number;
+  updated_at: string;
+};
+
+/**
+ * What this business PAYS its own supplier, as distinct from what it charges.
+ * Append-only: a new rate is a new row with its own effective_from, so "what
+ * did an order placed in March cost us" has an answer in March's terms.
+ * Direction, as everywhere: QUOTE per 1 BASE.
+ */
+export type SupplierRate = {
+  id: string;
+  base_currency: Currency;
+  quote_currency: Currency;
+  buy_rate: number;
+  effective_from: string;
+  set_by: string | null;
+  created_at: string;
+};
+
+/**
+ * The recipient of ONE Pay to China request — a snapshot, written at submit
+ * time and never updated, so a request settled three days later shows the
+ * admin the details the customer actually gave.
+ *
+ * A QR code alone is a complete recipient: the check constraints require a
+ * typed id OR a QR for Alipay/WeChat, never both.
+ */
+export type PayToChinaRecipient = {
+  id: string;
+  user_id: string;
+  transaction_id: string | null;
+  payout_method: PayoutMethod;
+  recipient_first_name: string | null;
+  recipient_last_name: string | null;
+  recipient_alipay_id: string | null;
+  recipient_wechat_id: string | null;
+  recipient_bank_account_number: string | null;
+  recipient_bank_name: string | null;
+  recipient_account_holder_name: string | null;
+  /** Path inside the private 'pay-to-china-qr' bucket. */
+  qr_code_ref: string | null;
+  created_at: string;
+};
+
+/** A reusable recipient, never attached to a transaction. */
+export type SavedPayToChinaRecipient = PayToChinaRecipient & { label: string };
+
+/**
+ * The server-written figures a Pay to China request settles at.
+ *
+ * Same contract as conversion_quotes: the function that spends this is given
+ * nothing but the row's id, so there is no argument through which an amount
+ * can arrive from a browser. RLS on, no policies, grants revoked.
+ */
+export type PayToChinaQuoteRow = {
+  id: string;
+  user_id: string;
+  source_currency: Currency;
+  source_amount: number;
+  target_cny: number;
+  provider_rate: number | null;
+  tier_rate: number | null;
+  markup_rate: number | null;
+  raw_target_cny: number | null;
   expires_at: string;
   consumed_at: string | null;
   created_at: string;
@@ -560,6 +675,52 @@ export type Database = {
         };
         Update: Partial<ConversionQuoteRow>; Relationships: [];
       };
+
+      // ── 0026 ──────────────────────────────────────────────────────────
+      cny_tier_rates: {
+        Row: CnyTierRate;
+        Insert: Partial<CnyTierRate> & { tier_min_cny: number; tier_max_cny: number; usdt_to_cny_rate: number };
+        Update: Partial<CnyTierRate>; Relationships: [];
+      };
+      cny_markup_rate: {
+        Row: CnyMarkupRate;
+        Insert: Partial<CnyMarkupRate>;
+        Update: Partial<CnyMarkupRate>; Relationships: [];
+      };
+      supplier_rates: {
+        Row: SupplierRate;
+        Insert: Partial<SupplierRate> & {
+          base_currency: Currency;
+          quote_currency: Currency;
+          buy_rate: number;
+        };
+        Update: Partial<SupplierRate>; Relationships: [];
+      };
+      pay_to_china_recipients: {
+        Row: PayToChinaRecipient;
+        Insert: Partial<PayToChinaRecipient> & { user_id: string; payout_method: PayoutMethod };
+        Update: Partial<PayToChinaRecipient>; Relationships: [];
+      };
+      saved_pay_to_china_recipients: {
+        Row: SavedPayToChinaRecipient;
+        Insert: Partial<SavedPayToChinaRecipient> & {
+          user_id: string;
+          label: string;
+          payout_method: PayoutMethod;
+        };
+        Update: Partial<SavedPayToChinaRecipient>; Relationships: [];
+      };
+      pay_to_china_quotes: {
+        Row: PayToChinaQuoteRow;
+        Insert: Partial<PayToChinaQuoteRow> & {
+          user_id: string;
+          source_currency: Currency;
+          source_amount: number;
+          target_cny: number;
+          expires_at: string;
+        };
+        Update: Partial<PayToChinaQuoteRow>; Relationships: [];
+      };
     };
     Functions: {
       credit_deposit: { Args: { p_deposit_id: string; p_actual_amount?: number | null }; Returns: undefined };
@@ -684,6 +845,66 @@ export type Database = {
       };
       admin_dashboard_stats: { Args: Record<string, never>; Returns: AdminDashboardStats };
       assert_phase4_invariants: { Args: Record<string, never>; Returns: boolean };
+
+      /**
+       * 0026 — CNY and Pay to China. EVERY ONE of these is revoked from
+       * public, anon and authenticated, and none takes an amount or a rate:
+       * the two that move money (settle_cny_conversion,
+       * create_pay_to_china_request) read every figure off a server-written
+       * quote row they are given only the id of.
+       *
+       * That is the whole difference between this and the implementation it
+       * was ported from, where the equivalents are authenticated-callable
+       * with caller-supplied amounts.
+       */
+      settle_cny_conversion: {
+        Args: { p_user_id: string; p_hold_id: string; p_quote_id: string };
+        Returns: string;
+      };
+      create_pay_to_china_request: {
+        Args: { p_user_id: string; p_quote_id: string; p_recipient_id: string; p_pin: string };
+        Returns: string;
+      };
+      admin_start_pay_to_china: {
+        Args: { p_transaction_id: string; p_admin_id: string };
+        Returns: undefined;
+      };
+      admin_complete_pay_to_china: {
+        Args: {
+          p_transaction_id: string;
+          p_admin_id: string;
+          p_actual_cny: number;
+          p_proof_ref?: string | null;
+          p_note?: string | null;
+        };
+        Returns: undefined;
+      };
+      admin_reject_pay_to_china: {
+        Args: { p_transaction_id: string; p_admin_id: string; p_reason: string };
+        Returns: undefined;
+      };
+      admin_set_cny_tier_rate: {
+        Args: { p_tier_min: number; p_tier_max: number; p_rate: number; p_admin_id: string };
+        Returns: undefined;
+      };
+      admin_delete_cny_tier_rate: {
+        Args: { p_tier_min: number; p_admin_id: string };
+        Returns: undefined;
+      };
+      admin_set_cny_markup_rate: {
+        Args: { p_fiat_markup_rate: number; p_usdt_markup_rate: number; p_admin_id: string };
+        Returns: undefined;
+      };
+      admin_set_supplier_rate: {
+        Args: {
+          p_base_currency: Currency;
+          p_quote_currency: Currency;
+          p_buy_rate: number;
+          p_effective_from: string | null;
+          p_admin_id: string;
+        };
+        Returns: string;
+      };
 
       create_withdrawal_request: {
         Args: { p_currency: Currency; p_amount: number; p_pin: string };

@@ -1,7 +1,14 @@
 import type { Currency } from "@/lib/types/database";
 import { getUsdtPairRates } from "@/lib/busha/rate";
 import { quoteWithMarkup, type MarkupQuote } from "@/lib/rates/markup";
+import { applyMarkupToRate } from "@/lib/rates/markupMath";
 import { isUsdPair, USD_CONVERSION_UNAVAILABLE } from "@/lib/currencies";
+import {
+  cnyRouteBlocker,
+  cnyMarkupFor,
+  indicativeCnyRate,
+  loadCnyPricingConfig,
+} from "@/lib/cny/pricing";
 
 /**
  * Server-only. Conversion route resolution for /convert.
@@ -16,6 +23,13 @@ import { isUsdPair, USD_CONVERSION_UNAVAILABLE } from "@/lib/currencies";
  *                       fiat into USDT at its buy price, then buy the target
  *                       fiat out of USDT at its sell price. USD -> local goes
  *                       through exactly this path.
+ *   4. CNY on either  — not a provider route at all. No provider quotes CNY
+ *      side              for this business; the price is set internally from
+ *                       a size ladder plus the live USDT leg. This module
+ *                       reports AVAILABILITY for those pairs and nothing
+ *                       else: a tiered rate without an amount is not a price,
+ *                       so the real figure comes from quoteCnyConversion,
+ *                       which has the amount. See src/lib/cny/pricing.ts.
  *
  * A pair the provider simply doesn't offer is not an error to discover at
  * submit time. getUsdtPairRates returns null for those (confirmed live: GHS has
@@ -24,7 +38,7 @@ import { isUsdPair, USD_CONVERSION_UNAVAILABLE } from "@/lib/currencies";
  * route in the UI and explain why instead of failing after the user commits.
  */
 
-export type RouteKind = "fiat_to_usdt" | "usdt_to_fiat" | "fiat_via_usdt";
+export type RouteKind = "fiat_to_usdt" | "usdt_to_fiat" | "fiat_via_usdt" | "cny_ledger";
 
 export type ConversionRoute =
   | {
@@ -75,6 +89,17 @@ export async function resolveRoute(from: Currency, to: Currency): Promise<Conver
     return unavailable(from, to, USD_CONVERSION_UNAVAILABLE);
   }
 
+  // ── CNY: priced internally, not by the provider. ────────────────────────
+  //
+  // Short-circuited before any pair lookup, because there is no USDT/CNY pair
+  // on this account and never will be — no provider holds yuan for this
+  // business. Left to the lookups below, every CNY pair would come back as
+  // "isn't quoted by our liquidity provider yet", which is true of the
+  // provider and false of the product.
+  if (from === "CNY" || to === "CNY") {
+    return resolveCnyRoute(from, to);
+  }
+
   // ── USDT on one side: a single direct pair lookup. ──────────────────────
   if (from === "USDT" || to === "USDT") {
     const fiat = from === "USDT" ? to : from;
@@ -123,6 +148,67 @@ export async function resolveRoute(from: Currency, to: Currency): Promise<Conver
   const providerRate = sourceUsdtRate * toPair.sellRate;
   const marked = await quoteWithMarkup(from, to, providerRate);
   return directRoute("fiat_via_usdt", from, to, marked, sourceUsdtRate);
+}
+
+/**
+ * Availability for a CNY pair, and an indicative rate that is never displayed.
+ *
+ * THE RATES ON THIS ROUTE ARE A FLOOR, NOT A PRICE. A CNY rate depends on the
+ * size of the order (the ladder), and this function has no amount — so it
+ * reports the LOWEST band, which is the worst rate a buyer can get. Anything
+ * that needs a real figure calls quoteCnyConversion with the amount;
+ * quoteConversion and executeConversion both branch on kind === "cny_ledger"
+ * to do exactly that. The numbers here exist so callers that only need
+ * availability (listRoutesFrom, the account pages) keep working unchanged.
+ *
+ * Erring on the low side is deliberate: an indicative figure that is worse
+ * than the real one cannot turn into a promise we then fail to honour.
+ */
+async function resolveCnyRoute(from: Currency, to: Currency): Promise<ConversionRoute> {
+  const nonCny: Currency = from === "CNY" ? to : from;
+
+  const blocker = cnyRouteBlocker(nonCny);
+  if (blocker) return unavailable(from, to, blocker);
+
+  const config = await loadCnyPricingConfig();
+  const tierRate = indicativeCnyRate(config);
+  if (tierRate == null) {
+    return unavailable(from, to, "Yuan pricing isn't configured yet. Please try again later.");
+  }
+
+  // The fiat leg has to be quotable for a fiat payer, and finding that out
+  // here rather than at submit time is the whole point of this function.
+  let usdtPerNonCnyUnit = 1;
+  if (nonCny !== "USDT") {
+    const pair = await getUsdtPairRates(nonCny);
+    if (!pair) {
+      return unavailable(
+        from,
+        to,
+        `${nonCny} can't be converted to or from yuan at the moment. Convert via USDT in the meantime.`,
+      );
+    }
+    usdtPerNonCnyUnit = 1 / pair.buyRate;
+  }
+
+  const markupRate = cnyMarkupFor(config, nonCny);
+  const providerRate =
+    from === "CNY"
+      ? // CNY -> non-CNY: 1 CNY is 1/tierRate USDT, then out through the leg.
+        1 / tierRate / usdtPerNonCnyUnit
+      : // non-CNY -> CNY: into USDT, then up the ladder.
+        usdtPerNonCnyUnit * tierRate;
+
+  return {
+    available: true,
+    kind: "cny_ledger",
+    from,
+    to,
+    providerRate,
+    markupRate,
+    customerRate: applyMarkupToRate(providerRate, markupRate),
+    sourceUsdtRate: from === "CNY" ? 1 / tierRate : usdtPerNonCnyUnit,
+  };
 }
 
 function directRoute(

@@ -2,8 +2,14 @@ import { requireAdminUser } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, EmptyState } from "@/components/ui/Primitives";
 import { RateMarkupForm, SettingsForm } from "@/components/admin/RatesForms";
+import {
+  CnyTierRateForm,
+  CnyMarkupForm,
+  SupplierRateForm,
+} from "@/components/admin/CnyRateForms";
 import { listMarkups } from "@/lib/rates/markup";
 import { formatNumber } from "@/lib/currencies";
+import type { CnyMarkupRate, CnyTierRate, SupplierRate } from "@/lib/types/database";
 
 export const metadata = { title: "Rates and markups" };
 export const dynamic = "force-dynamic";
@@ -12,10 +18,16 @@ export default async function AdminRatesPage() {
   await requireAdminUser();
   const admin = createAdminClient();
 
-  const [markups, { data: settings }] = await Promise.all([
-    listMarkups(),
-    admin.from("app_settings").select("key, value, updated_at"),
-  ]);
+  // Read with the service role, which is the only role that CAN read them:
+  // all three CNY pricing tables have RLS on and no policies (0026).
+  const [markups, { data: settings }, { data: tiers }, { data: cnyMarkup }, { data: supplier }] =
+    await Promise.all([
+      listMarkups(),
+      admin.from("app_settings").select("key, value, updated_at"),
+      admin.from("cny_tier_rates").select("*").order("tier_min_cny"),
+      admin.from("cny_markup_rate").select("*").maybeSingle(),
+      admin.from("supplier_rates").select("*").order("effective_from", { ascending: false }).limit(50),
+    ]);
 
   const settingValues = Object.fromEntries((settings ?? []).map((s) => [s.key, s.value]));
 
@@ -26,6 +38,9 @@ export default async function AdminRatesPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <RateMarkupForm />
         <SettingsForm values={settingValues} />
+        <CnyTierRateForm tiers={(tiers ?? []) as CnyTierRate[]} />
+        <CnyMarkupForm markup={(cnyMarkup ?? null) as CnyMarkupRate | null} />
+        <SupplierRateForm rates={(supplier ?? []) as SupplierRate[]} />
       </div>
 
       <Card>
