@@ -47,24 +47,19 @@ export default async function AdminWithdrawalsPage(props: PageProps<"/admin/with
     );
   }
 
-  // Recipients for the whole page in one query, keyed by user AND currency —
-  // a user can have one per currency, and keying by user alone would show an
-  // NGN bank account on a USDT withdrawal.
-  const { data: recipients } = await admin
-    .from("withdrawal_recipients")
-    .select("*")
-    .in(
-      "user_id",
-      withdrawals.map((w) => w.user_id),
-    );
-
-  const { data: profiles } = await admin
-    .from("profiles")
-    .select("id, email, full_name")
-    .in(
-      "id",
-      withdrawals.map((w) => w.user_id),
-    );
+  // GROUP 10. One round trip, not two. Both reads need the queue's user ids
+  // and neither needs the other's result, so they were sequential for no
+  // reason — the recipients query had to come back from Ireland before the
+  // profiles query was even sent. On a queue of any size that is the slower
+  // of the two added to the faster one instead of just the slower.
+  const userIds = withdrawals.map((w) => w.user_id);
+  const [{ data: recipients }, { data: profiles }] = await Promise.all([
+    // Recipients for the whole page in one query, keyed by user AND currency —
+    // a user can have one per currency, and keying by user alone would show an
+    // NGN bank account on a USDT withdrawal.
+    admin.from("withdrawal_recipients").select("*").in("user_id", userIds),
+    admin.from("profiles").select("id, email, full_name").in("id", userIds),
+  ]);
 
   const recipientFor = (userId: string, currency: Currency) =>
     recipients?.find((r) => r.user_id === userId && r.currency === currency);

@@ -25,18 +25,30 @@ export default async function AdminSupportThreadPage(
   const { userId } = await props.params;
 
   const admin = createAdminClient();
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("email, full_name, kyc_status")
-    .eq("id", userId)
-    .maybeSingle();
+
+  /**
+   * GROUP 10. Both reads are keyed on the same userId from the URL and
+   * neither reads the other's result, so the thread no longer waits for the
+   * profile to come back from Ireland before it is even requested.
+   *
+   * THE ORDER STILL MATTERS FOR WHAT IS RENDERED, and it is preserved: the
+   * 404 below is decided by the profile and nothing from the thread is used
+   * before it. Fetching the thread for an id that turns out not to exist
+   * costs one wasted read of zero rows and an admin_mark_support_thread_read
+   * that updates zero rows — the price of a mistyped URL, paid instead of a
+   * round trip on every correctly-typed one.
+   */
+  const [{ data: profile }, thread] = await Promise.all([
+    admin.from("profiles").select("email, full_name, kyc_status").eq("id", userId).maybeSingle(),
+    loadSupportThreadForAdmin(userId),
+  ]);
 
   // A thread id that doesn't resolve to an account is a 404, not an empty
   // thread — an empty thread reads as "they wrote nothing", which is a
   // different and misleading fact.
   if (!profile) notFound();
 
-  const { messages, attachmentUrls } = await loadSupportThreadForAdmin(userId);
+  const { messages, attachmentUrls } = thread;
 
   return (
     <div className="space-y-5">
