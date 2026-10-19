@@ -6,7 +6,9 @@ import { BuySellRates } from "@/components/rates/BuySellRates";
 import { ActivityRows } from "@/components/transactions/ActivityRows";
 import { SectionHeader, Card, Banner, EmptyState } from "@/components/ui/Primitives";
 import { LiveRefresh } from "@/components/ui/LiveRefresh";
-import { accountActions, howToAddMoney } from "@/lib/accounts/actions";
+import { MaintenanceBadge } from "@/components/ui/MaintenanceBadge";
+import { accountActions, howToAddMoney, howToAddMoneyHeading } from "@/lib/accounts/actions";
+import { depositAvailability } from "@/lib/deposits/availability";
 import { fetchActivityPage } from "@/lib/transactions";
 import { listRoutesFrom } from "@/lib/actions/convert";
 import { resolveRateBoard, localRateCurrencies } from "@/lib/rates/display";
@@ -78,17 +80,32 @@ export default async function AccountPage(props: PageProps<"/accounts/[currency]
   // converted at all right now — GHS today — and the page should say that
   // rather than offering a Convert tile that dead-ends.
   const anyRoute = routes.some((r) => r.available);
+  // GROUP 4f: the blocking route's own one-word kind travels with its
+  // sentence, so the Convert circle below can be badged "Maintenance" for a
+  // pair that is down and "Unsupported" for one that never existed.
+  const firstBlocked = routes.find((r) => !r.available);
   const actions = accountActions(
     currency,
     anyRoute
-      ? { available: true, reason: null }
+      ? { available: true, reason: null, kind: null }
       : {
           available: false,
-          reason:
-            routes.find((r) => !r.available)?.reason ??
-            `${currency} can't be converted right now.`,
+          reason: firstBlocked?.reason ?? `${currency} can't be converted right now.`,
+          kind: firstBlocked?.unavailableKind ?? "maintenance",
         },
   );
+
+  // GROUP 4f — the state of THIS wallet, said once at the top.
+  //
+  // /accounts/GHS was the page a cedi holder landed on to find out what was
+  // going on, and it said nothing: the rate cells read "Unavailable", the
+  // muted circles carried no label, and the only real explanation was behind a
+  // tap. A banner is what the USD page already does for its standing state,
+  // and the maintenance case has at least as much claim to it — it is the one
+  // that ends.
+  const deposit = depositAvailability(currency);
+  const maintenanceReason =
+    !deposit.available && deposit.kind === "maintenance" ? deposit.reason : null;
 
   return (
     <PageShell
@@ -127,13 +144,27 @@ export default async function AccountPage(props: PageProps<"/accounts/[currency]
             </Banner>
           )}
 
+          {maintenanceReason && (
+            <Banner tone="info" title={`Adding ${meta.label} is under maintenance`}>
+              <span className="flex flex-wrap items-center gap-2">
+                <MaintenanceBadge />
+                <span>{maintenanceReason}</span>
+              </span>
+            </Banner>
+          )}
+
           <section>
             <SectionHeader title="What you can do" />
             <AccountActions actions={actions} />
           </section>
 
           <section>
-            <SectionHeader title="Adding money" />
+            {/* howToAddMoneyHeading, not the literal "Adding money" this
+                carried. Group 4d wrote the function — "Getting yuan" for CNY,
+                "Receiving dollars" for USD — and then never wired it up, so
+                /accounts/CNY still printed "Adding money" over a paragraph
+                explaining that yuan is not added. */}
+            <SectionHeader title={howToAddMoneyHeading(currency)} />
             <Card>
               <p className="text-sm text-muted-foreground">{howToAddMoney(currency)}</p>
             </Card>

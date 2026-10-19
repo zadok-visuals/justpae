@@ -1,4 +1,5 @@
 import { formatAmount, currencyMeta } from "@/lib/currencies";
+import { UnavailableBadge } from "@/components/ui/MaintenanceBadge";
 import type { UsdtPairDisplay } from "@/lib/rates/display";
 
 /**
@@ -80,12 +81,22 @@ export function BuySellRates({
  * case for a real customer, not a rare error state.
  */
 function RateLines({ rate, compact = false }: { rate: UsdtPairDisplay; compact?: boolean }) {
-  const { currency, buyPrice, sellPrice, unavailableReason } = rate;
+  const { currency, buyPrice, sellPrice, unavailableReason, unavailableKind } = rate;
 
   if (buyPrice == null && sellPrice == null) {
     return (
       <>
-        <span className="text-sm font-medium text-muted-foreground">Unavailable</span>
+        {/* GROUP 4f. This cell used to read "Unavailable" for every reason a
+            pair cannot be priced, and it is the ONLY thing Home's strip and
+            the GHS account page say about that currency. A badge naming the
+            actual state — Maintenance for a pair that is down, which is the
+            normal case for cedis today — is the difference between "this is
+            coming back" and "this product doesn't do my money".
+
+            A badge rather than plain text on purpose: it matches the
+            Maintenance marker already used on the Bills tiles and in the nav,
+            so one state has one appearance everywhere. */}
+        <UnavailableBadge kind={unavailableKind ?? "maintenance"} />
         {!compact && unavailableReason && (
           <p className="mt-1 text-xs text-muted-foreground">{unavailableReason}</p>
         )}

@@ -34,6 +34,7 @@ export function ConfirmDialog({
   destructive = false,
   pending = false,
   confirmDisabled = false,
+  footer,
   onConfirm,
   onCancel,
 }: {
@@ -41,6 +42,17 @@ export function ConfirmDialog({
   title: string;
   body?: React.ReactNode;
   rows?: ConfirmRow[];
+  /**
+   * GROUP 4g. Rendered UNDER the buttons — for the legal reminder a money
+   * checkout has to carry on its confirmation step.
+   *
+   * Under rather than over, and after them in the DOM, for the same reason
+   * Cancel comes before Confirm: the dialog's first focus stop and its Enter
+   * key must stay on the decision. A link placed above the buttons would
+   * collect the focus trap's initial focus and make "open the Terms" the
+   * default action of a withdrawal confirmation.
+   */
+  footer?: React.ReactNode;
   confirmLabel: string;
   cancelLabel?: string;
   destructive?: boolean;
@@ -101,6 +113,8 @@ export function ConfirmDialog({
           {confirmLabel}
         </Button>
       </div>
+
+      {footer && <div className="mt-4">{footer}</div>}
     </Modal>
   );
 }

@@ -14,6 +14,7 @@ import {
 } from "./tiers.ts";
 import { applyMarkupToAmount } from "../rates/markupMath.ts";
 import { isUsdPair } from "../currencies.ts";
+import type { UnavailableKind } from "../ui/unavailability.ts";
 
 /**
  * CNY pricing with everything impure taken out.
@@ -91,6 +92,25 @@ export function cnyRouteBlocker(nonCnyCurrency: Currency): string | null {
     return "Cedi conversions are under maintenance. We'll let you know the moment they're back.";
   }
   return null;
+}
+
+/**
+ * GROUP 4f — WHICH of the things cnyRouteBlocker just refused for, as one of
+ * the shared one-word states.
+ *
+ * It lives beside cnyRouteBlocker and mirrors its branches rather than
+ * parsing its sentence, so rewording a refusal cannot silently change the
+ * badge beside it. Three callers read the pair together — /convert's picker,
+ * /pay-to-china and the account action row — and all three have to agree.
+ *
+ * The distinction that matters: cedi conversions are DOWN and coming back,
+ * while dollars have no leg anywhere on this account at all. One word each,
+ * and not the same word.
+ */
+export function cnyBlockerKind(nonCnyCurrency: Currency): UnavailableKind {
+  if (nonCnyCurrency === "CNY") return "same";
+  if (nonCnyCurrency === "GHS") return "maintenance";
+  return "unsupported";
 }
 
 /**

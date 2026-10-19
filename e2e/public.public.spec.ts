@@ -28,6 +28,35 @@ test.describe("public pages render", () => {
   });
 
   /**
+   * GROUP 4f on the one surface this project can reach.
+   *
+   * The deposit, convert and withdraw pickers are behind sign-in, so the
+   * `authed` project owns those. What is public is the wallet rail on the
+   * landing page — the place a visitor decides whether to hand over a
+   * government ID — and the rule there is the harder one to keep: the cedi
+   * wallet must be advertised AND marked, because hiding it says the product
+   * does not do cedis and advertising it bare mis-sells the account.
+   */
+  test("the landing page marks a wallet that is under maintenance", async ({ page }) => {
+    await page.goto("/");
+
+    const ghsPill = page.getByRole("listitem").filter({ hasText: "GHS" });
+    await expect(ghsPill).toBeVisible();
+
+    // Both halves. The flag ships off, so this is the state under test; the
+    // assertion is written so that turning the flag ON is what moves it,
+    // rather than a copy edit silently dropping the marker.
+    const ghsDepositOn = process.env.NEXT_PUBLIC_FEATURE_KLASHA_GHS_DEPOSIT === "true";
+    if (ghsDepositOn) {
+      await expect(ghsPill).not.toContainText(/maintenance/i);
+    } else {
+      await expect(ghsPill).toContainText(/maintenance/i);
+      // And the word is never the vague one Group 4f replaced.
+      await expect(page.locator("main")).not.toContainText(/·\s*unavailable/i);
+    }
+  });
+
+  /**
    * Customer copy never says "exchange" and never names a provider. Asserted
    * rather than reviewed, because this is the rule most likely to be broken
    * by a one-line copy change nobody re-reads the whole page after.

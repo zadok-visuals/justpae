@@ -2,6 +2,7 @@ import { PageShell } from "@/components/layout/PageShell";
 import { Card, Banner, DetailRow } from "@/components/ui/Primitives";
 import { CopyField } from "@/components/ui/CopyButton";
 import { ShareLink } from "@/components/receive/ShareLink";
+import { MaintenanceBadge } from "@/components/ui/MaintenanceBadge";
 import { getReceivingDetails } from "@/lib/actions/receive";
 
 export const metadata = { title: "Receive dollars" };
@@ -29,8 +30,16 @@ export default async function ReceivePage() {
     >
       {state.status === "unavailable" && (
         <div className="space-y-4">
-          <Banner tone="info" title="Almost ready">
-            {state.reason}
+          {/* GROUP 4f. "Almost ready" was the fourth phrase this product used
+              for one state, after "coming soon", "· unavailable" and "under
+              maintenance" — and the least honest of them, because it implies a
+              date nobody has. The badge is the same one the account row, the
+              rate board and the Bills tiles carry. */}
+          <Banner tone="info" title="Dollar receiving details are under maintenance">
+            <span className="flex flex-wrap items-center gap-2">
+              <MaintenanceBadge />
+              <span>{state.reason}</span>
+            </span>
           </Banner>
 
           <Card>

@@ -20,6 +20,7 @@ import { isPinLockedError, isWrongPinError, resolvePinError } from "@/lib/pin";
 import { notifyConversionCompleted } from "@/lib/notify/events";
 import { runConversion, type ProviderResult } from "@/lib/convert/sequence";
 import { quoteCnyConversion } from "@/lib/cny/pricing";
+import type { UnavailableKind } from "@/lib/ui/unavailability";
 
 /**
  * /convert's server side.
@@ -262,6 +263,12 @@ export interface RouteAvailability {
   to: Currency;
   available: boolean;
   reason: string | null;
+  /**
+   * GROUP 4f. The one word the `<option>` has room for, carried alongside the
+   * full sentence instead of the picker inventing "unavailable". Null when the
+   * route IS available.
+   */
+  unavailableKind: UnavailableKind | null;
   customerRate: number | null;
 }
 
@@ -276,8 +283,20 @@ export async function listRoutesFrom(from: Currency): Promise<RouteAvailability[
     const routes = await resolveRoutesFrom(from, CURRENCY_CODES);
     return routes.map((r) =>
       r.available
-        ? { to: r.to, available: true, reason: null, customerRate: r.customerRate }
-        : { to: r.to, available: false, reason: r.reason, customerRate: null },
+        ? {
+            to: r.to,
+            available: true,
+            reason: null,
+            unavailableKind: null,
+            customerRate: r.customerRate,
+          }
+        : {
+            to: r.to,
+            available: false,
+            reason: r.reason,
+            unavailableKind: r.unavailableKind,
+            customerRate: null,
+          },
     );
   } catch (err) {
     console.error("[convert.listRoutesFrom] failed", err);
@@ -294,6 +313,9 @@ export async function listRoutesFrom(from: Currency): Promise<RouteAvailability[
       reason: isUsdPair(from, to)
         ? USD_CONVERSION_UNAVAILABLE
         : "Rates are unavailable right now. Please try again in a moment.",
+      // A provider outage IS maintenance; USD's unavailability is not, and
+      // the same reasoning as the `reason` above applies to the word.
+      unavailableKind: isUsdPair(from, to) ? "unsupported" : "maintenance",
       customerRate: null,
     }));
   }

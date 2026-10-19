@@ -127,14 +127,25 @@ const rows: UnifiedActivity[] = [
 /** GHS deliberately unavailable: it has no USDT pair, and the greyed-out
     destination is the thing most worth looking at on the convert screen. */
 const routes: RouteAvailability[] = [
-  { to: "NGN", available: true, reason: null, customerRate: 1525.4 },
-  { to: "KES", available: true, reason: null, customerRate: 129.44 },
-  { to: "USDT", available: true, reason: null, customerRate: 0.998 },
-  { to: "GHS", available: false, reason: "No cedi pair is quotable right now.", customerRate: null },
+  { to: "NGN", available: true, reason: null, unavailableKind: null, customerRate: 1525.4 },
+  { to: "KES", available: true, reason: null, unavailableKind: null, customerRate: 129.44 },
+  { to: "USDT", available: true, reason: null, unavailableKind: null, customerRate: 0.998 },
+  {
+    to: "GHS",
+    available: false,
+    reason: "No cedi pair is quotable right now.",
+    // GROUP 4f. A pair that is down, which is what the picker should badge.
+    unavailableKind: "maintenance",
+    customerRate: null,
+  },
 ];
 
 const depositAvailability: Record<string, DepositAvailability> = {
-  USD: { available: false, reason: "Dollar deposits arrive through /receive." },
+  USD: {
+    available: false,
+    kind: "receive",
+    reason: "Dollar deposits arrive through /receive.",
+  },
   NGN: { available: true, provider: "busha" },
   KES: { available: true, provider: "busha" },
   USDT: { available: true, provider: "busha" },
@@ -143,6 +154,7 @@ const depositAvailability: Record<string, DepositAvailability> = {
   // copy to whoever reads it next.
   GHS: {
     available: false,
+    kind: "maintenance",
     reason:
       "Cedi deposits are under maintenance while we finish setup with our Ghana collection partner. We'll let you know the moment they're back.",
   },
@@ -215,15 +227,30 @@ export default function DevGallery() {
               <BuySellRates
                 variant="strip"
                 rates={[
-                  { currency: "NGN", buyPrice: 1387.65, sellPrice: 1357.44, unavailableReason: null },
+                  {
+                    currency: "NGN",
+                    buyPrice: 1387.65,
+                    sellPrice: 1357.44,
+                    unavailableReason: null,
+                    unavailableKind: null,
+                  },
                   {
                     currency: "GHS",
                     buyPrice: null,
                     sellPrice: null,
                     unavailableReason:
                       "USDT/GHS isn't quoted by our liquidity provider yet, so this route is unavailable. Convert via another wallet in the meantime.",
+                    // GROUP 4f. This is the cell the gallery exists to show:
+                    // it reads "Maintenance" now, not "Unavailable".
+                    unavailableKind: "maintenance",
                   },
-                  { currency: "KES", buyPrice: 130.08, sellPrice: 128.11, unavailableReason: null },
+                  {
+                    currency: "KES",
+                    buyPrice: 130.08,
+                    sellPrice: 128.11,
+                    unavailableReason: null,
+                    unavailableKind: null,
+                  },
                 ]}
               />
             </section>
@@ -247,8 +274,20 @@ export default function DevGallery() {
                 hasPin
                 initialFrom="NGN"
                 rateBoard={[
-                  { currency: "NGN", buyPrice: 1387.65, sellPrice: 1357.44, unavailableReason: null },
-                  { currency: "KES", buyPrice: 130.08, sellPrice: 128.11, unavailableReason: null },
+                  {
+                    currency: "NGN",
+                    buyPrice: 1387.65,
+                    sellPrice: 1357.44,
+                    unavailableReason: null,
+                    unavailableKind: null,
+                  },
+                  {
+                    currency: "KES",
+                    buyPrice: 130.08,
+                    sellPrice: 128.11,
+                    unavailableReason: null,
+                    unavailableKind: null,
+                  },
                 ]}
               />
             </Section>

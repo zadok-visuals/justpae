@@ -5,11 +5,12 @@ import type { CnyTier, CnyDirection } from "@/lib/cny/tiers";
 import {
   priceCnyConversion,
   cnyRouteBlocker,
+  cnyBlockerKind,
   indicativeCnyRate as indicativeRateFromTiers,
   type CnyPrice,
 } from "@/lib/cny/priceCore";
 
-export { cnyRouteBlocker };
+export { cnyRouteBlocker, cnyBlockerKind };
 
 /**
  * Server-only. What CNY costs, and what it is worth.

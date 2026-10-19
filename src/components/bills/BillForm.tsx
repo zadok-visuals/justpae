@@ -209,8 +209,11 @@ function BillFormFields({
         />
       )}
 
+      {/* GROUP 4f — the title matches the heading on /bills, which Group 4e
+          already changed to "under maintenance". These two sit on the same
+          screen and said two different things about one state. */}
       {!available && (
-        <Banner tone="info" title="Bill payments are coming soon">
+        <Banner tone="info" title="Bill payments are under maintenance">
           You can fill this in to see how it works, but we can&apos;t take the payment yet.
         </Banner>
       )}

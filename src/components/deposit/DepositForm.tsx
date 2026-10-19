@@ -16,6 +16,29 @@ import { usePolling, isFinalStatus } from "@/lib/hooks/usePolling";
 import { useCountdown, formatCountdown } from "@/lib/hooks/useCountdown";
 import { currencyMeta, formatAmount } from "@/lib/currencies";
 import type { Currency, Wallet } from "@/lib/types/database";
+import { unavailableSuffix, type UnavailableKind } from "@/lib/ui/unavailability";
+import { LegalReminder } from "@/components/ui/LegalReminder";
+import { DepositAddressQr, networkLabel } from "@/components/deposit/DepositAddressQr";
+
+/**
+ * GROUP 4f — the heading over the reason, matched to the reason.
+ *
+ * One title for all three states read as "we haven't built this", which is
+ * true of none of them: cedi deposits exist and are down, dollars are
+ * received rather than deposited, and yuan is bought.
+ */
+function depositUnavailableTitle(currency: Currency, kind: UnavailableKind): string {
+  switch (kind) {
+    case "maintenance":
+      return `${currency} deposits are under maintenance`;
+    case "receive":
+      return `${currency} arrives by being sent to you`;
+    case "convert":
+      return `${currency} is bought, not deposited`;
+    default:
+      return `${currency} deposits aren't available yet`;
+  }
+}
 
 /**
  * Deposit, in three named steps.
@@ -121,14 +144,21 @@ export function DepositForm({
             return (
               <option key={wallet.currency} value={wallet.currency} disabled={!info?.available}>
                 {currencyMeta(wallet.currency).flag} {wallet.currency}
-                {info?.available ? "" : " · unavailable"}
+                {/* GROUP 4f. Was a bare " · unavailable" for all three of the
+                    reasons a currency lands here, which told a cedi holder
+                    nothing and told a dollar holder something wrong. The kind
+                    comes from depositAvailability, which has always known. */}
+                {info == null || info.available ? "" : unavailableSuffix(info.kind)}
               </option>
             );
           })}
         </SelectField>
 
         {current && !current.available && (
-          <Banner tone="info" title={`${currency} deposits aren't available yet`}>
+          // The title names the STATE, not a generic absence. "aren't
+          // available yet" was printed over cedis — a rail that exists and is
+          // down — and over dollars, which are not deposited at all.
+          <Banner tone="info" title={depositUnavailableTitle(currency, current.kind)}>
             {current.reason}
           </Banner>
         )}
@@ -165,6 +195,11 @@ export function DepositForm({
           <SubmitButton disabled={amount <= 0 || belowMinimum} pendingLabel="Checking…">
             Continue
           </SubmitButton>
+
+          {/* GROUP 4g — step 1 of 3. On every step, not just the last one:
+              the user should meet this before they have invested anything in
+              the flow, not only at the point where backing out is expensive. */}
+          <LegalReminder />
         </form>
       )}
 
@@ -205,6 +240,11 @@ export function DepositForm({
               one transfer, and naming the action that way is the first place
               the user is told so. */}
           <SubmitButton pendingLabel="Generating…">Generate account details</SubmitButton>
+
+          {/* GROUP 4g — the review step. This is the one that matters most of
+              the three: it is the last screen before the product creates a
+              real transfer instruction on the user's behalf. */}
+          <LegalReminder />
         </form>
       )}
     </div>
@@ -349,9 +389,25 @@ function DepositInstructions({
 
       {cryptoAddress && (
         <div className="space-y-2">
+          {/* GROUP 4h. Above the address, not below it: the QR is the path
+              most people will actually take, and burying it under 42
+              characters of hex makes them read the hex first. Hidden once the
+              deposit has settled or expired — a live-looking QR for dead
+              transfer details is the single most expensive thing this screen
+              could show. */}
+          {!settled && (
+            <DepositAddressQr
+              address={cryptoAddress.address}
+              network={cryptoAddress.network}
+              currency={currency}
+            />
+          )}
           <CopyField label={`${currency} address`} value={cryptoAddress.address} />
-          <Banner tone="warning" title={`Send on ${cryptoAddress.network} only`}>
-            Funds sent on any other network can&apos;t be recovered.
+          {/* The warning names the SAME label as the QR tile — "BSC (BEP20)",
+              not the raw "BSC" the provider sends — so the two lines a user
+              reads side by side cannot look like two different networks. */}
+          <Banner tone="warning" title={`Send ${currency} on ${networkLabel(cryptoAddress.network)} only`}>
+            Funds sent on any other network, or in any other token, can&apos;t be recovered.
           </Banner>
         </div>
       )}
@@ -404,6 +460,12 @@ function DepositInstructions({
             ? "Start again"
             : "I'll finish this later"}
       </Button>
+
+      {/* GROUP 4g — step 3. The deposit has no confirm DIALOG; this screen,
+          where the user is about to move real money out of their bank, is its
+          equivalent and the place the brief's third instance belongs. Dropped
+          once the deposit has settled: nothing is being agreed to any more. */}
+      {!settled && <LegalReminder />}
     </div>
   );
 }

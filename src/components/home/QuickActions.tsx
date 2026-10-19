@@ -58,9 +58,12 @@ export function QuickActions({ wallets }: { wallets: Wallet[] }) {
         return {
           currency: wallet.currency,
           href: "/receive",
+          // GROUP 4f. "Coming soon" here and "under maintenance" on the
+          // account row for the same state is how one feature acquires two
+          // meanings. One word, everywhere.
           disabledReason: USD_COLLECTION_ENABLED
             ? null
-            : "Dollar receiving details are coming soon.",
+            : "Dollar receiving details are under maintenance.",
         };
       }
       const availability = depositAvailability(wallet.currency);

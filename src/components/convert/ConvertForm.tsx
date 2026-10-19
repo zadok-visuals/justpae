@@ -27,6 +27,7 @@ import {
   USD_CONVERSION_UNAVAILABLE,
 } from "@/lib/currencies";
 import type { Currency, Wallet } from "@/lib/types/database";
+import { unavailableSuffix } from "@/lib/ui/unavailability";
 
 /**
  * /convert.
@@ -593,7 +594,14 @@ function WalletSelect({
               <option key={wallet.currency} value={wallet.currency} disabled={blocked}>
                 {currencyMeta(wallet.currency).flag} {wallet.currency}
                 {showBalance ? ` · ${formatAmount(wallet.currency, wallet.balance)}` : ""}
-                {blocked ? " · unavailable" : ""}
+                {/* GROUP 4f. The route has carried its own specific reason all
+                    along — resolveRoute distinguishes a pair the provider
+                    stopped quoting (down, coming back) from USD, which has no
+                    leg on this account at all. This used to flatten both into
+                    "unavailable". */}
+                {blocked && route.unavailableKind
+                  ? unavailableSuffix(route.unavailableKind)
+                  : ""}
               </option>
             );
           })}

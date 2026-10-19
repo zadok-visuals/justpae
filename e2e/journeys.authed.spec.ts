@@ -95,6 +95,90 @@ test.describe("a verified account", () => {
     }
   });
 
+  /**
+   * GROUP 4f. The suffix this replaced was a string literal in three
+   * components, which is exactly the kind of thing a later copy edit
+   * reintroduces without anybody re-reading the picker.
+   */
+  test("no picker says the generic '· unavailable'", async ({ page }) => {
+    for (const path of ["/deposit", "/convert", "/withdraw", "/accounts/GHS", "/home"]) {
+      await page.goto(path);
+      // The separator is part of the pattern on purpose: "temporarily
+      // unavailable" is legitimate prose in a provider-failure message, and
+      // "· unavailable" is only ever the suffix Group 4f removed.
+      await expect(page.locator("body"), `${path} still has the generic suffix`).not.toContainText(
+        /·\s*unavailable/i,
+      );
+    }
+  });
+
+  test("a cedi wallet is marked Maintenance rather than left blank", async ({ page }) => {
+    // Skipped if the GHS rail is ever switched on — at which point there is
+    // nothing to badge and this assertion should be rewritten, not deleted.
+    test.skip(
+      process.env.NEXT_PUBLIC_FEATURE_KLASHA_GHS_DEPOSIT === "true",
+      "GHS deposits are enabled, so there is no maintenance state to show",
+    );
+
+    await page.goto("/accounts/GHS");
+    await expect(page.locator("main")).toContainText(/maintenance/i);
+    // The old wording, which this is specifically not allowed to be.
+    await expect(page.locator("main")).not.toContainText(/coming soon/i);
+  });
+
+  /**
+   * GROUP 4g. Both screens, both links, and the property that matters most:
+   * target="_blank", because a same-tab navigation discards the in-progress
+   * quote, amount and PIN held in client state.
+   */
+  test("deposit and withdraw carry the legal reminder, opening in a new tab", async ({ page }) => {
+    for (const path of ["/deposit?currency=NGN", "/withdraw"]) {
+      await page.goto(path);
+      await expect(page.locator("body"), `${path} has no legal reminder`).toContainText(
+        /by continuing you agree/i,
+      );
+
+      for (const [name, href] of [
+        [/terms & conditions/i, "/terms"],
+        [/privacy policy/i, "/privacy"],
+      ] as const) {
+        const link = page.getByRole("link", { name }).first();
+        await expect(link).toHaveAttribute("href", href);
+        await expect(link, `${path}'s ${href} link must not navigate in place`).toHaveAttribute(
+          "target",
+          "_blank",
+        );
+        await expect(link).toHaveAttribute("rel", /noopener/);
+      }
+    }
+  });
+
+  /**
+   * GROUP 4h. The QR is generated in the browser from the `qrcode` package,
+   * so the assertion is that an <img> with a data: URL appears — anything
+   * fetched from an external host would both leak the address and be blocked
+   * by the CSP.
+   */
+  test("a USDT deposit shows a locally generated QR of the address", async ({ page }) => {
+    await page.goto("/deposit?currency=USDT");
+
+    await page.getByLabel(/how much are you sending/i).first().fill("50");
+    await page.getByRole("button", { name: /continue/i }).first().click();
+
+    const generate = page.getByRole("button", { name: /generate/i }).first();
+    if (!(await generate.count())) return;
+    await generate.click();
+
+    await expect(page.getByText(/scan with your wallet app/i)).toBeVisible();
+    // BSC alone is what the provider reports; BEP20 is what a wallet app's
+    // network dropdown calls it, and both have to be on screen.
+    await expect(page.locator("body")).toContainText(/BSC \(BEP20\)/);
+
+    const qr = page.getByRole("img", { name: /qr code/i });
+    await expect(qr).toBeVisible();
+    await expect(qr).toHaveAttribute("src", /^data:image\//);
+  });
+
   test("no screen names a payment provider", async ({ page }) => {
     for (const path of ["/home", "/accounts", "/convert", "/deposit", "/withdraw", "/transactions", "/profile"]) {
       await page.goto(path);

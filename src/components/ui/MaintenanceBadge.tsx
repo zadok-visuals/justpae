@@ -1,4 +1,9 @@
 import { Pill } from "@/components/ui/Primitives";
+import {
+  MAINTENANCE_LABEL,
+  UNAVAILABLE_LABEL,
+  type UnavailableKind,
+} from "@/lib/ui/unavailability";
 
 /**
  * GROUP 4e / 4f — the one word this product uses for a feature that is
@@ -33,5 +38,38 @@ export function MaintenanceBadge({ className = "" }: { className?: string }) {
   );
 }
 
-/** The word itself, for the places that need a string rather than a node. */
-export const MAINTENANCE_LABEL = "Maintenance";
+/**
+ * The word itself, for the places that need a string rather than a node.
+ *
+ * Re-exported from src/lib/ui/unavailability.ts rather than declared here, so
+ * a server module (deposit availability, route resolution, the rate board)
+ * can reach the vocabulary without importing a component — and so the badge
+ * and the picker suffixes cannot drift to two different words.
+ */
+export { MAINTENANCE_LABEL };
+
+/**
+ * GROUP 4f — the same badge for the OTHER closed states.
+ *
+ * Maintenance is not the only reason a thing is shut, and a badge that says
+ * "Maintenance" over a currency that is simply not supported is the generic
+ * "unavailable" problem again with a friendlier face. See the enum's own file
+ * for why each of these is a separate word.
+ *
+ * `maintenance` routes through MaintenanceBadge so there is exactly one
+ * definition of how that state looks.
+ */
+export function UnavailableBadge({
+  kind,
+  className = "",
+}: {
+  kind: UnavailableKind;
+  className?: string;
+}) {
+  if (kind === "maintenance") return <MaintenanceBadge className={className} />;
+  return (
+    <Pill tone="neutral" className={className}>
+      {UNAVAILABLE_LABEL[kind]}
+    </Pill>
+  );
+}

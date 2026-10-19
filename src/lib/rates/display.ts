@@ -1,4 +1,5 @@
 import type { Currency } from "@/lib/types/database";
+import type { UnavailableKind } from "@/lib/ui/unavailability";
 import { CURRENCIES } from "@/lib/currencies";
 import { resolveRoute } from "@/lib/rates/routes";
 import { buyPriceFromFiatToUsdtRate, sellPriceFromUsdtToFiatRate } from "@/lib/rates/pairPricing";
@@ -41,6 +42,19 @@ export interface UsdtPairDisplay {
    * missing is left wondering whether the app knows it exists.
    */
   unavailableReason: string | null;
+  /**
+   * GROUP 4f. The one-word form of the reason, so the board's own cell can
+   * say "Maintenance" where that is what it is.
+   *
+   * The board printed a bare "Unavailable" for every pair it could not
+   * price. That cell is the FIRST thing a cedi holder sees on /home and on
+   * /accounts/GHS, and on both of those screens it was the only thing the app
+   * said about the state of their currency — so "Unavailable" was, in effect,
+   * the product telling them it does not do cedis. It does; the pair is down.
+   *
+   * Null when the pair prices normally.
+   */
+  unavailableKind: UnavailableKind | null;
 }
 
 /**
@@ -80,14 +94,22 @@ export async function resolveUsdtPairDisplay(currency: Currency): Promise<UsdtPa
   // Whichever side actually failed gets to explain itself. In practice both
   // sides fail together — they come from the same pair lookup — but a
   // one-sided outage must not be reported with the other side's silence.
-  const reason =
+  // Whichever leg explains itself also names the kind — they travel together
+  // so a reworded reason and its badge cannot come apart.
+  const failed =
     buyPrice == null && !buyLeg.available
-      ? buyLeg.reason
+      ? buyLeg
       : sellPrice == null && !sellLeg.available
-        ? sellLeg.reason
+        ? sellLeg
         : null;
 
-  return { currency, buyPrice, sellPrice, unavailableReason: reason };
+  return {
+    currency,
+    buyPrice,
+    sellPrice,
+    unavailableReason: failed && !failed.available ? failed.reason : null,
+    unavailableKind: failed && !failed.available ? failed.unavailableKind : null,
+  };
 }
 
 /**
@@ -111,6 +133,8 @@ export async function resolveRateBoard(
           buyPrice: null,
           sellPrice: null,
           unavailableReason: "Rates are unavailable right now. Please try again in a moment.",
+          // A pair that threw is an outage, which is the maintenance case.
+          unavailableKind: "maintenance",
         };
       }
     }),

@@ -3,7 +3,8 @@ import { depositAvailability } from "@/lib/deposits/availability";
 import { isAutomatablePayoutCurrency } from "@/lib/busha/payout";
 import { USD_COLLECTION_ENABLED } from "@/lib/flags";
 import { USD_CONVERSION_UNAVAILABLE, currencyMeta } from "@/lib/currencies";
-import { cnyRouteBlocker } from "@/lib/cny/priceCore";
+import { cnyRouteBlocker, cnyBlockerKind } from "@/lib/cny/priceCore";
+import type { UnavailableKind } from "@/lib/ui/unavailability";
 
 /**
  * What a user can actually DO with one wallet, and when they can't, why.
@@ -37,6 +38,17 @@ export interface AccountAction {
   /** Null when the action can be taken. Otherwise the one line explaining why not. */
   disabledReason: string | null;
   /**
+   * GROUP 4f. The one-word form of `disabledReason`, so the muted circle in
+   * the action row can carry a badge naming the state instead of relying on
+   * the user tapping it to find out. Null exactly when `disabledReason` is.
+   *
+   * The sentence is still the real answer and still one tap away — this is
+   * the glance-level version, and the whole reason it exists is that "muted
+   * circle, no label" and "muted circle, Maintenance" are read completely
+   * differently by somebody deciding whether to give up on the product.
+   */
+  disabledKind: UnavailableKind | null;
+  /**
    * Shown under an ENABLED action when there is a condition worth knowing
    * before tapping — a GHS withdrawal going to a human rather than straight
    * out, most of all. Not a blocker; a warning.
@@ -57,10 +69,16 @@ export interface AccountAction {
 export interface ConvertAvailability {
   available: boolean;
   reason: string | null;
+  /** GROUP 4f. The one word, carried from whichever route refused. */
+  kind?: UnavailableKind | null;
 }
 
 export function staticConvertAvailability(currency: Currency): ConvertAvailability | null {
-  if (currency === "USD") return { available: false, reason: USD_CONVERSION_UNAVAILABLE };
+  if (currency === "USD") {
+    // Not maintenance: there is no USDT/USD pair on this account and there is
+    // no work in progress that would create one.
+    return { available: false, reason: USD_CONVERSION_UNAVAILABLE, kind: "unsupported" };
+  }
   return null;
 }
 
@@ -136,9 +154,16 @@ export function accountActions(
       key: "add",
       label: "Receive dollars",
       href: "/receive",
+      // GROUP 4f, closing QA 4.5. This said "coming soon", which is the one
+      // phrase MaintenanceBadge exists to remove: the receiving-details screen
+      // is built, the schema is there and the interface is waiting on a
+      // provider — so it is a thing this product does and cannot do today,
+      // which is the definition of maintenance rather than of a feature that
+      // was never promised.
       disabledReason: USD_COLLECTION_ENABLED
         ? null
-        : "Dollar receiving details are coming soon. You'll see them here the moment they're live.",
+        : "Dollar receiving details are under maintenance while we finish setup. You'll see them here the moment they're live.",
+      disabledKind: USD_COLLECTION_ENABLED ? null : "maintenance",
       note: null,
     });
   } else if (currency === "CNY") {
@@ -157,6 +182,7 @@ export function accountActions(
       label: "Convert to CNY",
       href: "/convert?to=CNY",
       disabledReason: null,
+      disabledKind: null,
       note: "Yuan is added by converting from another wallet.",
     });
   } else {
@@ -166,6 +192,7 @@ export function accountActions(
       label: "Add money",
       href: `/deposit?currency=${currency}`,
       disabledReason: deposit.available ? null : deposit.reason,
+      disabledKind: deposit.available ? null : deposit.kind,
       note: null,
     });
   }
@@ -177,6 +204,12 @@ export function accountActions(
     label: `Convert ${currency}`,
     href: `/convert?currency=${currency}`,
     disabledReason: convertState && !convertState.available ? convertState.reason : null,
+    // The caller resolves the live route and passes its kind through; a caller
+    // that only has the static answer gets "unsupported" from
+    // staticConvertAvailability. Falling back to maintenance would be wrong
+    // for USD, which is the one currency this branch definitely covers.
+    disabledKind:
+      convertState && !convertState.available ? (convertState.kind ?? "maintenance") : null,
     note: null,
   });
 
@@ -192,6 +225,7 @@ export function accountActions(
     label: "Pay to China",
     href: `/pay-to-china?currency=${currency}`,
     disabledReason: payToChinaBlocker,
+    disabledKind: payToChinaBlocker === null ? null : cnyBlockerKind(currency),
     note:
       payToChinaBlocker === null && currency !== "CNY"
         ? "Your yuan is bought as the payment goes out, at the rate you're shown."
@@ -205,6 +239,9 @@ export function accountActions(
     label: "Withdraw",
     href: `/withdraw?currency=${currency}`,
     disabledReason: withdraw.mode === "never" ? withdraw.reason : null,
+    // "never" means exactly that — a trigger refusal for CNY, no payout rail
+    // for USD. Neither is waiting on anything, so neither is maintenance.
+    disabledKind: withdraw.mode === "never" ? "unsupported" : null,
     note: withdraw.mode === "manual" ? withdraw.reason : null,
   });
 

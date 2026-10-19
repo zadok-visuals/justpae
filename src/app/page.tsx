@@ -3,7 +3,13 @@ import type { Metadata } from "next";
 import { Wordmark, Mark } from "@/components/layout/Mark";
 import { CURRENCIES } from "@/lib/currencies";
 import { BILL_CATEGORIES } from "@/lib/providers/bills";
-import { BILLS_ENABLED, USD_COLLECTION_ENABLED } from "@/lib/flags";
+import {
+  BILLS_ENABLED,
+  KLASHA_GHS_DEPOSIT_ENABLED,
+  USD_COLLECTION_ENABLED,
+} from "@/lib/flags";
+import { depositAvailability } from "@/lib/deposits/availability";
+import { MaintenanceBadge } from "@/components/ui/MaintenanceBadge";
 import { Analytics } from "@/components/analytics/Analytics";
 import { PublicSupportButton } from "@/components/support/PublicSupportButton";
 
@@ -57,9 +63,19 @@ import { PublicSupportButton } from "@/components/support/PublicSupportButton";
  * here means the page starts advertising each one on the day its provider
  * lands, with no copy change and no risk of having forgotten.
  *
- * GHS deposit needs no equivalent gate: the page advertises the GHS wallet,
- * not a way to fund it directly, and a GHS balance is reachable by conversion
- * regardless of that flag.
+ * GHS deposit is handled DIFFERENTLY, and Group 4f changed it. The earlier
+ * reasoning was that it needed no gate at all, because the page advertises
+ * the GHS wallet rather than a way to fund it, and a cedi balance is
+ * reachable by conversion regardless of the flag. Both halves of that are
+ * true and together they still mis-sell: a reader in Accra sees "GHS · Ghana
+ * Cedi" in the wallet rail, opens an account, submits a government ID, and
+ * only then discovers that the obvious way to put money in is down.
+ *
+ * Hiding the wallet would be worse — it would say the product does not do
+ * cedis, which is false and permanent. So the wallet stays and carries the
+ * Maintenance badge, with one sentence under the rail saying what still
+ * works. The same treatment Bills and Flights got inside the app (see
+ * src/lib/flags.ts), applied to the page where somebody is still deciding.
  */
 
 const TITLE = "justpae — hold, convert and send money across borders";
@@ -183,24 +199,53 @@ export default function LandingPage() {
               Wallets you get
             </p>
             <ul className="mt-4 flex flex-wrap gap-2">
-              {CURRENCIES.map((currency) => (
-                <li
-                  key={currency.code}
-                  className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2"
-                >
-                  <span aria-hidden="true" className="text-base leading-none">
-                    {currency.flag}
-                  </span>
-                  <span className="font-mono text-sm font-medium text-foreground">
-                    {currency.code}
-                  </span>
-                  <span className="text-sm text-muted-foreground">{currency.label}</span>
-                </li>
-              ))}
+              {CURRENCIES.map((currency) => {
+                const deposit = depositAvailability(currency.code);
+                const underMaintenance = !deposit.available && deposit.kind === "maintenance";
+                return (
+                  <li
+                    key={currency.code}
+                    className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2"
+                  >
+                    <span aria-hidden="true" className="text-base leading-none">
+                      {currency.flag}
+                    </span>
+                    <span className="font-mono text-sm font-medium text-foreground">
+                      {currency.code}
+                    </span>
+                    <span className="text-sm text-muted-foreground">{currency.label}</span>
+                    {/* GROUP 4f — the badge reaches the page a visitor decides
+                        on, which is the only place it can still change their
+                        mind cheaply.
+
+                        This rail advertises a cedi wallet, and cedi deposits
+                        are down. The flag note in this file's header argued GHS
+                        needed no gate "because the page advertises the wallet,
+                        not a way to fund it" — true as far as it goes, and
+                        beside the point: somebody in Accra reads "GHS · Ghana
+                        Cedi", opens an account, hands over a government ID, and
+                        THEN meets the maintenance screen. Saying it here costs
+                        us a signup we would have lost anyway and keeps the one
+                        thing a money product cannot buy back.
+
+                        Derived from depositAvailability rather than from the
+                        flag directly, so the badge disappears on the day the
+                        rail comes back with no copy change here. */}
+                    {underMaintenance && <MaintenanceBadge />}
+                  </li>
+                );
+              })}
             </ul>
             <p className="mt-3 text-sm text-muted-foreground">
               Everyone gets a dollar wallet. Your local one is added for Nigeria, Ghana and Kenya.
             </p>
+            {!KLASHA_GHS_DEPOSIT_ENABLED && (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Cedi deposits are under maintenance while we finish setup with our Ghana
+                collection partner — a cedi wallet still holds, converts and withdraws in the
+                meantime.
+              </p>
+            )}
           </div>
         </section>
 

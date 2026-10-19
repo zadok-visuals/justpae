@@ -1,10 +1,12 @@
 import type { Currency } from "@/lib/types/database";
+import type { UnavailableKind } from "@/lib/ui/unavailability";
 import { getUsdtPairRates } from "@/lib/busha/rate";
 import { quoteWithMarkup, type MarkupQuote } from "@/lib/rates/markup";
 import { applyMarkupToRate } from "@/lib/rates/markupMath";
 import { isUsdPair, USD_CONVERSION_UNAVAILABLE } from "@/lib/currencies";
 import {
   cnyRouteBlocker,
+  cnyBlockerKind,
   cnyMarkupFor,
   indicativeCnyRate,
   loadCnyPricingConfig,
@@ -59,10 +61,26 @@ export type ConversionRoute =
       from: Currency;
       to: Currency;
       reason: string;
+      /**
+       * GROUP 4f. The one-word form of `reason`, for the `<option>` in
+       * /convert's wallet pickers — which had room for exactly one word and
+       * was spending it on "unavailable".
+       *
+       * Named `unavailableKind` rather than `kind` on purpose: the AVAILABLE
+       * branch already has a `kind` (RouteKind, how the conversion is
+       * plumbed), and two differently-meaning `kind`s on one union is how a
+       * reader ends up reading the wrong one.
+       */
+      unavailableKind: UnavailableKind;
     };
 
-function unavailable(from: Currency, to: Currency, reason: string): ConversionRoute {
-  return { available: false, from, to, reason };
+function unavailable(
+  from: Currency,
+  to: Currency,
+  reason: string,
+  unavailableKind: UnavailableKind,
+): ConversionRoute {
+  return { available: false, from, to, reason, unavailableKind };
 }
 
 /**
@@ -71,7 +89,7 @@ function unavailable(from: Currency, to: Currency, reason: string): ConversionRo
  */
 export async function resolveRoute(from: Currency, to: Currency): Promise<ConversionRoute> {
   if (from === to) {
-    return unavailable(from, to, "Pick two different wallets.");
+    return unavailable(from, to, "Pick two different wallets.", "same");
   }
 
   // ── USD: refused HERE, before any provider call. ────────────────────────
@@ -86,7 +104,7 @@ export async function resolveRoute(from: Currency, to: Currency): Promise<Conver
   // listRoutesFrom (so the select is disabled with the real reason before the
   // user picks it) and Home's rate strip all route through here.
   if (isUsdPair(from, to)) {
-    return unavailable(from, to, USD_CONVERSION_UNAVAILABLE);
+    return unavailable(from, to, USD_CONVERSION_UNAVAILABLE, "unsupported");
   }
 
   // ── CNY: priced internally, not by the provider. ────────────────────────
@@ -109,6 +127,10 @@ export async function resolveRoute(from: Currency, to: Currency): Promise<Conver
         from,
         to,
         `USDT/${fiat} isn't quoted by our liquidity provider yet, so this route is unavailable. Convert via another wallet in the meantime.`,
+        // Maintenance, not "unsupported". A pair the provider stops quoting
+        // is a route this product offers which is down — GHS today — and the
+        // word has to promise it is coming back, because it is.
+        "maintenance",
       );
     }
 
@@ -132,6 +154,7 @@ export async function resolveRoute(from: Currency, to: Currency): Promise<Conver
       from,
       to,
       `USDT/${from} isn't quoted by our liquidity provider yet, so ${from} can't be converted at the moment.`,
+      "maintenance",
     );
   }
   if (!toPair) {
@@ -139,6 +162,7 @@ export async function resolveRoute(from: Currency, to: Currency): Promise<Conver
       from,
       to,
       `USDT/${to} isn't quoted by our liquidity provider yet, so ${to} can't be converted at the moment.`,
+      "maintenance",
     );
   }
 
@@ -168,12 +192,19 @@ async function resolveCnyRoute(from: Currency, to: Currency): Promise<Conversion
   const nonCny: Currency = from === "CNY" ? to : from;
 
   const blocker = cnyRouteBlocker(nonCny);
-  if (blocker) return unavailable(from, to, blocker);
+  if (blocker) return unavailable(from, to, blocker, cnyBlockerKind(nonCny));
 
   const config = await loadCnyPricingConfig();
   const tierRate = indicativeCnyRate(config);
   if (tierRate == null) {
-    return unavailable(from, to, "Yuan pricing isn't configured yet. Please try again later.");
+    return unavailable(
+      from,
+      to,
+      "Yuan pricing isn't configured yet. Please try again later.",
+      // A missing ladder is an operational gap on our side that a human
+      // fills in /admin/rates. Temporary by nature, so: maintenance.
+      "maintenance",
+    );
   }
 
   // The fiat leg has to be quotable for a fiat payer, and finding that out
@@ -186,6 +217,7 @@ async function resolveCnyRoute(from: Currency, to: Currency): Promise<Conversion
         from,
         to,
         `${nonCny} can't be converted to or from yuan at the moment. Convert via USDT in the meantime.`,
+        "maintenance",
       );
     }
     usdtPerNonCnyUnit = 1 / pair.buyRate;

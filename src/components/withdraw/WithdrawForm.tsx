@@ -12,6 +12,9 @@ import { ConfirmDialog, useConfirm } from "@/components/ui/ConfirmDialog";
 import { requestWithdrawal, previewWithdrawalRouting } from "@/lib/actions/withdrawals";
 import { MINIMUM_WITHDRAWAL_USDT_THRESHOLD } from "@/lib/busha/limits";
 import { currencyMeta, formatAmount } from "@/lib/currencies";
+import { withdrawAvailability } from "@/lib/accounts/actions";
+import { unavailableSuffix, type UnavailableKind } from "@/lib/ui/unavailability";
+import { LegalReminder } from "@/components/ui/LegalReminder";
 import type { Currency, Wallet, WithdrawalRecipient } from "@/lib/types/database";
 
 /**
@@ -84,6 +87,23 @@ interface ConfirmedWithdrawal {
   netAmount: number | null;
   destination: string;
   automated: boolean;
+}
+
+/**
+ * GROUP 4f — why one wallet cannot be picked in the withdraw select, or null
+ * when it can.
+ *
+ * Order matters: a standing refusal outranks a missing destination. Telling
+ * someone to go and save a yuan payout account would send them to /profile to
+ * do something the database will refuse afterwards anyway.
+ */
+function withdrawOptionKind(
+  currency: Currency,
+  recipients: WithdrawalRecipient[],
+): UnavailableKind | null {
+  if (withdrawAvailability(currency).mode === "never") return "unsupported";
+  if (!recipients.some((r) => r.currency === currency)) return "setup";
+  return null;
 }
 
 /** One line naming where the money lands, for the confirmation dialog. */
@@ -291,12 +311,32 @@ function WithdrawFormFields({
           value={currency}
           onChange={(e) => setCurrency(e.target.value as Currency)}
         >
-          {withdrawable.map((w) => (
-            <option key={w.currency} value={w.currency}>
-              {currencyMeta(w.currency).flag} {w.currency} ·{" "}
-              {formatAmount(w.currency, w.balance)}
-            </option>
-          ))}
+          {/* GROUP 4f. Every wallet, not only the withdrawable ones.
+
+              This picker used to list ONLY currencies with a saved payout
+              destination, which is the "· unavailable" problem in its most
+              extreme form: the option simply was not there. A cedi holder with
+              no saved Ghanaian bank account opened /withdraw and saw no GHS at
+              all, with no way to tell whether the product refuses cedis, has
+              lost their wallet, or is waiting on something they could fix in
+              thirty seconds on /profile.
+
+              Two genuinely different states, and neither is "Maintenance":
+                Setup        nothing is wrong — the user has not saved a payout
+                             destination for that currency yet.
+                Unsupported  a standing refusal. CNY is blocked by a database
+                             trigger (migration 0026) and USD has no payout
+                             rail, and no amount of waiting changes either. */}
+          {wallets.map((w) => {
+            const kind = withdrawOptionKind(w.currency, recipients);
+            return (
+              <option key={w.currency} value={w.currency} disabled={kind !== null}>
+                {currencyMeta(w.currency).flag} {w.currency} ·{" "}
+                {formatAmount(w.currency, w.balance)}
+                {kind ? unavailableSuffix(kind) : ""}
+              </option>
+            );
+          })}
         </SelectField>
 
         <AmountInput
@@ -384,6 +424,13 @@ function WithdrawFormFields({
       <SubmitButton disabled={blocked} pendingLabel="Sending…">
         Withdraw {amount > 0 ? formatAmount(currency, amount) : ""}
       </SubmitButton>
+
+      {/* GROUP 4g. /withdraw is one screen rather than three, so the amount
+          step and the review step are both this form — the fee card above IS
+          the review — and one line serves both. The third instance is inside
+          the confirmation dialog below, which is the only thing between this
+          button and money leaving. */}
+      <LegalReminder />
     </form>
 
     <ConfirmDialog
@@ -423,6 +470,10 @@ function WithdrawFormFields({
       }
       confirmLabel="Withdraw"
       cancelLabel="Go back"
+      // GROUP 4g — the confirmation step's own copy of the reminder. The
+      // links open in a new tab, so reading the Terms here does not dismiss
+      // the dialog or discard the snapshot it is confirming.
+      footer={<LegalReminder />}
       onCancel={confirm.cancel}
       onConfirm={() =>
         confirm.confirm(() => {

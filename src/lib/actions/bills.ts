@@ -121,7 +121,10 @@ export async function payBill(
     // Checked BEFORE the debit. Debiting and then discovering there is nothing
     // to pay would mean a refund for every single attempt.
     return {
-      error: "Bill payments are coming soon — we're finishing setup with our biller partner.",
+      // GROUP 4f. One word for one state, server errors included — this is
+      // the sentence a user meets if they get past the disabled form.
+      error:
+        "Bill payments are under maintenance while we finish setup with our biller partner.",
     };
   }
 

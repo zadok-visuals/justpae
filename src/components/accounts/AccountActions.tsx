@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { SheetPanel } from "@/components/ui/SheetPanel";
 import { DepositIcon, ConvertIcon, SendIcon, WithdrawIcon } from "@/components/layout/NavIcons";
+import { UnavailableBadge } from "@/components/ui/MaintenanceBadge";
+import { UNAVAILABLE_LABEL } from "@/lib/ui/unavailability";
 import type { AccountAction, AccountActionKey } from "@/lib/accounts/actions";
 
 /**
@@ -108,13 +110,32 @@ export function AccountActions({ actions }: { actions: AccountAction[] }) {
           );
 
           const caption = (
-            <span
-              className={`mt-1.5 block text-center text-[0.6875rem] font-medium leading-tight ${
-                disabled ? "text-muted-foreground" : "text-foreground"
-              }`}
-            >
-              {label}
-            </span>
+            <>
+              <span
+                className={`mt-1.5 block text-center text-[0.6875rem] font-medium leading-tight ${
+                  disabled ? "text-muted-foreground" : "text-foreground"
+                }`}
+              >
+                {label}
+              </span>
+              {/* GROUP 4f — the state, at a glance.
+                  A muted circle on its own says "no" and nothing else, so a
+                  cedi holder had to tap to learn the difference between "down
+                  this week" and "never". The word goes UNDER the label rather
+                  than on the circle: 56px has no room for it, and the badge
+                  must not shrink the icon or push the row out of alignment.
+                  `aria-hidden` because the button's own accessible name below
+                  already carries the same word — announcing it twice is noise.
+                  Still a tap away: the sheet has the full sentence. */}
+              {disabled && action.disabledKind && (
+                <span aria-hidden="true" className="mt-1 flex justify-center">
+                  <UnavailableBadge
+                    kind={action.disabledKind}
+                    className="max-w-full truncate text-[0.625rem]"
+                  />
+                </span>
+              )}
+            </>
           );
 
           return (
@@ -126,7 +147,18 @@ export function AccountActions({ actions }: { actions: AccountAction[] }) {
                   // NOT `disabled`, and not aria-disabled either: this button
                   // does something. The muting is visual, the behaviour is
                   // real, and a screen-reader user is told what it is.
-                  aria-label={`${action.label} — unavailable. Tap to find out why.`}
+                  //
+                  // GROUP 4f: and told WHICH state, not "unavailable". A
+                  // screen-reader user was the one person on this screen who
+                  // could not see the muting and got the least specific
+                  // wording of anybody.
+                  aria-label={
+                    action.disabledKind
+                      ? `${action.label} — ${UNAVAILABLE_LABEL[
+                          action.disabledKind
+                        ].toLowerCase()}. Tap to find out why.`
+                      : `${action.label} — unavailable. Tap to find out why.`
+                  }
                   className="group flex w-full flex-col items-center focus-visible:outline-none"
                 >
                   {circle}
@@ -161,6 +193,11 @@ export function AccountActions({ actions }: { actions: AccountAction[] }) {
         onClose={() => setExplaining(null)}
         title={explaining?.label ?? ""}
       >
+        {explaining?.disabledKind && (
+          <p className="mb-2">
+            <UnavailableBadge kind={explaining.disabledKind} />
+          </p>
+        )}
         <p className="text-sm text-muted-foreground">{explaining?.disabledReason}</p>
         {explaining?.note && (
           <p className="mt-2 text-sm text-muted-foreground">{explaining.note}</p>
