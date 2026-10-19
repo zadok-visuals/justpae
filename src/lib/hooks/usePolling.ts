@@ -24,9 +24,26 @@ import { useEffect, useRef } from "react";
  */
 export const STATUS_POLL_INTERVAL_MS = 10_000;
 
-/** The transaction states that will never change again. */
+/**
+ * The transaction states that will never change again.
+ *
+ * 'expired' belongs here (migration 0029): once the provider's transfer
+ * details have lapsed, nothing can arrive against them, so a screen polling
+ * an expired deposit is asking a question with a permanent answer. Leaving it
+ * out was the difference between a sheet that settles and one that polls
+ * every ten seconds for as long as the tab is open.
+ *
+ * 'partially_completed' is deliberately NOT here. A two-leg conversion that
+ * stalled in the middle can still be finished by an operator, so it is a
+ * resting state rather than a final one.
+ */
 export function isFinalStatus(status: string | null | undefined): boolean {
-  return status === "completed" || status === "failed" || status === "refunded";
+  return (
+    status === "completed" ||
+    status === "failed" ||
+    status === "refunded" ||
+    status === "expired"
+  );
 }
 
 export function usePolling(

@@ -265,10 +265,17 @@ export function findBiller(code: string): Biller | null {
   return BILLER_CATALOGUE.find((b) => b.code === code) ?? null;
 }
 
+/**
+ * Order is the order they appear on /bills, and it is by how often people
+ * pay them rather than alphabetical. 'education' is new in migration 0031
+ * (Group 4e) and, like every other category here, has no provider behind it
+ * yet.
+ */
 export const BILL_CATEGORIES: { value: BillCategory; label: string; blurb: string }[] = [
   { value: "airtime", label: "Airtime", blurb: "Top up any number" },
   { value: "data", label: "Data", blurb: "Bundles on every network" },
   { value: "electricity", label: "Electricity", blurb: "Prepaid tokens and postpaid" },
-  { value: "water", label: "Water", blurb: "Settle your water bill" },
   { value: "cable_tv", label: "Cable TV", blurb: "DStv, GOtv and more" },
+  { value: "water", label: "Water", blurb: "Settle your water bill" },
+  { value: "education", label: "Education", blurb: "School fees and exam pins" },
 ];

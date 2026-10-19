@@ -43,8 +43,29 @@ export const KLASHA_GHS_DEPOSIT_ENABLED = flag(process.env.NEXT_PUBLIC_FEATURE_K
  */
 export const BILLS_ENABLED = flag(process.env.NEXT_PUBLIC_FEATURE_BILLS);
 
+/**
+ * FEATURE 6 — flight booking.
+ * Waiting on: provider verification. Ships OFF, like the rest.
+ *
+ * GROUP 4e CHANGED WHAT "OFF" MEANS FOR THIS ONE AND FOR BILLS.
+ *
+ * Until now an off flag meant the feature was HIDDEN: Bills disappeared from
+ * the tab bar, the sidebar and Home's quick actions entirely. That was the
+ * right call when the alternative was a tab leading to a dead end, but it
+ * has a cost the brief now wants paid differently — a user cannot tell the
+ * difference between "justpae does not do bills" and "justpae cannot do
+ * bills this week". The first loses them permanently.
+ *
+ * So Bills and Flights are now VISIBLE while off, carrying a Maintenance
+ * badge, with screens that explain themselves and take no provider call.
+ * The flag still gates every provider call and every submit; it no longer
+ * gates whether the feature is mentioned.
+ */
+export const FLIGHTS_ENABLED = flag(process.env.NEXT_PUBLIC_FEATURE_FLIGHTS);
+
 export const FLAGS = {
   usdCollection: USD_COLLECTION_ENABLED,
   klashaGhsDeposit: KLASHA_GHS_DEPOSIT_ENABLED,
   bills: BILLS_ENABLED,
+  flights: FLIGHTS_ENABLED,
 } as const;

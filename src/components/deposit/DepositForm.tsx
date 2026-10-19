@@ -230,7 +230,9 @@ function DepositInstructions({
   netAmount?: string;
   onDone: () => void;
 }) {
-  const [status, setStatus] = useState<"pending" | "processing" | "completed" | "failed">("pending");
+  const [status, setStatus] = useState<
+    "pending" | "processing" | "completed" | "failed" | "expired"
+  >("pending");
   const router = useRouter();
 
   // THE COUNTDOWN, and the bug it is written around.
@@ -245,8 +247,17 @@ function DepositInstructions({
   const expiresAt = bankDetails?.expiresAt || cryptoAddress?.expiresAt || "";
   const hasExpiry = expiresAt !== "" && !Number.isNaN(new Date(expiresAt).getTime());
   const secondsLeft = useCountdown(hasExpiry ? expiresAt : undefined);
-  const expired = hasExpiry && secondsLeft === 0;
-  const settled = status === "completed" || status === "failed";
+  // Two independent sources now agree on this, and both are needed.
+  //
+  // The CLOCK is what the person watching this screen sees: the countdown
+  // hits zero in their browser the moment the window closes, with no round
+  // trip. The SERVER STATUS (migration 0029, set by the reconciler) is what
+  // the person who closed the tab and came back to it sees — their countdown
+  // restarted from a deadline that has long since passed, and without this
+  // the screen would be showing live-looking transfer details for an account
+  // that stopped accepting money days ago.
+  const expired = (hasExpiry && secondsLeft === 0) || status === "expired";
+  const settled = status === "completed" || status === "failed" || status === "expired";
 
   // Every poll re-checks the provider server-side and credits immediately if
   // funds have landed. Shared with the withdrawal and conversion detail views
@@ -289,7 +300,11 @@ function DepositInstructions({
         // Expiry is not a failure and must not read as one. Nothing has been
         // taken, nothing is owed — the window simply closed, and the only
         // thing the user has to do is ask for fresh details.
-        <Banner tone="warning" title="These details have expired">
+        <Banner
+          tone="warning"
+          title="These details have expired"
+          action={{ href: `/deposit?currency=${currency}`, label: "Start a new deposit" }}
+        >
           Don&apos;t send anything to them now. Start again and we&apos;ll generate a new
           account for you.
         </Banner>

@@ -21,8 +21,10 @@ import {
   LogOutIcon,
   SupportIcon,
   SendIcon,
+  FlightsIcon,
 } from "@/components/layout/NavIcons";
-import { BILLS_ENABLED } from "@/lib/flags";
+import { BILLS_ENABLED, FLIGHTS_ENABLED } from "@/lib/flags";
+import { MaintenanceBadge } from "@/components/ui/MaintenanceBadge";
 
 /**
  * The app chrome.
@@ -48,8 +50,12 @@ import { BILLS_ENABLED } from "@/lib/flags";
  *
  * Bills was a permanent fixture here and led to a screen behind a provider
  * that has not been chosen — a fifth of the bar, on every screen, going to a
- * coming-soon page. It is now gated on BILLS_ENABLED, which ships off, and
- * reappears in both the bar and the sidebar the moment the flag flips.
+ * coming-soon page. It was removed from the bar for that reason and it stays
+ * removed: Group 4e makes Bills and Flights VISIBLE while under maintenance,
+ * but visible in the sidebar, Home's quick actions and Profile — not in the
+ * five slots a thumb reaches on every screen. A maintenance destination is
+ * not somewhere people go repeatedly, which is the only thing this bar is
+ * for.
  *
  * Accounts takes the slot it leaves. Every wallet now has a page worth
  * reaching (Group 5), and reaching it only by tapping a card on Home is not
@@ -66,17 +72,34 @@ const TABS = [
   { href: "/accounts", label: "Accounts", Icon: AccountsIcon },
   { href: "/convert", label: "Convert", Icon: ConvertIcon },
   { href: "/transactions", label: "Activity", Icon: ActivityIcon },
-  ...(BILLS_ENABLED ? [{ href: "/bills", label: "Bills", Icon: BillsIcon }] : []),
   { href: "/profile", label: "Profile", Icon: ProfileIcon },
 ];
 
 /**
- * The sidebar's list: the tab bar's, with Pay to China inserted next to
- * Convert, which is the action it most resembles. Profile stays last.
+ * GROUP 4e — the sidebar's list, now including the two features that are
+ * visible while under maintenance.
+ *
+ * WHY THESE TWO ARE IN THE SIDEBAR AND NOT THE BOTTOM BAR. The bar has five
+ * slots and every one is a place people go repeatedly. A maintenance screen
+ * is not, and promoting one into a fifth of a phone's permanent navigation
+ * would be worse than the "coming soon" tab this codebase already removed
+ * once. The sidebar has the room, and a desktop user scanning it learns the
+ * product does bills and flights — which is the whole point of showing them
+ * at all.
+ *
+ * `maintenance` is computed from the flag, so flipping NEXT_PUBLIC_FEATURE_*
+ * to true removes the badge and nothing else changes.
  */
-const SIDEBAR_LINKS = [
+const SIDEBAR_LINKS: {
+  href: string;
+  label: string;
+  Icon: (props: { className?: string }) => React.ReactElement;
+  maintenance?: boolean;
+}[] = [
   ...TABS.slice(0, -1),
   { href: "/pay-to-china", label: "Pay to China", Icon: SendIcon },
+  { href: "/bills", label: "Bills", Icon: BillsIcon, maintenance: !BILLS_ENABLED },
+  { href: "/flights", label: "Flights", Icon: FlightsIcon, maintenance: !FLIGHTS_ENABLED },
   TABS[TABS.length - 1]!,
 ];
 
@@ -225,7 +248,7 @@ export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
           room for — see the note on TABS. */}
       <nav aria-label="Sidebar" className="flex-1 px-3 py-3">
         <ul className="space-y-1">
-          {SIDEBAR_LINKS.map(({ href, label, Icon }) => {
+          {SIDEBAR_LINKS.map(({ href, label, Icon, maintenance }) => {
             const active = isActive(pathname, href);
             return (
               <li key={href}>
@@ -239,7 +262,11 @@ export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
                   }`}
                 >
                   <Icon className="size-5" />
-                  {label}
+                  <span className="min-w-0 flex-1 truncate">{label}</span>
+                  {/* The badge is the whole reason the link is shown at all
+                      while the flag is off — without it this is a navigation
+                      item that leads somewhere disappointing. */}
+                  {maintenance && <MaintenanceBadge className="shrink-0" />}
                 </Link>
               </li>
             );

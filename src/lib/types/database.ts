@@ -46,14 +46,31 @@ export type TransactionProvider = "busha" | "klasha" | "manual";
  * and the user owns the USDT — 'failed' would trigger a source refund that
  * pays them twice, and 'completed' would claim a delivery that never happened.
  */
+/**
+ * 'expired' (migration 0029) is a DEPOSIT state and nothing else: the
+ * provider's transfer details reached their deadline with no money received.
+ * It is deliberately not 'failed' — nothing went wrong and nothing was taken,
+ * and telling someone their money failed when they never sent any is how a
+ * support thread starts.
+ */
 export type TransactionStatus =
   | "pending"
   | "processing"
   | "completed"
   | "failed"
-  | "partially_completed";
+  | "partially_completed"
+  | "expired";
 
-export type BillCategory = "airtime" | "data" | "electricity" | "water" | "cable_tv";
+/** 'education' added by migration 0031 (Group 4e). Nothing writes it while
+ *  BILLS_ENABLED is off; it exists so the category tile has somewhere to go
+ *  the moment a provider is chosen. */
+export type BillCategory =
+  | "airtime"
+  | "data"
+  | "electricity"
+  | "water"
+  | "cable_tv"
+  | "education";
 export type BillStatus = "pending" | "processing" | "completed" | "failed" | "refunded";
 
 /**
@@ -260,6 +277,24 @@ export type Deposit = {
   /** When the user was told this deposit was credited. See 0018 and
    *  claim_deposit_notification — null means nobody has announced it yet. */
   notified_at: string | null;
+  /**
+   * When the provider's transfer details stop accepting money (migration
+   * 0030). Null when the provider returned no expiry, which expire_deposit
+   * treats as "no known deadline" rather than as "expires now".
+   */
+  pay_in_expires_at: string | null;
+  created_at: string;
+};
+
+/**
+ * Migration 0031. A user's "tell me when this opens" mark for one flagged-off
+ * feature. Deliberately generic — `feature` is text so a new flag needs no
+ * schema change — and deliberately not a column on `profiles`, whose narrow
+ * UPDATE grant is load-bearing (see 0011).
+ */
+export type FeatureInterest = {
+  user_id: string;
+  feature: string;
   created_at: string;
 };
 
@@ -686,6 +721,14 @@ export type Database = {
         };
         Update: Partial<BillBeneficiary>; Relationships: [];
       };
+      /** Migration 0031. "Notify me when this opens", one row per
+       *  (user, feature). No mutable column: turning the toggle off is a
+       *  delete, which is why there is no meaningful Update shape. */
+      feature_interest: {
+        Row: FeatureInterest;
+        Insert: { user_id: string; feature: string; created_at?: string };
+        Update: Partial<FeatureInterest>; Relationships: [];
+      };
       usd_collection_accounts: {
         Row: UsdCollectionAccount;
         Insert: Partial<UsdCollectionAccount> & { user_id: string; provider: string; reference_code: string };
@@ -775,6 +818,10 @@ export type Database = {
     Functions: {
       credit_deposit: { Args: { p_deposit_id: string; p_actual_amount?: number | null }; Returns: undefined };
       fail_deposit: { Args: { p_deposit_id: string; p_reason?: string | null }; Returns: undefined };
+      /** Migration 0030. Returns whether it actually expired the row — false
+       *  when the deadline has not passed, the row is no longer pending, or
+       *  money arrived after all. */
+      expire_deposit: { Args: { p_deposit_id: string }; Returns: boolean };
 
       /**
        * Replaces create_conversion (dropped in 0010). Takes an id and a PIN —

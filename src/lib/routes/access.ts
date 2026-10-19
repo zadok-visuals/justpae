@@ -83,6 +83,7 @@ export const PROTECTED_PREFIXES = [
   "/receive",
   "/transactions",
   "/bills",
+  "/flights",
   "/profile",
   "/support",
   "/admin",

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { Banner, SectionHeader, EmptyState } from "@/components/ui/Primitives";
+import { MaintenanceBadge } from "@/components/ui/MaintenanceBadge";
 import { BILL_CATEGORIES, isBillsAvailable } from "@/lib/providers/bills";
 import { countryName } from "@/lib/countries";
 import type { BillBeneficiary } from "@/lib/types/database";
@@ -45,10 +46,14 @@ export default async function BillsPage() {
       }
     >
       <div className="space-y-6">
+        {/* GROUP 4f — "Maintenance", not "coming soon". Paying a bill is a
+            thing this product does and cannot do today; "coming soon" reads
+            as a feature that was never promised, which is the wrong
+            expectation to set for somebody standing at a meter. */}
         {!available && (
-          <Banner tone="info" title="Bill payments are coming soon">
+          <Banner tone="info" title="Bill payments are under maintenance">
             We&apos;re finishing setup with our biller partner. Everything here is ready — you
-            just can&apos;t pay yet.
+            just can&apos;t pay yet. We&apos;ll let you know the moment it&apos;s back.
           </Banner>
         )}
 
@@ -84,14 +89,23 @@ export default async function BillsPage() {
 
         <section>
           <SectionHeader title="What are you paying?" />
+          {/* Every tile carries the Maintenance badge while the flag is off,
+              rather than the grid silently looking live. The tiles stay
+              LINKS: each category page explains itself and takes no provider
+              call, so following one is informative rather than a dead end —
+              and a tile that cannot be opened teaches people the section is
+              broken instead of paused. */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {BILL_CATEGORIES.map((category) => (
               <Link
                 key={category.value}
                 href={`/bills/${category.value}`}
-                className="flex min-h-24 flex-col justify-between rounded-xl border border-border bg-card p-4"
+                className="flex min-h-24 flex-col justify-between gap-2 rounded-xl border border-border bg-card p-4"
               >
-                <span className="text-sm font-semibold text-foreground">{category.label}</span>
+                <span className="flex items-start justify-between gap-2">
+                  <span className="text-sm font-semibold text-foreground">{category.label}</span>
+                  {!available && <MaintenanceBadge />}
+                </span>
                 <span className="text-xs text-muted-foreground">{category.blurb}</span>
               </Link>
             ))}

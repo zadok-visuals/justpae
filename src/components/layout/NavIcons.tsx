@@ -161,6 +161,20 @@ export function PaperclipIcon(props: IconProps) {
   );
 }
 
+/**
+ * Flights (Group 4e). An aeroplane in plan view rather than the tilted
+ * paper-plane shape, which is already SendIcon's — two nav items one above
+ * the other with near-identical glyphs is a worse problem than a slightly
+ * duller icon.
+ */
+export function FlightsIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M10.5 3.2a1.5 1.5 0 0 1 3 0V9l7.5 4.3v2.2l-7.5-2.3v4.3l2.6 1.9v1.8L12 20.4l-4.1 1.8v-1.8l2.6-1.9v-4.3L3 16.5v-2.2L10.5 9V3.2Z" />
+    </Icon>
+  );
+}
+
 /** The support composer's submit control. */
 export function SendIcon(props: IconProps) {
   return (

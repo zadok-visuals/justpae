@@ -1,0 +1,60 @@
+import type { ActivityDetail } from "@/lib/activity/detail";
+
+/**
+ * What a receipt calls the thing it is a receipt for.
+ *
+ * Shared between the detail sheet (which has always had a title, passed down
+ * from the row the user tapped) and the PNG route (which has no such caller
+ * and must work it out from the row itself). Without this, the image's
+ * heading and the sheet's heading drift apart and the customer's saved
+ * receipt says something their screen never did.
+ *
+ * Customer copy rules apply: no provider name, and "convert" rather than
+ * "exchange".
+ */
+export function receiptTitle(detail: Pick<ActivityDetail, "source" | "type">): string {
+  if (detail.source === "deposit") return "Money added";
+  if (detail.source === "bill") {
+    switch (detail.type) {
+      case "airtime":
+        return "Airtime";
+      case "data":
+        return "Data bundle";
+      case "electricity":
+        return "Electricity";
+      case "cable_tv":
+        return "Cable TV";
+      case "water":
+        return "Water";
+      case "education":
+        return "Education";
+      default:
+        return "Bill payment";
+    }
+  }
+
+  switch (detail.type) {
+    case "convert":
+      return "Conversion";
+    case "withdrawal":
+      return "Withdrawal";
+    case "pay_to_china":
+      return "Pay to China";
+    case "deposit":
+      return "Money added";
+    default:
+      return "Transaction";
+  }
+}
+
+/**
+ * The filename the browser saves. `justpae-receipt-<reference>.png`, with the
+ * reference falling back to the row's own id when a provider never issued one
+ * — a file called `justpae-receipt-null.png` is worse than a long one, and
+ * two receipts that overwrite each other in a Downloads folder are worse
+ * still.
+ */
+export function receiptFilename(reference: string | null, fallbackId: string): string {
+  const safe = (reference ?? fallbackId).replace(/[^A-Za-z0-9._-]/g, "-").slice(0, 80);
+  return `justpae-receipt-${safe}.png`;
+}

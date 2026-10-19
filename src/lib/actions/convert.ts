@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Currency } from "@/lib/types/database";
+import type { Currency, TransactionStatus } from "@/lib/types/database";
 import * as busha from "@/lib/busha/client";
 import { resolveRoute, resolveRoutesFrom, type ConversionRoute, type RouteKind } from "@/lib/rates/routes";
 import {
@@ -791,7 +791,33 @@ export async function checkConversionStatus(
     }
   }
 
-  return { status: data.status };
+  return { status: toConversionStatus(data.status) };
+}
+
+/**
+ * Keeps a deposit-only status out of the conversion screen.
+ *
+ * The mirror of toDepositStatus in actions/deposits.ts, and it exists for
+ * the same reason: `transactions.status` is one enum shared by every money
+ * row, so the type permits values a conversion can never actually hold.
+ * 'expired' (migration 0029) is reachable only by a deposit whose pay-in
+ * window lapsed.
+ *
+ * Logged rather than silently mapped. If a conversion ever did come back
+ * expired, that is a data bug worth seeing, not something to paper over —
+ * but the screen still has to render, so it degrades to the nearest honest
+ * terminal state instead of throwing at the user.
+ */
+function toConversionStatus(
+  status: TransactionStatus,
+): NonNullable<ConversionStatusState["status"]> {
+  if (status === "expired") {
+    console.error("[convert] a conversion row is expired, which should be impossible", {
+      status,
+    });
+    return "failed";
+  }
+  return status;
 }
 
 function round2(value: number): number {

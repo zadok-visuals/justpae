@@ -61,6 +61,18 @@ interface ConvertFormProps {
    * wallet's name.
    */
   initialFrom: Currency;
+  /**
+   * The DESTINATION to open on, from `?to=`. Group 4d: the CNY account page's
+   * "Convert to CNY" has to arrive with yuan already selected, or the button
+   * is just a link to the convert screen and the user has to find the
+   * currency they already asked for.
+   *
+   * Optional, and unlike `initialFrom` it is only a preference: the form
+   * falls back to the first routable destination when the requested one is
+   * not reachable out of `initialFrom`, because opening on a dead pair would
+   * show a blocked form to someone who did not choose it.
+   */
+  initialTo?: Currency | null;
 }
 
 /**
@@ -100,6 +112,7 @@ function ConvertFormFields({
   hasPin,
   rateBoard,
   initialFrom,
+  initialTo,
   state,
   formAction,
 }: ConvertFormProps & {
@@ -108,7 +121,13 @@ function ConvertFormFields({
 }) {
   const router = useRouter();
   const [from, setFrom] = useState<Currency>(initialFrom);
-  const [to, setTo] = useState<Currency>(() => firstAvailable(routes, initialFrom));
+  const [to, setTo] = useState<Currency>(() => {
+    // The requested destination wins only when it is actually reachable out
+    // of this source and is not the source itself — see initialTo.
+    const requested = routes.find((r) => r.to === initialTo);
+    if (requested?.available && initialTo !== initialFrom) return initialTo!;
+    return firstAvailable(routes, initialFrom);
+  });
 
   // Which field the user last typed in. The OTHER one is the derived value,
   // so the number under their cursor never reformats itself mid-keystroke.

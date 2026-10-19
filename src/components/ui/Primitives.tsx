@@ -80,6 +80,10 @@ const STATUS_LABELS: Record<string, { label: string; tone: StatusTone }> = {
   partially_completed: { label: "Partly done", tone: "pending" },
   failed: { label: "Failed", tone: "failed" },
   refunded: { label: "Refunded", tone: "neutral" },
+  // 0029's status, for a deposit whose transfer details expired before any
+  // money arrived. Neutral, not "failed": the tone is the message. Nothing
+  // went wrong and nothing was taken — the window simply closed.
+  expired: { label: "Expired", tone: "neutral" },
 };
 
 export function StatusPill({ status }: { status: TransactionStatus | "refunded" }) {

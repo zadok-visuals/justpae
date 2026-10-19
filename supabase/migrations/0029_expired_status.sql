@@ -1,0 +1,28 @@
+-- ============================================================================
+-- justpae 0029 — one new transaction_status value, and nothing else.
+--
+-- WHY THIS FILE CONTAINS ONE LINE
+--
+-- Postgres forbids USING a newly added enum value in the same transaction
+-- that added it, and `supabase db push` runs each migration file in its own
+-- transaction. 0030 both references 'expired' and writes it, so the value has
+-- to arrive in an earlier file. Exactly the constraint 0023 records for
+-- 'partially_completed', and the migrations README for the CNY currency
+-- value.
+--
+-- WHAT IT IS FOR (Group 4b)
+--
+-- A deposit's transfer details are generated per transfer and carry a hard
+-- expiry from the provider. When that moment passes with nothing received,
+-- the deposit is not 'pending' — nobody is waiting for anything, and the
+-- details on the user's screen are actively dangerous, because money sent to
+-- them now may be unrecoverable.
+--
+-- 'failed' is the wrong word for it. fail_deposit writes a decline_reason and
+-- the UI reads 'failed' as "something went wrong with your money", which
+-- frightens a user to whom nothing happened at all: they never sent anything.
+-- The honest state is a fourth one that says the window closed, paired with
+-- the only action that helps — start a new deposit.
+-- ============================================================================
+
+alter type transaction_status add value 'expired';

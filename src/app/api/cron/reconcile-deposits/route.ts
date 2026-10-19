@@ -30,7 +30,7 @@ export async function GET(request: Request) {
 
   const { data: staleDeposits } = await admin
     .from("deposits")
-    .select("id, provider_reference")
+    .select("id, provider_reference, pay_in_expires_at")
     .eq("provider", "busha")
     .eq("status", "pending")
     .lt("created_at", staleCutoff())
@@ -79,6 +79,38 @@ export async function GET(request: Request) {
           });
         }
         results.push({ depositId: deposit.id, outcome: `marked failed (${transfer.status})` });
+      } else if (
+        // GROUP 4b — the expiry sweep.
+        //
+        // ORDER MATTERS, and this branch is deliberately LAST among the
+        // provider-informed ones. The provider is asked first and believed
+        // first: if it says funds_received, the money is credited even though
+        // the pay-in window has closed, because an arrival in the final
+        // seconds is a real deposit and not a missed deadline. Only once the
+        // provider has confirmed the transfer is still sitting unpaid does
+        // the deadline get to end it.
+        deposit.pay_in_expires_at != null &&
+        new Date(deposit.pay_in_expires_at).getTime() <= Date.now()
+      ) {
+        // expire_deposit re-checks the deadline and the confirmed amount
+        // under a row lock, so the race against a webhook crediting this same
+        // row between the fetch above and this call resolves in favour of the
+        // credit. See migration 0030.
+        const { data: expired, error } = await admin.rpc("expire_deposit", {
+          p_deposit_id: deposit.id,
+        });
+        if (error) {
+          console.error("[reconcile-deposits] expire_deposit failed", {
+            depositId: deposit.id,
+            error,
+          });
+          results.push({ depositId: deposit.id, outcome: `expire failed: ${error.message}` });
+        } else {
+          results.push({
+            depositId: deposit.id,
+            outcome: expired ? "expired" : "expiry declined (credited or already settled)",
+          });
+        }
       } else {
         results.push({ depositId: deposit.id, outcome: `still ${transfer.status}` });
       }

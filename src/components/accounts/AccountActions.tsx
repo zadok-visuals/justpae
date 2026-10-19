@@ -1,51 +1,171 @@
+"use client";
+
 import Link from "next/link";
-import type { AccountAction } from "@/lib/accounts/actions";
+import { useState } from "react";
+import { SheetPanel } from "@/components/ui/SheetPanel";
+import { DepositIcon, ConvertIcon, SendIcon, WithdrawIcon } from "@/components/layout/NavIcons";
+import type { AccountAction, AccountActionKey } from "@/lib/accounts/actions";
 
 /**
- * The things you can do with one wallet, with the unavailable ones still
- * visible and still explained.
+ * GROUP 4c — the things you can do with one wallet, as a row of round icon
+ * buttons under the balance.
  *
- * A DISABLED ACTION IS NOT A HIDDEN ACTION. Dropping "Add money" off the cedi
- * page would leave a Ghanaian user with no way to tell whether the product
- * cannot do it, has not built it, or has hidden it from them specifically.
- * The tile stays, greyed, with one line saying why — which is also the only
- * way they find out it is temporary.
+ * ──────────────────────────────────────────────────────────────────────────
+ * WHAT THIS REPLACED
  *
- * The reason is rendered as text in the tile rather than as a `title`
- * attribute or a tooltip: a tooltip does not exist on a touchscreen, and this
- * is a product whose users are overwhelmingly on one.
+ * A vertical list of four full-width bordered cards, each 64px tall with the
+ * label on one line and either a reason or "Continue →" on the next. Four of
+ * them stacked came to roughly 280px — so on a phone the actions pushed the
+ * balance off the top of the screen and the recent activity below the fold,
+ * and the page read as a form rather than as an account.
+ *
+ * Every banking app converges on the same answer for a reason: a short row of
+ * round icon buttons directly beneath the balance, labelled underneath. It is
+ * scannable in one glance, it is thumb-reachable, and it keeps the balance —
+ * the thing the page exists to show — at the top where it belongs.
+ *
+ * ──────────────────────────────────────────────────────────────────────────
+ * A DISABLED ACTION IS STILL VISIBLE, AND STILL EXPLAINED
+ *
+ * The rule the previous version established and this one keeps. Dropping
+ * "Add money" off the cedi page would leave a Ghanaian user with no way to
+ * tell whether the product cannot do it, has not built it, or has hidden it
+ * from them specifically. The button stays, muted, and the reason is one tap
+ * away.
+ *
+ * WHY THE REASON IS A SHEET AND NOT A TOOLTIP. A tooltip does not exist on a
+ * touchscreen, and this is a product whose users are overwhelmingly on one.
+ * The old layout solved that by printing the reason inside every tile, which
+ * works for a tall card and cannot work under a 56px circle. So the muted
+ * button is a real <button> that opens a sheet carrying the sentence — and,
+ * crucially, it is announced as a button rather than as something inert,
+ * because there genuinely IS something to press.
+ *
+ * The enabled buttons stay links. A disabled-looking <a> with no href is
+ * invisible to keyboard navigation; a <button> that navigates is a link
+ * pretending otherwise. Each is the element it actually is.
  */
+
+const ICONS: Record<AccountActionKey, (props: { className?: string }) => React.ReactElement> = {
+  add: DepositIcon,
+  convert: ConvertIcon,
+  payToChina: SendIcon,
+  withdraw: WithdrawIcon,
+};
+
+/**
+ * The row's own order, independent of the order the rules module happens to
+ * build them in. Add money first because it is what most people arrive for;
+ * Withdraw last because it is the one with consequences.
+ */
+const ORDER: AccountActionKey[] = ["add", "convert", "payToChina", "withdraw"];
+
+/**
+ * Short labels. The row has four columns on a 375px screen, so "Convert NGN"
+ * and "Pay to China" cannot both be read at full length — the long form is
+ * kept as the button's accessible name, where there is no width limit.
+ */
+const SHORT_LABEL: Record<AccountActionKey, string> = {
+  add: "Add money",
+  convert: "Convert",
+  payToChina: "Pay to China",
+  withdraw: "Withdraw",
+};
+
 export function AccountActions({ actions }: { actions: AccountAction[] }) {
+  const [explaining, setExplaining] = useState<AccountAction | null>(null);
+
+  const ordered = [...actions].sort(
+    (a, b) => ORDER.indexOf(a.key) - ORDER.indexOf(b.key),
+  );
+
+  // A note on an ENABLED action — "your yuan is bought as the payment goes
+  // out" — belongs under the row, not inside a 56px circle. It must never
+  // REPLACE the action's link, which is why it is rendered here as a
+  // sibling of the row rather than in place of anything in it.
+  const notes = ordered.filter((action) => action.disabledReason === null && action.note);
+
   return (
-    <ul className="grid gap-2 sm:grid-cols-2">
-      {actions.map((action) => (
-        <li key={action.key}>
-          {action.disabledReason ? (
-            <div
-              // Not a link and not a button — there is nothing to press. A
-              // disabled <button> would still be announced as a button a
-              // screen-reader user then wonders how to activate.
-              aria-disabled="true"
-              className="flex h-full min-h-16 flex-col justify-center gap-0.5 rounded-xl border border-dashed border-border bg-secondary/40 px-4 py-3"
+    <div>
+      <ul className="flex items-start justify-between gap-1 sm:justify-start sm:gap-4">
+        {ordered.map((action) => {
+          const Icon = ICONS[action.key];
+          const label = SHORT_LABEL[action.key];
+          const disabled = action.disabledReason !== null;
+
+          // The circle, identical in both branches so an unavailable action
+          // keeps its place in the row rather than the row reflowing.
+          const circle = (
+            <span
+              className={`flex size-14 items-center justify-center rounded-full border transition-colors ${
+                disabled
+                  ? "border-dashed border-border bg-secondary/40 text-muted-foreground"
+                  : "border-border bg-card text-primary group-hover:border-primary/50 group-hover:bg-sidebar-accent group-active:scale-95"
+              }`}
             >
-              <span className="text-sm font-medium text-muted-foreground">{action.label}</span>
-              <span className="text-xs text-muted-foreground">{action.disabledReason}</span>
-            </div>
-          ) : (
-            <Link
-              href={action.href}
-              className="flex h-full min-h-16 flex-col justify-center gap-0.5 rounded-xl border border-border bg-card px-4 py-3"
+              <Icon className="size-6" />
+            </span>
+          );
+
+          const caption = (
+            <span
+              className={`mt-1.5 block text-center text-[0.6875rem] font-medium leading-tight ${
+                disabled ? "text-muted-foreground" : "text-foreground"
+              }`}
             >
-              <span className="text-sm font-medium text-foreground">{action.label}</span>
-              {action.note ? (
-                <span className="text-xs text-muted-foreground">{action.note}</span>
+              {label}
+            </span>
+          );
+
+          return (
+            <li key={action.key} className="min-w-0 flex-1 sm:flex-none">
+              {disabled ? (
+                <button
+                  type="button"
+                  onClick={() => setExplaining(action)}
+                  // NOT `disabled`, and not aria-disabled either: this button
+                  // does something. The muting is visual, the behaviour is
+                  // real, and a screen-reader user is told what it is.
+                  aria-label={`${action.label} — unavailable. Tap to find out why.`}
+                  className="group flex w-full flex-col items-center focus-visible:outline-none"
+                >
+                  {circle}
+                  {caption}
+                </button>
               ) : (
-                <span className="text-xs text-primary">Continue →</span>
+                <Link
+                  href={action.href}
+                  aria-label={action.label}
+                  className="group flex w-full flex-col items-center focus-visible:outline-none"
+                >
+                  {circle}
+                  {caption}
+                </Link>
               )}
-            </Link>
-          )}
-        </li>
+            </li>
+          );
+        })}
+      </ul>
+
+      {notes.map((action) => (
+        <p key={action.key} className="mt-3 text-xs text-muted-foreground">
+          {action.note}
+        </p>
       ))}
-    </ul>
+
+      {/* The one-line reason, in the small sheet the brief asks for. Its own
+          `note`, when it has one, comes with it — a blocked action can still
+          have something worth knowing attached. */}
+      <SheetPanel
+        open={explaining !== null}
+        onClose={() => setExplaining(null)}
+        title={explaining?.label ?? ""}
+      >
+        <p className="text-sm text-muted-foreground">{explaining?.disabledReason}</p>
+        {explaining?.note && (
+          <p className="mt-2 text-sm text-muted-foreground">{explaining.note}</p>
+        )}
+      </SheetPanel>
+    </div>
   );
 }

@@ -51,9 +51,20 @@ export default async function ConvertPage(props: PageProps<"/convert">) {
   // individually with their own reasons. Preselecting a currency with no live
   // route is therefore still right: the user asked about that wallet, and the
   // form's banner then tells them about that wallet.
+  // When the caller named a DESTINATION but no source — "Convert to CNY"
+  // from the yuan account page — the source must not default to the
+  // destination itself, which would open the form on CNY → CNY and show
+  // "Pick two different wallets" to somebody who picked nothing.
+  const requestedTo = parseCurrencyParam(params.to);
+  const sourceCandidates = list
+    .map((w) => w.currency)
+    .filter((currency) => currency !== requestedTo);
+
   const from = preselectCurrency(
     parseCurrencyParam(params.currency),
-    list.map((w) => w.currency),
+    sourceCandidates,
+    // The unfiltered list stays the final fallback: a user whose ONLY wallet
+    // is the requested destination still has to land on something.
     list.map((w) => w.currency),
   )!;
 
@@ -84,6 +95,9 @@ export default async function ConvertPage(props: PageProps<"/convert">) {
         hasPin={hasPin === true}
         rateBoard={rateBoard}
         initialFrom={from}
+        // Group 4d: "Convert to CNY" on the yuan account page arrives here as
+        // ?to=CNY, and must open with yuan already on the destination side.
+        initialTo={parseCurrencyParam(params.to)}
       />
       {/* Re-resolves route availability while the screen is open, so a pair
           that came back (or went away) is not still being advertised as it was

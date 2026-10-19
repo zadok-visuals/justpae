@@ -1,11 +1,40 @@
-"use server";
-
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import type { createClient } from "@/lib/supabase/server";
 import type { Currency, TransactionStatus } from "@/lib/types/database";
 import { isMostRecentForCurrency, type ActivitySource } from "@/lib/transactions";
 import { toRpcError } from "@/lib/provider-error";
 import { describePayToChinaRecipient } from "@/lib/payToChina/describe";
+
+/**
+ * Reading one activity row, as a plain module — NOT a `"use server"` file.
+ *
+ * ──────────────────────────────────────────────────────────────────────────
+ * WHY THIS IS NOT A SERVER-ACTION MODULE, WHICH IS A SECURITY DECISION
+ *
+ * This used to be src/lib/actions/activity.ts, with `"use server"` at the
+ * top. Group 4a needs the same loader from a Route Handler (the PNG receipt),
+ * and the receipt has one extra rule: an admin may fetch anybody's. The
+ * obvious move is to export a `loadDetail(userId, …)` from the existing file
+ * and let both callers pass the id they want.
+ *
+ * That would have been a privilege escalation. EVERY export of a
+ * `"use server"` module is a callable endpoint reachable by POST from any
+ * browser with a session — so a `userId` parameter on such an export is an
+ * invitation to read another customer's transactions by changing one
+ * argument. The type system does not stop it and neither does RLS, because
+ * the query would be running as whatever client the function builds.
+ *
+ * So the loaders live here, in a module with no `"use server"` directive and
+ * therefore no browser-reachable surface, and every caller is responsible for
+ * establishing WHOSE id it is passing:
+ *
+ *   src/lib/actions/activity.ts   the signed-in user's own, from getUser()
+ *   the receipt route             the same, or — for an admin — the owner of
+ *                                 the row, resolved server-side
+ *
+ * The `userId` parameter is still load-bearing in every query below: the row
+ * reads are `.eq("user_id", userId)` as well as being under RLS, so a wrong
+ * id returns nothing rather than somebody else's money.
+ */
 
 /**
  * Full detail for one activity row.
@@ -82,19 +111,21 @@ async function resolveBalanceInfo(
   return { balanceAfter: wallet?.balance ?? null, isMostRecent };
 }
 
-export async function getActivityDetail(
+/**
+ * The whole loader, for one row belonging to one user.
+ *
+ * The caller supplies both the client and the id, and owns the question of
+ * whose id it is — see the note at the top of this file.
+ */
+export async function loadActivityDetail(
+  supabase: ServerClient,
+  userId: string,
   source: ActivitySource,
   id: string,
 ): Promise<ActivityDetailState> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  if (source === "deposit") return depositDetail(supabase, user.id, id);
-  if (source === "bill") return billDetail(supabase, user.id, id);
-  return transactionDetail(supabase, user.id, id);
+  if (source === "deposit") return depositDetail(supabase, userId, id);
+  if (source === "bill") return billDetail(supabase, userId, id);
+  return transactionDetail(supabase, userId, id);
 }
 
 async function depositDetail(

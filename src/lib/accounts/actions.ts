@@ -141,6 +141,24 @@ export function accountActions(
         : "Dollar receiving details are coming soon. You'll see them here the moment they're live.",
       note: null,
     });
+  } else if (currency === "CNY") {
+    // GROUP 4d. Yuan is not deposited and never has been — there is no CNY
+    // pay-in rail on this account, and the balance exists because somebody
+    // converted into it. The page used to offer "Add money" anyway, pointing
+    // at /deposit?currency=CNY, where the currency is not selectable: a dead
+    // link sitting directly above a paragraph headed "Adding money" that
+    // described a bank transfer which cannot happen.
+    //
+    // So the action becomes what it actually is. Enabled, not disabled —
+    // there is a real, working way to put yuan in this wallet, and marking
+    // it unavailable would be the same lie in the other direction.
+    actions.push({
+      key: "add",
+      label: "Convert to CNY",
+      href: "/convert?to=CNY",
+      disabledReason: null,
+      note: "Yuan is added by converting from another wallet.",
+    });
   } else {
     const deposit = depositAvailability(currency);
     actions.push({
@@ -208,10 +226,34 @@ export function howToAddMoney(currency: Currency): string {
       return "Dollars arrive from someone sending them to your receiving details. There's nothing to deposit — share the details and the money lands here.";
     case "USDT":
       return "Send USDT on BSC to the address we generate for you. Only BSC — anything sent on another network can't be recovered.";
+    // GROUP 4d. Yuan has no pay-in rail on this account: there is no bank
+    // transfer, no address, nothing to send money TO. The old default case
+    // caught CNY and told the user to "start on Add money and we'll generate
+    // transfer details" — describing a mechanism that does not exist, under a
+    // heading that said "Adding money", directly above a tile linking to a
+    // deposit screen where yuan cannot be selected.
+    case "CNY":
+      return "Yuan isn't deposited — it's bought by converting from another wallet. Convert naira, shillings or USDT into yuan and the balance lands here, ready to spend with Pay to China.";
     case "NGN":
     case "KES":
       return `Start on Add money, enter the amount, and we'll generate transfer details for that one deposit. Send exactly that amount before the details expire and your ${currency} wallet is credited automatically.`;
+    // GHS, whose deposits are under maintenance. The sentence still describes
+    // the mechanism honestly; the Add money action beside it carries the
+    // maintenance state, so this is not the place to repeat it.
     default:
       return `Start on Add money and we'll generate transfer details for that one deposit, then credit your ${currencyMeta(currency).label} wallet once it lands.`;
   }
+}
+
+/**
+ * The heading above howToAddMoney.
+ *
+ * "Adding money" is wrong for the two currencies that are not added by
+ * depositing — Group 4d's contradiction was as much the heading as the
+ * paragraph under it.
+ */
+export function howToAddMoneyHeading(currency: Currency): string {
+  if (currency === "CNY") return "Getting yuan";
+  if (currency === "USD") return "Receiving dollars";
+  return "Adding money";
 }

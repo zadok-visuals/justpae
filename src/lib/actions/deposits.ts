@@ -280,6 +280,20 @@ export async function initiateDeposit(
       amount: Number(transfer.target_amount),
       provider: "busha",
       provider_reference: transfer.id,
+      // GROUP 4b. The provider's deadline, persisted rather than left in the
+      // browser's component state on the screen that created it.
+      //
+      // Until this line the server had no idea when a pending deposit's
+      // transfer details stopped working, so a deposit nobody sent money to
+      // stayed 'pending' forever — shown in the activity list as in flight,
+      // and in the detail sheet as waiting on a "Funds received" step that
+      // could never arrive. The reconciler reads this column to close them
+      // out as 'expired'.
+      //
+      // Null when the provider returns no expiry, which expire_deposit
+      // treats as "no known deadline" and refuses to act on rather than
+      // guessing one.
+      pay_in_expires_at: transfer.pay_in.expires_at ?? null,
     })
     .select("id")
     .single();
@@ -401,7 +415,9 @@ export interface DepositStatusState {
    * carry a state it can never reach and, worse, one isFinalStatus does not
    * treat as terminal, so the poll would never stop.
    */
-  status?: "pending" | "processing" | "completed" | "failed";
+  // 'expired' is a DEPOSIT status (migration 0029) and belongs here — it is
+  // the one in this union a deposit reaches that a conversion never does.
+  status?: "pending" | "processing" | "completed" | "failed" | "expired";
   error?: string;
 }
 

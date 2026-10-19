@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SheetPanel } from "@/components/ui/SheetPanel";
 import { usePolling, isFinalStatus } from "@/lib/hooks/usePolling";
@@ -9,7 +10,12 @@ import { CopyButton, CopyField } from "@/components/ui/CopyButton";
 import { Button } from "@/components/ui/Button";
 import { Lightbox } from "@/components/ui/Lightbox";
 import { formatAmount, formatNumber, formatRate } from "@/lib/currencies";
-import { getActivityDetail, type ActivityDetail as Detail } from "@/lib/actions/activity";
+import { getActivityDetail } from "@/lib/actions/activity";
+// The TYPE comes from the plain module, the ACTION from the "use server" one.
+// A `"use server"` file may only export async functions, so it is not a place
+// a shared type can live.
+import type { ActivityDetail as Detail } from "@/lib/activity/detail";
+import { receiptFilename } from "@/lib/activity/receiptTitle";
 import type { ActivitySource } from "@/lib/transactions";
 
 /**
@@ -70,7 +76,7 @@ export function ActivityDetail({
       open
       onClose={onClose}
       title={title}
-      footer={detail ? <ReceiptButton detail={detail} title={title} /> : undefined}
+      footer={detail ? <ReceiptButton detail={detail} source={source} id={id} /> : undefined}
     >
       {error && <p className="text-sm text-destructive">{error}</p>}
 
@@ -91,6 +97,7 @@ function DetailBody({ detail }: { detail: Detail }) {
   const isWithdrawal = detail.source === "transaction" && detail.type === "withdrawal";
   const isBill = detail.source === "bill";
   const isPayToChina = detail.source === "transaction" && detail.type === "pay_to_china";
+  const isDeposit = detail.source === "deposit";
   const [proofOpen, setProofOpen] = useState(false);
 
   return (
@@ -209,7 +216,19 @@ function DetailBody({ detail }: { detail: Detail }) {
             // "New balance" would be a lie once something later has moved this
             // currency, so the label changes rather than the number being
             // presented as something it isn't.
-            label={detail.isMostRecent ? "New balance" : "Current balance"}
+            //
+            // GROUP 4b adds the second half of that rule. "New balance" also
+            // claimed a balance this row had PRODUCED — on a deposit that has
+            // not been credited yet and may never be. The figure shown is the
+            // wallet's balance right now, which on a pending deposit is the
+            // balance from BEFORE it: calling that "new" invites the reader to
+            // conclude the money already landed. A deposit earns the label
+            // only once it is actually completed.
+            label={
+              detail.isMostRecent && (!isDeposit || detail.status === "completed")
+                ? "New balance"
+                : "Current balance"
+            }
           >
             {formatAmount(
               detail.targetCurrency && isConversion ? detail.targetCurrency : detail.sourceCurrency,
@@ -218,6 +237,24 @@ function DetailBody({ detail }: { detail: Detail }) {
           </DetailRow>
         )}
       </div>
+
+      {/* An expired deposit's one useful action. Without it the sheet is a
+          dead end: the details on it are unusable, and nothing on screen says
+          what to do instead. */}
+      {isDeposit && detail.status === "expired" && (
+        <div className="mt-4">
+          <p className="mb-2 text-sm text-muted-foreground">
+            These transfer details expired before any money arrived, so nothing was taken.
+            Start again and we&apos;ll generate fresh details for you.
+          </p>
+          <Link
+            href={`/deposit?currency=${detail.sourceCurrency}`}
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground"
+          >
+            Start a new deposit
+          </Link>
+        </div>
+      )}
 
       {isWithdrawal && detail.requiresExtraVerification && detail.status !== "completed" && (
         <p className="mt-3 text-sm text-muted-foreground">
@@ -268,49 +305,94 @@ function DetailBody({ detail }: { detail: Detail }) {
   );
 }
 
+type StepState = "done" | "current" | "pending" | "failed";
+
 /**
- * The status timeline. Three or four fixed steps rather than a log, because
- * what a user wants from this is "where is my money right now", not an audit
- * trail.
+ * The status timeline. Three fixed steps rather than a log, because what a
+ * user wants from this is "where is my money right now", not an audit trail.
+ *
+ * ──────────────────────────────────────────────────────────────────────────
+ * GROUP 4b — WHAT A PENDING DEPOSIT USED TO CLAIM
+ *
+ * Every row type shared one middle step whose state was derived purely from
+ * the transaction status, and for a deposit that produced a sentence that was
+ * not true. A deposit sitting at 'pending' — the user has been given transfer
+ * details and has not sent anything yet — rendered:
+ *
+ *      ● Created
+ *      ● Funds received          ← marked CURRENT, in the accent colour
+ *      ○ Completed
+ *
+ * "Funds received", lit up as the step happening right now, on a deposit
+ * where no funds have been received and the product is waiting on the
+ * CUSTOMER to act. It is the one screen where the app knows the next move is
+ * theirs, and it was telling them the opposite.
+ *
+ * So a deposit now gets its own ladder:
+ *
+ *   pending    → "Waiting for your transfer" is current; "Funds received"
+ *                has not happened and is shown as pending.
+ *   processing → the provider has seen the money. "Funds received" is done,
+ *                "Completed" is current.
+ *   completed  → all three done.
+ *   expired    → the window closed with nothing received (migration 0029).
+ *                Shown as its own terminal step, neutral rather than red,
+ *                with the only useful action beside it.
+ *
+ * Everything that is not a deposit keeps the ladder it had.
  */
 function StatusTimeline({ detail }: { detail: Detail }) {
   const failed = detail.status === "failed" || detail.status === "refunded";
   const done = detail.status === "completed";
   const inFlight = detail.status === "processing";
+  const expired = detail.status === "expired";
 
   const isPayToChina = detail.source === "transaction" && detail.type === "pay_to_china";
+  const isDeposit = detail.source === "deposit";
 
-  const steps = [
-    { label: isPayToChina ? "Requested" : "Created", state: "done" as const },
-    {
-      label:
-        detail.source === "deposit"
-          ? "Funds received"
-          : isPayToChina
+  const steps: { label: string; state: StepState }[] = isDeposit
+    ? [
+        { label: "Deposit started", state: "done" },
+        {
+          // THE FIX. Before any money has arrived this says what is actually
+          // true and whose move it is. It only becomes "Funds received" once
+          // the provider has told us so — which is what moves the row to
+          // 'processing' or 'completed'.
+          label: done || inFlight ? "Funds received" : expired ? "No transfer received" : "Waiting for your transfer",
+          state: done || inFlight ? "done" : expired ? "failed" : failed ? "failed" : "current",
+        },
+        {
+          label: expired ? "Expired" : failed ? "Failed" : "Completed",
+          // An expired deposit's last step is reached, not pending — the row
+          // is finished. Rendering it as a hollow "pending" dot would say the
+          // opposite of what the status pill beside it says.
+          state: done ? "done" : expired ? "failed" : failed ? "failed" : "pending",
+        },
+      ]
+    : [
+        { label: isPayToChina ? "Requested" : "Created", state: "done" },
+        {
+          label: isPayToChina
             ? // A person is doing this one, and saying "sent to provider"
               // about a human would be both wrong and unreassuring.
               "Being paid in China"
             : "Sent to provider",
-      state: done || inFlight ? ("done" as const) : failed ? ("failed" as const) : ("current" as const),
-    },
-    {
-      label:
-        detail.status === "refunded"
-          ? "Refunded"
-          : failed
-            ? isPayToChina
-              ? "Returned to your wallet"
-              : "Failed"
-            : isPayToChina
-              ? "Paid"
-              : "Completed",
-      state: done
-        ? ("done" as const)
-        : failed
-          ? ("failed" as const)
-          : ("pending" as const),
-    },
-  ];
+          state: done || inFlight ? "done" : failed ? "failed" : "current",
+        },
+        {
+          label:
+            detail.status === "refunded"
+              ? "Refunded"
+              : failed
+                ? isPayToChina
+                  ? "Returned to your wallet"
+                  : "Failed"
+                : isPayToChina
+                  ? "Paid"
+                  : "Completed",
+          state: done ? "done" : failed ? "failed" : "pending",
+        },
+      ];
 
   return (
     <ol className="mb-4 space-y-2.5">
@@ -342,57 +424,154 @@ function StatusTimeline({ detail }: { detail: Detail }) {
 }
 
 /**
- * Download receipt.
+ * GROUP 4a — the receipt, downloaded as a branded PNG, and shared on mobile.
  *
- * Generated client-side as a plain text file rather than a PDF: a PDF needs a
- * library in the bundle for something a user forwards to support or keeps for
- * their records, and text is readable everywhere including on a feature phone
- * mail client.
+ * ──────────────────────────────────────────────────────────────────────────
+ * WHAT THIS REPLACED, AND WHY THE .TXT HAD TO GO
+ *
+ * The previous version built a plain-text file in the browser from the props
+ * already on screen. Cheap, and wrong for what a receipt is for: the one
+ * thing a customer does with it is send it to somebody else as proof — a
+ * supplier, a landlord, a support queue — and an unbranded .txt proves
+ * nothing. It is also indistinguishable from a file they typed themselves.
+ *
+ * The image is rendered by /api/receipts/<source>/<id>, which re-reads the
+ * row from the database and checks ownership. So the download is also a
+ * freshness guarantee: the figures on the saved receipt are the ledger's at
+ * the moment of download, not whatever this sheet last polled.
+ *
+ * ──────────────────────────────────────────────────────────────────────────
+ * WHY THE FILE IS FETCHED RATHER THAN LINKED
+ *
+ * `<a href={url} download>` is one line and would be enough on a desktop. It
+ * is not enough here: the `download` attribute is ignored cross-origin, and
+ * more importantly a fetched Blob is the only form the Web Share API accepts
+ * as a file. Fetching once and using the same Blob for both paths means the
+ * phone's share sheet gets a real PNG to hand to WhatsApp, rather than a URL
+ * that the recipient cannot open because it needs the sender's session.
+ *
+ * SHARE IS OFFERED, NOT ASSUMED. `navigator.share` exists on desktop Safari
+ * and some desktop Chrome builds but usually cannot take files, so the
+ * capability is tested with `canShare({ files })` — the only check that
+ * actually answers the question — and the button falls back to a download
+ * when it says no.
  */
-function ReceiptButton({ detail, title }: { detail: Detail; title: string }) {
-  function download() {
-    const lines = [
-      "justpae receipt",
-      "",
-      title,
-      `Date: ${new Date(detail.createdAt).toLocaleString("en-GB")}`,
-      `Status: ${detail.status}`,
-      `Amount: ${formatAmount(detail.sourceCurrency, detail.sourceAmount)}`,
-    ];
+/** Never fires: the answer cannot change for the life of the document. */
+function subscribeNever(): () => void {
+  return () => {};
+}
 
-    if (detail.confirmedAmount != null) {
-      lines.push(`Received: ${formatAmount(detail.sourceCurrency, detail.confirmedAmount)}`);
-    }
-    if (detail.targetAmount != null && detail.targetCurrency) {
-      lines.push(`Converted to: ${formatAmount(detail.targetCurrency, detail.targetAmount)}`);
-    }
-    if (detail.fee != null && detail.fee > 0) {
-      lines.push(`Fee: ${formatAmount(detail.sourceCurrency, detail.fee)}`);
-    }
-    if (detail.customerRate != null && detail.targetCurrency) {
-      lines.push(
-        `Rate: ${formatRate(detail.sourceCurrency, detail.targetCurrency, detail.customerRate)}`,
+/**
+ * Whether this browser can share FILES — not merely whether `navigator.share`
+ * exists. Desktop Safari and some desktop Chrome builds expose `share` but
+ * reject files, so `canShare({ files })` is the only check that answers the
+ * question actually being asked.
+ *
+ * Memoised because useSyncExternalStore calls getSnapshot on every render and
+ * compares by identity; building a probe File each time would be wasteful,
+ * and the answer is a constant anyway.
+ */
+let fileShareSupportedCache: boolean | null = null;
+function fileShareSupported(): boolean {
+  if (fileShareSupportedCache !== null) return fileShareSupportedCache;
+  try {
+    const probe = new File([new Blob(["x"])], "probe.png", { type: "image/png" });
+    fileShareSupportedCache =
+      typeof navigator.canShare === "function" && navigator.canShare({ files: [probe] });
+  } catch {
+    // Some engines throw on `new File` in odd contexts rather than returning
+    // false. A thrown probe means "no", not a broken receipt button.
+    fileShareSupportedCache = false;
+  }
+  return fileShareSupportedCache;
+}
+
+function ReceiptButton({
+  detail,
+  source,
+  id,
+}: {
+  detail: Detail;
+  source: ActivitySource;
+  id: string;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Feature detection that is correct on BOTH renders.
+  //
+  // `navigator` does not exist on the server, so this cannot be read during
+  // render; and setting it from an effect is a cascading render React's lint
+  // rule rightly rejects. useSyncExternalStore is the construct built for
+  // exactly this shape: a value that differs between server and client and
+  // never changes afterwards. The server snapshot is `false` (no share
+  // button in the HTML), the client snapshot is the real answer, and React
+  // reconciles the two without a hydration mismatch.
+  const canShare = useSyncExternalStore(subscribeNever, fileShareSupported, () => false);
+
+  async function fetchReceipt(): Promise<File> {
+    const response = await fetch(`/api/receipts/${source}/${id}`);
+    if (!response.ok) {
+      throw new Error(
+        response.status === 404
+          ? "We couldn't find that receipt."
+          : "We couldn't produce that receipt just now. Try again in a moment.",
       );
     }
-    if (detail.description) lines.push(`Details: ${detail.description}`);
-    if (detail.token) lines.push(`Token: ${detail.token}`);
-    if (detail.reference) lines.push(`Reference: ${detail.reference}`);
-    if (detail.declineReason) lines.push(`Note: ${detail.declineReason}`);
+    const blob = await response.blob();
+    return new File([blob], receiptFilename(detail.reference, id), { type: "image/png" });
+  }
 
-    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `justpae-receipt-${detail.createdAt.slice(0, 10)}.txt`;
-    anchor.click();
-    // Revoked immediately after the click: the blob is already handed to the
-    // download, and leaving it alive leaks the buffer for the page's lifetime.
-    URL.revokeObjectURL(url);
+  async function run(share: boolean) {
+    setBusy(true);
+    setError(null);
+    try {
+      const file = await fetchReceipt();
+
+      if (share && navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: "justpae receipt" });
+          return;
+        } catch (shareError) {
+          // A cancelled share sheet throws AbortError. That is the user
+          // changing their mind, not a failure, and showing them an error
+          // for it would be a lie.
+          if ((shareError as Error)?.name === "AbortError") return;
+          // Anything else: fall through to the download below rather than
+          // leaving them with no receipt at all.
+        }
+      }
+
+      const url = URL.createObjectURL(file);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = file.name;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "That didn't work. Try again.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
-    <Button variant="secondary" fullWidth onClick={download}>
-      Download receipt
-    </Button>
+    <div className="space-y-2">
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      <div className="flex gap-2">
+        <Button variant="secondary" fullWidth disabled={busy} onClick={() => run(false)}>
+          {busy ? "Preparing…" : "Download receipt"}
+        </Button>
+        {canShare && (
+          <Button variant="secondary" disabled={busy} onClick={() => run(true)}>
+            Share
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
