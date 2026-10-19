@@ -273,22 +273,34 @@ export default function DevGallery() {
                 routes={routes}
                 hasPin
                 initialFrom="NGN"
-                rateBoard={[
-                  {
-                    currency: "NGN",
-                    buyPrice: 1387.65,
-                    sellPrice: 1357.44,
-                    unavailableReason: null,
-                    unavailableKind: null,
-                  },
-                  {
-                    currency: "KES",
-                    buyPrice: 130.08,
-                    sellPrice: 128.11,
-                    unavailableReason: null,
-                    unavailableKind: null,
-                  },
-                ]}
+                /* GROUP 9b made this prop a NODE rather than resolved prices,
+                   so the real page can stream the board. The gallery passes
+                   the same BuySellRates it always did, wrapped the way
+                   RateBoardSection wraps it — fixture figures, no provider
+                   call, which is the whole point of the gallery. */
+                rateBoard={
+                  <section>
+                    <SectionHeader title="Today's rates" />
+                    <BuySellRates
+                      rates={[
+                        {
+                          currency: "NGN",
+                          buyPrice: 1387.65,
+                          sellPrice: 1357.44,
+                          unavailableReason: null,
+                          unavailableKind: null,
+                        },
+                        {
+                          currency: "KES",
+                          buyPrice: 130.08,
+                          sellPrice: 128.11,
+                          unavailableReason: null,
+                          unavailableKind: null,
+                        },
+                      ]}
+                    />
+                  </section>
+                }
               />
             </Section>
 

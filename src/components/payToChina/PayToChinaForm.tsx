@@ -245,7 +245,10 @@ function PayToChinaFields({
     <MoneyFormLayout
       summary={
         <>
-          {amountsCard}
+          {/* `hidden lg:block`: below 1024px the yuan figure is already under
+              the amount field, where immediate feedback belongs. See the
+              estimate box's own note. */}
+          <div className="hidden lg:block">{amountsCard}</div>
           {nextSteps}
         </>
       }
@@ -489,9 +492,6 @@ function PayToChinaFields({
         <SubmitButton disabled={blocked} pendingLabel="Sending…">
           {cnyAmount != null ? `Send ${formatAmount("CNY", cnyAmount)}` : "Send to China"}
         </SubmitButton>
-
-        {/* The panel inline on a phone, where there is no second column. */}
-        <div className="lg:hidden">{nextSteps}</div>
       </form>
 
       <ConfirmDialog

@@ -305,7 +305,9 @@ function WithdrawFormFields({
     <MoneyFormLayout
       summary={
         <>
-          {feeCard}
+          {/* `hidden lg:block`: the mirror of the inline `lg:hidden` copy
+              below. See MoneyFormLayout. */}
+          <div className="hidden lg:block">{feeCard}</div>
           {nextSteps}
         </>
       }
@@ -467,9 +469,6 @@ function WithdrawFormFields({
           the confirmation dialog below, which is the only thing between this
           button and money leaving. */}
       <LegalReminder />
-
-      {/* The panel inline on a phone, where there is no second column. */}
-      <div className="lg:hidden">{nextSteps}</div>
     </form>
 
     <ConfirmDialog

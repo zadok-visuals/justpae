@@ -173,7 +173,10 @@ export function DepositForm({
 
   const summary = (
     <>
-      {quoteCard}
+      {/* `hidden lg:block`: the mirror of the inline `lg:hidden` copy below.
+          See MoneyFormLayout — the review belongs above the commit button on
+          a phone and beside it on a desktop. */}
+      <div className="hidden lg:block">{quoteCard}</div>
       {nextSteps}
     </>
   );
@@ -285,7 +288,6 @@ export function DepositForm({
 
       {/* The same panel inline on a phone, where there is no second column to
           put it in. `lg:hidden` is the mirror of MoneyFormLayout's aside. */}
-      <div className="lg:hidden">{nextSteps}</div>
     </div>
     </MoneyFormLayout>
   );

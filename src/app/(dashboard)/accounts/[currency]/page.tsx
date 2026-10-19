@@ -2,16 +2,14 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { AccountActions } from "@/components/accounts/AccountActions";
-import { BuySellRates } from "@/components/rates/BuySellRates";
-import { ActivityRows } from "@/components/transactions/ActivityRows";
-import { SectionHeader, Card, Banner, EmptyState } from "@/components/ui/Primitives";
-import { LiveRefresh } from "@/components/ui/LiveRefresh";
+import { RateBoardSection } from "@/components/rates/RateBoardSection";
+import { RecentActivitySection } from "@/components/transactions/RecentActivitySection";
+import { SectionHeader, Card, Banner } from "@/components/ui/Primitives";
 import { MaintenanceBadge } from "@/components/ui/MaintenanceBadge";
 import { accountActions, howToAddMoney, howToAddMoneyHeading } from "@/lib/accounts/actions";
 import { depositAvailability } from "@/lib/deposits/availability";
-import { fetchActivityPage } from "@/lib/transactions";
 import { listRoutesFrom } from "@/lib/actions/convert";
-import { resolveRateBoard, localRateCurrencies } from "@/lib/rates/display";
+import { localRateCurrencies } from "@/lib/rates/display";
 import { currencyMeta, formatAmount, isCurrency, USD_CONVERSION_UNAVAILABLE } from "@/lib/currencies";
 import { startRouteTiming } from "@/lib/perf/timing";
 import type { Currency, Wallet } from "@/lib/types/database";
@@ -54,22 +52,37 @@ export default async function AccountPage(props: PageProps<"/accounts/[currency]
 
   const meta = currencyMeta(currency);
 
-  const [{ data: walletRow }, routes, activity, rates] = await Promise.all([
+  /**
+   * GROUP 9b — TWO awaits, and the judgement call behind keeping the second.
+   *
+   * The activity list and the rate board are gone from here: they own their
+   * own reads inside Suspense boundaries in the aside below, so neither can
+   * decide when the balance appears.
+   *
+   * listRoutesFrom STAYS awaited, which is a deliberate exception to "stream
+   * the slow things". The brief asks for the shell, the balances AND THE
+   * ACTIONS to render immediately, and the route table is not decoration on
+   * the action row — it is what the row IS. Streaming it would mean the
+   * primary column's only controls arriving a beat after the page, as a row
+   * of skeleton circles, which is worse than the wait: a user who taps where
+   * a button is about to be gets nothing, and the whole point of the page is
+   * "what can I do with this money".
+   *
+   * It is also no longer expensive in the common case. Group 9a put the pair
+   * prices and markups behind a 30-second shared cache, and listRoutesFrom
+   * reads it — so the first visitor in any half-minute window pays for the
+   * provider lookups and everybody else gets a memory read. The call is
+   * genuinely "live" about availability in the sense that matters: it is
+   * re-resolved every thirty seconds rather than baked into a build.
+   */
+  const [{ data: walletRow }, routes] = await Promise.all([
     supabase
       .from("wallets")
       .select("*")
       .eq("user_id", user.id)
       .eq("currency", currency)
       .maybeSingle(),
-    // Live, because "can I convert cedis" has a different answer today than
-    // it had last month and the page must not guess. USD short-circuits
-    // inside resolveRoute with no provider call at all.
     listRoutesFrom(currency),
-    // THIS CURRENCY ONLY. The transactions reader already supports the
-    // filter; using it is what keeps this list and /transactions?currency=X
-    // agreeing about what belongs to a wallet.
-    fetchActivityPage(supabase, user.id, { currency }, 0, RECENT_LIMIT),
-    loadRatesFor(currency),
   ]);
 
   endRouteTiming();
@@ -107,6 +120,8 @@ export default async function AccountPage(props: PageProps<"/accounts/[currency]
   const maintenanceReason =
     !deposit.available && deposit.kind === "maintenance" ? deposit.reason : null;
 
+  const boardCurrencies = rateBoardCurrencies(currency);
+
   return (
     <PageShell
       title={`${currency} account`}
@@ -122,30 +137,19 @@ export default async function AccountPage(props: PageProps<"/accounts/[currency]
          pattern rather than three similar grids. */
       aside={
         <>
-          {rates.length > 0 && (
-            <section>
-              <SectionHeader title="Today's rates" />
-              <BuySellRates rates={rates} />
-              <div className="mt-1.5">
-                <LiveRefresh showTimestamp label="Rates updated" />
-              </div>
-            </section>
-          )}
+          {/* GROUP 9b. Which currencies belong on this board is decided
+              synchronously (rateBoardCurrencies below, no I/O), so the
+              section either renders with its heading and a skeleton or is
+              absent — rather than the page awaiting a provider call to find
+              out there was nothing to show. */}
+          {boardCurrencies !== null && <RateBoardSection currencies={boardCurrencies} />}
 
-          <section>
-            <SectionHeader
-              title="Recent activity"
-              action={{ href: `/transactions?currency=${currency}`, label: "See all" }}
-            />
-            {activity.rows.length === 0 ? (
-              <EmptyState
-                title={`No ${currency} activity yet`}
-                body={`Money moving in or out of your ${currency} wallet shows up here.`}
-              />
-            ) : (
-              <ActivityRows rows={activity.rows} grouped={false} />
-            )}
-          </section>
+          <RecentActivitySection
+            userId={user.id}
+            currency={currency}
+            limit={RECENT_LIMIT}
+            seeAllHref={`/transactions?currency=${currency}`}
+          />
         </>
       }
     >
@@ -215,10 +219,23 @@ export default async function AccountPage(props: PageProps<"/accounts/[currency]
  * the whole board, because every row on it is a price for the thing that
  * wallet holds. USD gets none: it has no pair on this account, and the banner
  * above already explains that in words rather than as two empty cells.
+ *
+ * GROUP 9b MADE THIS SYNCHRONOUS, and that is the point of the rewrite. It
+ * used to be `async` and to resolve the board itself, which meant the page
+ * had to await a provider call before it could know whether there was a
+ * section to render at all — including for USD and CNY, where the answer is
+ * "no" and is a standing fact about the currency.
+ *
+ *   null       no board on this page
+ *   undefined  the whole local board (the USDT wallet)
+ *   [c]        just this currency's pair
+ *
+ * `undefined` rather than a spelled-out list so the "whole board" case stays
+ * owned by localRateCurrencies() — the one place the list lives.
  */
-async function loadRatesFor(currency: Currency) {
-  if (currency === "USD") return [];
-  if (currency === "USDT") return resolveRateBoard();
-  if (!localRateCurrencies().includes(currency)) return [];
-  return resolveRateBoard([currency]);
+function rateBoardCurrencies(currency: Currency): Currency[] | undefined | null {
+  if (currency === "USD") return null;
+  if (currency === "USDT") return undefined;
+  if (!localRateCurrencies().includes(currency)) return null;
+  return [currency];
 }

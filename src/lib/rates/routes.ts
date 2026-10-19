@@ -84,10 +84,67 @@ function unavailable(
 }
 
 /**
- * Resolves the live route for a pair. Always called server-side at quote time
- * AND again at execution time — the server never trusts a client-supplied rate.
+ * GROUP 9a — WHERE A ROUTE'S INPUTS COME FROM.
+ *
+ * `"live"` goes straight to the provider and to Postgres. `"cached"` reads
+ * the 30-second shared display cache (src/lib/rates/cache.ts).
+ *
+ * THE DEFAULT IS "live", AND THAT IS THE WHOLE SAFETY MECHANISM. Every caller
+ * that forgets to think about this gets a fresh rate, which is slower and
+ * correct. Only two callers opt into the cache, both of which exist to
+ * ADVERTISE a price rather than settle at one: resolveRateBoard and
+ * listRoutesFrom. A commit path cannot become stale by omission — it would
+ * have to be edited to say `"cached"`, in a module that
+ * src/lib/rates/cache.test.ts asserts does not reach the cache at all.
  */
-export async function resolveRoute(from: Currency, to: Currency): Promise<ConversionRoute> {
+export type RateSource = "live" | "cached";
+
+/**
+ * The cache is reached through a DYNAMIC import, which is not a style choice.
+ *
+ * A static `import { cachedUsdtPairRates }` here would put next/cache into
+ * the module graph of every commit path that imports this file, and the
+ * "commit paths never touch the cache" rule would then be a convention
+ * enforced by reading comments. With the import inside the `"cached"` branch,
+ * a commit path's graph genuinely does not contain it, and the assertion in
+ * cache.test.ts is checking a real property.
+ */
+async function pairRates(fiatCurrency: string, source: RateSource) {
+  if (source === "cached") {
+    const { cachedUsdtPairRates } = await import("@/lib/rates/cache");
+    return cachedUsdtPairRates(fiatCurrency);
+  }
+  return getUsdtPairRates(fiatCurrency);
+}
+
+async function markedRate(
+  base: Currency,
+  quote: Currency,
+  providerRate: number,
+  source: RateSource,
+): Promise<MarkupQuote> {
+  if (source === "cached") {
+    const { cachedMarkupRate } = await import("@/lib/rates/cache");
+    const markupRate = await cachedMarkupRate(base, quote);
+    return {
+      providerRate,
+      markupRate,
+      customerRate: applyMarkupToRate(providerRate, markupRate),
+    };
+  }
+  return quoteWithMarkup(base, quote, providerRate);
+}
+
+/**
+ * Resolves the route for a pair. Always called server-side at quote time AND
+ * again at execution time — the server never trusts a client-supplied rate,
+ * and with `source` left at its default it never trusts a cached one either.
+ */
+export async function resolveRoute(
+  from: Currency,
+  to: Currency,
+  source: RateSource = "live",
+): Promise<ConversionRoute> {
   if (from === to) {
     return unavailable(from, to, "Pick two different wallets.", "same");
   }
@@ -115,13 +172,13 @@ export async function resolveRoute(from: Currency, to: Currency): Promise<Conver
   // "isn't quoted by our liquidity provider yet", which is true of the
   // provider and false of the product.
   if (from === "CNY" || to === "CNY") {
-    return resolveCnyRoute(from, to);
+    return resolveCnyRoute(from, to, source);
   }
 
   // ── USDT on one side: a single direct pair lookup. ──────────────────────
   if (from === "USDT" || to === "USDT") {
     const fiat = from === "USDT" ? to : from;
-    const pair = await getUsdtPairRates(fiat);
+    const pair = await pairRates(fiat, source);
     if (!pair) {
       return unavailable(
         from,
@@ -136,18 +193,21 @@ export async function resolveRoute(from: Currency, to: Currency): Promise<Conver
 
     if (from === "USDT") {
       // USDT -> fiat: sellRate is already fiat per 1 USDT.
-      const marked = await quoteWithMarkup(from, to, pair.sellRate);
+      const marked = await markedRate(from, to, pair.sellRate, source);
       return directRoute("usdt_to_fiat", from, to, marked, 1);
     }
 
     // fiat -> USDT: buyRate is fiat per 1 USDT, so invert for USDT per 1 fiat.
     const providerRate = 1 / pair.buyRate;
-    const marked = await quoteWithMarkup(from, to, providerRate);
+    const marked = await markedRate(from, to, providerRate, source);
     return directRoute("fiat_to_usdt", from, to, marked, providerRate);
   }
 
   // ── fiat -> fiat: bridge through USDT. ─────────────────────────────────
-  const [fromPair, toPair] = await Promise.all([getUsdtPairRates(from), getUsdtPairRates(to)]);
+  const [fromPair, toPair] = await Promise.all([
+    pairRates(from, source),
+    pairRates(to, source),
+  ]);
 
   if (!fromPair) {
     return unavailable(
@@ -170,7 +230,7 @@ export async function resolveRoute(from: Currency, to: Currency): Promise<Conver
   // toPair.sellRate of `to`.
   const sourceUsdtRate = 1 / fromPair.buyRate;
   const providerRate = sourceUsdtRate * toPair.sellRate;
-  const marked = await quoteWithMarkup(from, to, providerRate);
+  const marked = await markedRate(from, to, providerRate, source);
   return directRoute("fiat_via_usdt", from, to, marked, sourceUsdtRate);
 }
 
@@ -188,7 +248,11 @@ export async function resolveRoute(from: Currency, to: Currency): Promise<Conver
  * Erring on the low side is deliberate: an indicative figure that is worse
  * than the real one cannot turn into a promise we then fail to honour.
  */
-async function resolveCnyRoute(from: Currency, to: Currency): Promise<ConversionRoute> {
+async function resolveCnyRoute(
+  from: Currency,
+  to: Currency,
+  source: RateSource,
+): Promise<ConversionRoute> {
   const nonCny: Currency = from === "CNY" ? to : from;
 
   const blocker = cnyRouteBlocker(nonCny);
@@ -211,7 +275,7 @@ async function resolveCnyRoute(from: Currency, to: Currency): Promise<Conversion
   // here rather than at submit time is the whole point of this function.
   let usdtPerNonCnyUnit = 1;
   if (nonCny !== "USDT") {
-    const pair = await getUsdtPairRates(nonCny);
+    const pair = await pairRates(nonCny, source);
     if (!pair) {
       return unavailable(
         from,
@@ -269,6 +333,9 @@ function directRoute(
 export async function resolveRoutesFrom(
   from: Currency,
   candidates: Currency[],
+  source: RateSource = "live",
 ): Promise<ConversionRoute[]> {
-  return Promise.all(candidates.filter((c) => c !== from).map((to) => resolveRoute(from, to)));
+  return Promise.all(
+    candidates.filter((c) => c !== from).map((to) => resolveRoute(from, to, source)),
+  );
 }

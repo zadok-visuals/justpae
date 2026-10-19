@@ -1,7 +1,8 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { requireAdminUser, logAdminActivity } from "@/lib/auth/admin";
+import { RATES_CACHE_TAG } from "@/lib/rates/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Currency } from "@/lib/types/database";
 import { SETTING_KEYS } from "@/lib/settings";
@@ -325,8 +326,25 @@ export async function setRateMarkup(
     detail: { markupPercent },
   });
 
+  /**
+   * GROUP 9a — the tag, before the paths.
+   *
+   * This is THE action the tag exists for: it is the one an operator takes
+   * and then immediately looks at a number to confirm. The display cache
+   * (src/lib/rates/cache.ts) holds markup rows for 30 seconds and a path
+   * revalidation does not reach into it, so without this line the operator
+   * would reload /admin/rates and read the spread they just replaced.
+   *
+   * updateTag, not revalidateTag: called from a Server Action, so it gives
+   * read-your-own-writes for the render that follows this return.
+   */
+  updateTag(RATES_CACHE_TAG);
+
   revalidatePath("/admin/rates");
   revalidatePath("/convert");
+  // The board carries this spread on these too.
+  revalidatePath("/home");
+  revalidatePath("/accounts", "layout");
   return { ok: true };
 }
 

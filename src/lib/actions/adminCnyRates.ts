@@ -1,7 +1,8 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { requireAdminUser } from "@/lib/auth/admin";
+import { RATES_CACHE_TAG } from "@/lib/rates/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { toRpcError } from "@/lib/provider-error";
 import { isCurrency } from "@/lib/currencies";
@@ -29,9 +30,31 @@ export interface AdminRateState {
 }
 
 function revalidateRates() {
+  /**
+   * GROUP 9a. revalidatePath alone is not enough any more, and the reason is
+   * worth stating: the paths below are `force-dynamic`, so they were already
+   * re-rendering on every request — what changed is that the RATE INPUTS
+   * those renders read now come out of a 30-second shared cache
+   * (src/lib/rates/cache.ts), which a path revalidation does not touch.
+   *
+   * Without this line an operator could change a markup, watch the page
+   * reload, and see the old spread for up to half a minute — at which point
+   * the reasonable thing to assume is that the edit did not save, and the
+   * reasonable thing to do is make it again.
+   *
+   * updateTag rather than revalidateTag: it is called from a Server Action,
+   * and it gives read-your-own-writes within this same action, so the render
+   * that follows this return is already looking at the new number.
+   */
+  updateTag(RATES_CACHE_TAG);
+
   revalidatePath("/admin/rates");
   revalidatePath("/convert");
   revalidatePath("/pay-to-china");
+  // The board is on these too, and a cedi or naira holder reading a stale
+  // spread on Home is the same defect as an operator reading one.
+  revalidatePath("/home");
+  revalidatePath("/accounts", "layout");
 }
 
 export async function setCnyTierRate(

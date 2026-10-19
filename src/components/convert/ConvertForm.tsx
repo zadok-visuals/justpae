@@ -6,10 +6,13 @@ import { toast } from "sonner";
 import { AmountInput, formatAmountInput, parseAmount } from "@/components/ui/AmountInput";
 import { PinField } from "@/components/ui/PinField";
 import { SubmitButton } from "@/components/ui/Button";
-import { Banner, Card, SectionHeader } from "@/components/ui/Primitives";
+import { Banner, Card } from "@/components/ui/Primitives";
 import { ConfirmDialog, useConfirm, type ConfirmRow } from "@/components/ui/ConfirmDialog";
-import { BuySellRates } from "@/components/rates/BuySellRates";
-import type { UsdtPairDisplay } from "@/lib/rates/display";
+// GROUP 9b. BuySellRates, SectionHeader and UsdtPairDisplay are gone from
+// this file: the board arrives as an already-rendered node (see the rateBoard
+// prop), so this client component no longer knows the shape of a price. One
+// fewer thing in the /convert client bundle, and one fewer place that could
+// render a rate differently from the other three.
 import { useCountdown, formatCountdown } from "@/lib/hooks/useCountdown";
 import {
   quoteConversion,
@@ -54,7 +57,20 @@ interface ConvertFormProps {
    * and the quote above already answers the second one, to the kobo, with a
    * countdown.
    */
-  rateBoard: UsdtPairDisplay[];
+  /**
+   * GROUP 9b. A NODE, not an array of prices.
+   *
+   * This used to be `UsdtPairDisplay[]`, which meant /convert had to await
+   * resolveRateBoard() — six provider round trips — before it could render
+   * this form at all. The board is reference material beside a form; it has
+   * no business deciding when the form's own fields appear.
+   *
+   * Passing it as a node lets the page hand over a Server Component with its
+   * own Suspense boundary (RateBoardSection), which this client component
+   * renders without knowing or caring what is inside it. The form's own
+   * inputs are sent immediately and the prices stream in afterwards.
+   */
+  rateBoard?: React.ReactNode;
   /**
    * The source wallet the page resolved `routes` for — from `?currency=`, or
    * the first wallet. The form MUST open on this one: `routes` describes the
@@ -338,13 +354,11 @@ function ConvertFormFields({
       <QuoteSummary quote={activeQuote} secondsLeft={secondsLeft} expired={expired} />
     ) : null;
 
-  const rateBoardNode =
-    rateBoard.length > 0 ? (
-      <section>
-        <SectionHeader title="Today's rates" />
-        <BuySellRates rates={rateBoard} />
-      </section>
-    ) : null;
+  // The board, whatever it is. Its heading and skeleton come with it now —
+  // see RateBoardSection — so this component no longer decides whether there
+  // is anything to show, which it could only do by having already waited for
+  // the prices.
+  const rateBoardNode = rateBoard ?? null;
 
   const nextSteps = (
     <WhatHappensNext
@@ -370,7 +384,11 @@ function ConvertFormFields({
     <MoneyFormLayout
       summary={
         <>
-          {quoteSummaryNode}
+          {/* `hidden lg:block`: the mirror of the inline `lg:hidden` copy
+              below — the live quote has to sit above the Convert button on a
+              phone. The board and the steps render once, here, and stack
+              under the form below 1024px. */}
+          <div className="hidden lg:block">{quoteSummaryNode}</div>
           {rateBoardNode}
           {nextSteps}
         </>
@@ -528,17 +546,6 @@ function ConvertFormFields({
             : `Convert to ${to}`}
       </SubmitButton>
     </form>
-
-    {/* The board, after the form — on a phone. Two prices per local currency,
-        both the customer's own with the spread already in them, so the number
-        here and the number the quote settles at are the same number read two
-        different ways rather than a headline rate that quietly turns into
-        something worse at submit. At `lg` it is in the summary column, where
-        a reference table belongs. */}
-    <div className="mt-6 space-y-6 lg:hidden">
-      {rateBoardNode}
-      {nextSteps}
-    </div>
 
     <ConfirmDialog
       open={confirm.open}

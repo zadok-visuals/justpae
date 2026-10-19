@@ -83,9 +83,15 @@ export function localRateCurrencies(): Currency[] {
  * it is advertising.
  */
 export async function resolveUsdtPairDisplay(currency: Currency): Promise<UsdtPairDisplay> {
+  // GROUP 9a — "cached". This module is the board, and the board ADVERTISES a
+  // price; /convert's quote is what commits to one, and that path resolves
+  // the same routes with the default "live". A 30-second-old advertisement is
+  // honest (LiveRefresh stamps the strip with when it was updated); a
+  // 30-second-old settlement is not, which is why the two are different
+  // calls rather than one call with a shared cache.
   const [buyLeg, sellLeg] = await Promise.all([
-    resolveRoute(currency, "USDT"),
-    resolveRoute("USDT", currency),
+    resolveRoute(currency, "USDT", "cached"),
+    resolveRoute("USDT", currency, "cached"),
   ]);
 
   const buyPrice = buyLeg.available ? buyPriceFromFiatToUsdtRate(buyLeg.customerRate) : null;

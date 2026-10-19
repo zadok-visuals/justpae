@@ -1,7 +1,8 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
-import { Card, Pill, Banner, DetailRow } from "@/components/ui/Primitives";
+import { Card, Pill, Banner, DetailRow, SkeletonCard } from "@/components/ui/Primitives";
 import { SubmitButton } from "@/components/ui/Button";
 import { TransactionPinCard } from "@/components/settings/TransactionPinCard";
 import { RecipientCard } from "@/components/settings/RecipientCard";
@@ -50,17 +51,6 @@ export default async function ProfilePage() {
       // rather than a string compare — hence its place in this batch.
       isAdmin(user.id, user.email),
     ]);
-
-  // The bank list comes from the provider, which expects its OWN codes rather
-  // than standard national ones. A failure here must not break the whole
-  // profile page — the recipient form falls back to showing no bank options,
-  // which is honest, rather than letting the page 500.
-  let banks: BushaBank[] = [];
-  try {
-    banks = await getBanks();
-  } catch (err) {
-    console.error("[profile] bank list unavailable", err);
-  }
 
   endRouteTiming();
 
@@ -139,12 +129,22 @@ export default async function ProfilePage() {
 
         <TransactionPinCard hasPin={hasPin === true} />
 
+        {/* GROUP 9c. The bank list is a PROVIDER call, and it was awaited in
+            the page body — so the whole of Profile (name, verification
+            status, PIN card, admin link, sign-out) waited on an HTTP request
+            to a third party before any of it rendered. None of those things
+            needs a bank list.
+
+            It is also the one call on this page that can be slow for a
+            reason entirely outside the product: the list is fetched fresh on
+            every view and has nothing to do with the user. */}
         {payoutCurrencies.length > 0 && (
-          <RecipientCard
-            currencies={payoutCurrencies}
-            recipients={(recipients ?? []) as WithdrawalRecipient[]}
-            banks={banks}
-          />
+          <Suspense fallback={<SkeletonCard className="h-48" />}>
+            <PayoutRecipients
+              currencies={payoutCurrencies}
+              recipients={(recipients ?? []) as WithdrawalRecipient[]}
+            />
+          </Suspense>
         )}
 
         {showAdmin && (
@@ -212,4 +212,32 @@ export default async function ProfilePage() {
       </div>
     </PageShell>
   );
+}
+
+/**
+ * GROUP 9c — the payout-destination card, with its provider call inside the
+ * Suspense boundary rather than in the page body.
+ *
+ * The try/catch is unchanged in substance and still matters: the bank list
+ * comes from the provider, which expects its OWN codes rather than standard
+ * national ones, and a failure must leave the form showing no bank options —
+ * which is honest — rather than taking out the page. What changed is WHERE
+ * the failure happens: inside a boundary, after the rest of Profile is
+ * already on screen.
+ */
+async function PayoutRecipients({
+  currencies,
+  recipients,
+}: {
+  currencies: Currency[];
+  recipients: WithdrawalRecipient[];
+}) {
+  let banks: BushaBank[] = [];
+  try {
+    banks = await getBanks();
+  } catch (err) {
+    console.error("[profile] bank list unavailable", err);
+  }
+
+  return <RecipientCard currencies={currencies} recipients={recipients} banks={banks} />;
 }

@@ -280,7 +280,12 @@ export interface RouteAvailability {
  */
 export async function listRoutesFrom(from: Currency): Promise<RouteAvailability[]> {
   try {
-    const routes = await resolveRoutesFrom(from, CURRENCY_CODES);
+    // GROUP 9a — "cached". This answers "which destinations can be picked",
+    // which is a display question: five pair lookups to grey out a select,
+    // repeated on every render of /convert and every account page. The RATE a
+    // conversion settles at comes from quoteConversion and executeConversion,
+    // both of which call resolveRoute with its default "live".
+    const routes = await resolveRoutesFrom(from, CURRENCY_CODES, "cached");
     return routes.map((r) =>
       r.available
         ? {

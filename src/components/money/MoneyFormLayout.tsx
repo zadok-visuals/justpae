@@ -34,23 +34,23 @@ import { Card } from "@/components/ui/Primitives";
  * the button that agrees to them.
  *
  * ──────────────────────────────────────────────────────────────────────────
- * ON MOBILE NOTHING CHANGES, AND THAT COSTS A `hidden lg:block`
+ * ON MOBILE THE SUMMARY STACKS UNDER THE FORM — ONCE
  *
- * The aside is `hidden lg:block`, and each form keeps its existing review
- * card inline wrapped in `lg:hidden`. Two renders of the same figures, one of
- * them displayed — which looks like duplication worth avoiding until you try
- * the alternative.
+ * The aside is an ordinary grid child, so below 1024px it simply follows the
+ * form in one column. That matters beyond tidiness: rendering the panel twice
+ * (once `lg:hidden` inline, once in the aside) would put two copies of every
+ * heading in the document, and a test or a screen reader asking for "Today's
+ * rates" would find two of them.
  *
- * The alternative is to render the review card ONLY here, which on a phone
- * (where this component stacks) would put it AFTER the submit button. On a
- * deposit that means "Generate account details" sitting above the fee the
- * user has not read yet; on a withdrawal it means confirming before seeing
- * what arrives. The review step belongs before the commit on a phone and
- * beside it on a desktop, and those are genuinely different positions in the
- * document, not one position styled two ways.
- *
- * `display: none` also removes the hidden copy from the accessibility tree,
- * so a screen-reader user hears each figure once at either size.
+ * THE ONE EXCEPTION is the review card — the fee, the rate, what actually
+ * arrives. That genuinely belongs in two different positions rather than one
+ * position styled two ways: on a phone it has to come BEFORE the button that
+ * commits to it ("Generate account details" above an unread fee is how a
+ * transfer goes out for the wrong amount), and on a desktop it belongs beside
+ * that button in the sticky column. So each form keeps its review card inline
+ * under `lg:hidden` and puts the same node into this slot under
+ * `hidden lg:block`. `display: none` removes whichever copy is inactive from
+ * the accessibility tree, so each figure is announced once at either size.
  */
 export function MoneyFormLayout({
   children,
@@ -69,9 +69,7 @@ export function MoneyFormLayout({
     <div className="grid gap-6 lg:grid-cols-[minmax(0,34rem)_minmax(0,1fr)] lg:items-start lg:gap-8">
       <div className="min-w-0">{children}</div>
       {summary && (
-        <aside className="hidden min-w-0 space-y-4 lg:sticky lg:top-6 lg:block">
-          {summary}
-        </aside>
+        <aside className="min-w-0 space-y-4 lg:sticky lg:top-6">{summary}</aside>
       )}
     </div>
   );

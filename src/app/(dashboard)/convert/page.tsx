@@ -4,7 +4,7 @@ import { ConvertForm } from "@/components/convert/ConvertForm";
 import { EmptyState } from "@/components/ui/Primitives";
 import { LiveRefresh } from "@/components/ui/LiveRefresh";
 import { listRoutesFrom } from "@/lib/actions/convert";
-import { resolveRateBoard } from "@/lib/rates/display";
+import { RateBoardSection } from "@/components/rates/RateBoardSection";
 import { parseCurrencyParam, preselectCurrency } from "@/lib/accounts/preselect";
 import { startRouteTiming } from "@/lib/perf/timing";
 import type { Wallet } from "@/lib/types/database";
@@ -73,13 +73,19 @@ export default async function ConvertPage(props: PageProps<"/convert">) {
   // refreshes the page, which re-resolves for the new source — the
   // alternative is resolving every source's routes up front, which is one
   // live provider lookup per pair on every page view.
-  const [routes, rateBoard] = await Promise.all([
-    listRoutesFrom(from),
-    // Both sides of every local pair, from the same resolver Home's strip and
-    // the account pages use — so "Buy USDT at" means the same number on all
-    // three, and the one shown here is the one this form will quote.
-    resolveRateBoard(),
-  ]);
+  //
+  // GROUP 9b. The rate BOARD is no longer awaited here. It used to sit in
+  // this Promise.all, so the form's own fields waited on six provider round
+  // trips for a reference table beside them — and resolveRateBoard is the
+  // slowest thing this page does by an order of magnitude.
+  //
+  // The route table stays, because it is not reference material: it decides
+  // which destinations the select can offer and which pair the form opens on,
+  // and a form whose pickers arrive a beat after the page is a form a user
+  // can type the wrong thing into. Group 9a also put it behind the 30-second
+  // display cache, so it is a memory read for all but the first visitor in
+  // any half-minute.
+  const routes = await listRoutesFrom(from);
 
   endRouteTiming();
 
@@ -95,7 +101,12 @@ export default async function ConvertPage(props: PageProps<"/convert">) {
         wallets={list}
         routes={routes}
         hasPin={hasPin === true}
-        rateBoard={rateBoard}
+        /* Both sides of every local pair, from the same resolver Home's strip
+           and the account pages use — so "Buy USDT at" means the same number
+           on all three, and the one shown here is the one this form will
+           quote. Handed over as a streamed Server Component rather than as
+           resolved prices: see the rateBoard prop's own note. */
+        rateBoard={<RateBoardSection />}
         initialFrom={from}
         // Group 4d: "Convert to CNY" on the yuan account page arrives here as
         // ?to=CNY, and must open with yuan already on the destination side.

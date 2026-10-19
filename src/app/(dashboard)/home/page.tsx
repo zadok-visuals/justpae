@@ -2,13 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { WalletCards } from "@/components/home/WalletCards";
 import { QuickActions } from "@/components/home/QuickActions";
-import { BuySellRates } from "@/components/rates/BuySellRates";
-import { ActivityRows } from "@/components/transactions/ActivityRows";
-import { SectionHeader, EmptyState } from "@/components/ui/Primitives";
-import { LiveRefresh } from "@/components/ui/LiveRefresh";
+import { RateBoardSection } from "@/components/rates/RateBoardSection";
+import { RecentActivitySection } from "@/components/transactions/RecentActivitySection";
+import { SectionHeader } from "@/components/ui/Primitives";
 import { KycStatusBanner } from "@/components/kyc/KycStatusBanner";
-import { fetchRecentActivity } from "@/lib/transactions";
-import { resolveRateBoard } from "@/lib/rates/display";
 import { startRouteTiming } from "@/lib/perf/timing";
 import type { Wallet } from "@/lib/types/database";
 import { requireSessionUser } from "@/lib/auth/session";
@@ -18,12 +15,33 @@ export const metadata = { title: "Home" };
 /**
  * Home.
  *
- * Accounts and Home are MERGED — there is no separate accounts page. A second
- * screen listing the same wallets with the same balances is a navigation item
- * that answers a question this page has already answered.
+ * Nothing is cached: a balance is exactly the thing a stale render must never
+ * show.
  *
- * Nothing is cached: a balance and a live rate are exactly the two things a
- * stale render must never show.
+ * ──────────────────────────────────────────────────────────────────────────
+ * GROUP 9b — WHAT THIS PAGE AWAITS, AND WHAT IT NO LONGER AWAITS
+ *
+ * It used to open the same way most Next pages do:
+ *
+ *   await Promise.all([profile, wallets, recentActivity, resolveRateBoard()])
+ *
+ * Parallel, which is right, and still wrong — because Promise.all finishes
+ * when its SLOWEST member does. resolveRateBoard is six provider round trips
+ * across the public internet; the wallets read is one Postgres query in the
+ * same city as the function. So the user's balance, which was ready in single
+ * digits of milliseconds, sat waiting on a rate board that nothing on the
+ * screen depends on, on every single render.
+ *
+ * Now the page awaits only what it cannot draw without: the session, the
+ * profile (for the KYC banner and the greeting) and the wallets. The rate
+ * board and the activity list own their own reads inside Suspense boundaries
+ * and arrive in later chunks, into skeletons already holding their space.
+ *
+ * The two remaining awaits stay in one Promise.all rather than becoming two
+ * more boundaries. Both are single indexed Postgres reads next door to the
+ * function, and the KYC banner and the greeting are the frame of the page
+ * rather than content inside it — streaming the title of a page is motion for
+ * its own sake.
  */
 export const dynamic = "force-dynamic";
 
@@ -32,18 +50,13 @@ export default async function HomePage() {
   const supabase = await createClient();
   const user = await requireSessionUser();
 
-  const [{ data: profile }, { data: wallets }, recent, rates] = await Promise.all([
+  const [{ data: profile }, { data: wallets }] = await Promise.all([
     supabase
       .from("profiles")
       .select("full_name, phone, kyc_status, kyc_rejection_reason, kyc_type, country")
       .eq("id", user.id)
       .maybeSingle(),
     supabase.from("wallets").select("*").eq("user_id", user.id),
-    fetchRecentActivity(supabase, user.id, 5),
-    // One resolver behind Home, /convert and the account pages — see
-    // src/lib/rates/display.ts. A pair that fails degrades to "Unavailable"
-    // for that currency alone rather than failing this render.
-    resolveRateBoard(),
   ]);
 
   endRouteTiming();
@@ -73,41 +86,22 @@ export default async function HomePage() {
       title={firstName ? `Hello, ${firstName}` : "Home"}
       aside={
         <>
-          <section>
-            <SectionHeader title="Today's rates" />
-            {/* The rate board gets its "stacked" variant in this column and
-                keeps the horizontal "strip" on a phone. A 22rem column has
-                room for the full two-line form, and a swipe rail inside a
-                column nobody is swiping is a worse control than a list. */}
-            <div className="lg:hidden">
-              <BuySellRates rates={rates} variant="strip" />
-            </div>
-            <div className="hidden lg:block">
-              <BuySellRates rates={rates} />
-            </div>
-            {/* The strip used to be rendered once and left there. Leave this
-                screen open for an hour and the rate was an hour old, looking
-                exactly as authoritative as a live one. */}
-            <div className="mt-1.5">
-              <LiveRefresh showTimestamp label="Rates updated" />
-            </div>
-          </section>
+          {/* The rate board gets its "stacked" variant in this column and
+              keeps the horizontal "strip" on a phone. A 22rem column has room
+              for the full two-line form, and a swipe rail inside a column
+              nobody is swiping is a worse control than a list.
 
-          <section>
-            <SectionHeader
-              title="Recent activity"
-              action={{ href: "/transactions", label: "See all" }}
-            />
-            {recent.length === 0 ? (
-              <EmptyState
-                title="Nothing here yet"
-                body="Your deposits, conversions, withdrawals and bill payments will show up here."
-                action={{ href: "/convert", label: "Make your first conversion" }}
-              />
-            ) : (
-              <ActivityRows rows={recent} grouped={false} />
-            )}
-          </section>
+              Two boundaries rather than one shared one, so a slow provider
+              cannot hold up the activity list and a slow activity query
+              cannot hold up the prices. */}
+          <div className="lg:hidden">
+            <RateBoardSection variant="strip" />
+          </div>
+          <div className="hidden lg:block">
+            <RateBoardSection />
+          </div>
+
+          <RecentActivitySection userId={user.id} seeAllHref="/transactions" />
         </>
       }
     >
