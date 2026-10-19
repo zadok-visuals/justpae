@@ -8,6 +8,7 @@ import {
   markAllNotificationsRead,
   type NotificationListItem,
 } from "@/lib/actions/notifications";
+import { HEADER_ICON_BUTTON_CLASS } from "@/lib/ui/escapeControl";
 
 /**
  * The notification bell and its dropdown.
@@ -95,7 +96,11 @@ export function NotificationBell({ initialUnreadCount }: { initialUnreadCount: n
         onClick={handleToggle}
         aria-expanded={open}
         aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
-        className="relative flex size-11 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+        // GROUP 5c — see HEADER_ICON_BUTTON_CLASS. Gold, 44px, with a pressed
+        // state: this one opens a dropdown rather than navigating, so the
+        // acknowledgement on press is the only feedback before the panel
+        // paints.
+        className={HEADER_ICON_BUTTON_CLASS}
       >
         <BellIcon className="size-5" />
         {unread > 0 && (

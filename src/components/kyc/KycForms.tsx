@@ -7,6 +7,7 @@ import { Button, SubmitButton } from "@/components/ui/Button";
 import { Banner, Card } from "@/components/ui/Primitives";
 import { StepIndicator } from "@/components/ui/StepIndicator";
 import { UnsavedChangesGuard } from "@/components/ui/UnsavedChangesGuard";
+import { useGoBack } from "@/components/ui/BackButton";
 import { KYC_BUCKET } from "@/lib/kyc/constants";
 import { submitIndividualKyc, submitBusinessKyc } from "@/lib/actions/kyc";
 import { GOVERNMENT_ID_TYPES, type KycIdField } from "@/lib/countries";
@@ -66,6 +67,42 @@ function WizardStep({
   );
 }
 
+/**
+ * GROUP 5a — the Back that used to go nowhere.
+ *
+ * ──────────────────────────────────────────────────────────────────────────
+ * THE BUG (QA 4.1)
+ *
+ * Both ID pages rendered their OWN `← Back` link above the wizard, pointing
+ * at /onboarding/kyc. That page redirects straight back:
+ *
+ *   if (profile?.phone && profile?.kyc_type) redirect(…/individual)
+ *
+ * and both conditions are true for anyone who has reached the ID form,
+ * because reaching it is what sets them. So the link was a no-op that cost a
+ * round trip — and it sat directly above this component's own Back, which
+ * worked, giving one screen two Back controls with different behaviour and
+ * the broken one on top.
+ *
+ * ──────────────────────────────────────────────────────────────────────────
+ * THE FIX: ONE BACK, WHICH ALWAYS DOES THE OBVIOUS THING
+ *
+ * The page-level links are gone. This control is the only Back in the wizard,
+ * it is present on every step, and what it does depends on where you are:
+ *
+ *   step > 1   the previous step of the form, as before
+ *   step 1     out of the wizard, to wherever the user came from
+ *
+ * Step 1 going "out" is what the brief asks for and it has to be history-
+ * based rather than a fixed href, because there are two real routes in: the
+ * KYC banner on /home, and stage one at /onboarding/kyc for somebody
+ * completing it in one sitting. A hard-coded destination is wrong for one of
+ * them whichever one is picked. useGoBack walks the actual history and falls
+ * back to /home — never to /onboarding/kyc, which is what made this a loop.
+ *
+ * UnsavedChangesGuard still covers the destructive half: leaving step 1 with
+ * an uploaded ID on screen prompts first.
+ */
 function WizardNav({
   step,
   total,
@@ -86,15 +123,21 @@ function WizardNav({
   pendingLabel: string;
 }) {
   const isLast = step === total;
+  // /home, not /onboarding/kyc. See the note above — the old destination is
+  // the one that redirected back here.
+  const leaveWizard = useGoBack("/home");
 
   return (
     <div className="space-y-2">
       <div className="flex gap-3">
-        {step > 1 && (
-          <Button type="button" variant="secondary" size="lg" onClick={onBack}>
-            Back
-          </Button>
-        )}
+        <Button
+          type="button"
+          variant="secondary"
+          size="lg"
+          onClick={step > 1 ? onBack : leaveWizard}
+        >
+          Back
+        </Button>
 
         {isLast ? (
           <SubmitButton disabled={!canContinue} pendingLabel={pendingLabel}>

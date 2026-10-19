@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { IndividualKycForm } from "@/components/kyc/KycForms";
@@ -35,13 +34,12 @@ export default async function IndividualKycPage() {
 
   return (
     <div className="space-y-5">
-      <Link
-        href="/onboarding/kyc"
-        className="inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground"
-      >
-        ← Back
-      </Link>
-
+      {/* GROUP 5a. The `← Back` link that was here pointed at
+          /onboarding/kyc, which redirects straight back to this page for
+          anyone who has reached it — a no-op costing a round trip (QA 4.1),
+          sitting directly above the wizard's own working Back button. There
+          is now exactly one Back on this screen: WizardNav's, which steps
+          backwards through the form and leaves the wizard from step 1. */}
       <div>
         <h1 className="font-display text-2xl font-semibold text-foreground">Submit your ID</h1>
         <p className="mt-1 text-sm text-muted-foreground">

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdminRoleOnly } from "@/lib/auth/admin";
 import { Wordmark } from "@/components/layout/Mark";
+import { BACK_BUTTON_CLASS } from "@/lib/ui/escapeControl";
 
 const TABS = [
   { href: "/admin/kyc", label: "Verification" },
@@ -60,10 +61,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 </span>
                 <span className="max-w-40 truncate">{actor.email}</span>
               </Link>
+              {/* GROUP 5c — the brand gold, with hover and pressed states.
+                  An admin's only way out of the admin area was grey text
+                  indistinguishable from the email address beside it. */}
               <Link
                 href="/home"
                 // -my-2 keeps the 44px target from growing the header's height.
-                className="-my-2 inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground"
+                className={`-my-2 ${BACK_BUTTON_CLASS}`}
               >
                 Back to app
               </Link>

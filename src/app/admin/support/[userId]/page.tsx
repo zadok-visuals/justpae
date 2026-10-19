@@ -1,4 +1,3 @@
-import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { requireAdminUser } from "@/lib/auth/admin";
@@ -7,6 +6,7 @@ import { Card } from "@/components/ui/Primitives";
 import { SupportReplyForm } from "@/components/admin/SupportReplyForm";
 import { loadSupportThreadForAdmin } from "@/lib/actions/support";
 import { buildThread } from "@/lib/support/thread";
+import { BackButton } from "@/components/ui/BackButton";
 
 export const metadata = { title: "Support thread · Admin" };
 export const dynamic = "force-dynamic";
@@ -41,12 +41,15 @@ export default async function AdminSupportThreadPage(
   return (
     <div className="space-y-5">
       <div>
-        <Link
-          href="/admin/support"
-          className="-my-2 mb-1 inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground"
-        >
-          ← All threads
-        </Link>
+        {/* GROUP 5b. Was a grey link hard-coded to /admin/support, which is
+            right for an admin who clicked through from the queue and wrong
+            for one who opened a thread from a notification. The queue is now
+            the fallback; the previous page is the destination. */}
+        <BackButton
+          fallbackHref="/admin/support"
+          label="All threads"
+          className="-my-2 mb-1"
+        />
         <h1 className="font-display text-2xl font-semibold text-foreground">
           {profile.full_name || profile.email}
         </h1>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PublicSupportButton } from "@/components/support/PublicSupportButton";
 import { Mark } from "@/components/layout/Mark";
+import { BACK_BUTTON_CLASS } from "@/lib/ui/escapeControl";
 
 /**
  * The shell both legal pages share: the mark, a title, a last-updated date, the
@@ -64,11 +65,17 @@ export function LegalPage({
         </div>
 
         <div className="mt-12 border-t border-border pt-6">
-          <Link
-            href="/"
-            className="inline-flex min-h-11 items-center text-sm font-medium text-primary"
-          >
-            ← Back to justpae
+          {/* GROUP 5b/5g — the one place a hard link is the RIGHT answer, and
+              the reason it keeps one. Group 4g made every money checkout link
+              /terms and /privacy with target="_blank", so a reader on this
+              page has very often arrived in a brand-new tab with no history
+              at all. router.back() there does nothing — the looping back
+              button 5d tests for — and the landing page is the correct
+              destination either way. So this stays a `<Link href="/">`,
+              styled from the shared escape-control class. */}
+          <Link href="/" className={BACK_BUTTON_CLASS}>
+            <span aria-hidden="true">←</span>
+            Back to justpae
           </Link>
         </div>
       </main>

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { BusinessKycForm } from "@/components/kyc/KycForms";
@@ -31,13 +30,9 @@ export default async function BusinessKycPage() {
 
   return (
     <div className="space-y-5">
-      <Link
-        href="/onboarding/kyc"
-        className="inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground"
-      >
-        ← Back
-      </Link>
-
+      {/* GROUP 5a — removed for the same reason as the individual form's:
+          /onboarding/kyc redirects straight back here. The wizard's own Back
+          is the one control, and from step 1 it leaves the wizard. */}
       <div>
         <h1 className="font-display text-2xl font-semibold text-foreground">Verify your business</h1>
         <p className="mt-1 text-sm text-muted-foreground">

@@ -179,6 +179,84 @@ test.describe("a verified account", () => {
     await expect(qr).toHaveAttribute("src", /^data:image\//);
   });
 
+  /**
+   * GROUP 5d — the back buttons behind sign-in, with the three properties the
+   * brief names. The public half (auth shells, legal pages) is in
+   * back.public.spec.ts, which runs without credentials.
+   */
+  test.describe("back buttons", () => {
+    const BACK = /^←?\s*(back|accounts|home|activity|profile)/i;
+
+    test("arriving from another page returns to that page", async ({ page }) => {
+      // Home → a wallet card → Back. The fallback for /accounts/NGN is
+      // /accounts, so landing on /home instead of /accounts is the proof that
+      // history was walked rather than the fallback being used.
+      await page.goto("/home");
+      await page.locator("main").getByRole("link", { name: /NGN/ }).first().click();
+      await expect(page).toHaveURL(/\/accounts\/NGN/);
+
+      await page.getByRole("button", { name: BACK }).first().click();
+      await expect(page).toHaveURL(/\/home/);
+    });
+
+    test("arriving directly falls back to the logical parent", async ({ page }) => {
+      // A deep link, which is how a push notification or a shared URL arrives.
+      // There is no history, so Back must use logicalParent: /accounts.
+      await page.goto("/accounts/NGN");
+      await page.getByRole("button", { name: BACK }).first().click();
+      await expect(page).toHaveURL(/\/accounts(\?|$)/);
+    });
+
+    test("the back button is shown on desktop too, not only on mobile", async ({ page }) => {
+      // It was `sm:hidden`. The viewport here is Desktop Chrome's default.
+      await page.goto("/accounts/NGN");
+      const back = page.getByRole("button", { name: BACK }).first();
+      await expect(back).toBeVisible();
+      const box = await back.boundingBox();
+      // GROUP 5c: a 44px target.
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+    });
+
+    test("no back button loops", async ({ page }) => {
+      for (const path of [
+        "/accounts/NGN",
+        "/accounts/GHS",
+        "/deposit",
+        "/withdraw",
+        "/convert",
+        "/pay-to-china",
+        "/receive",
+        "/support",
+      ]) {
+        await page.goto(path);
+        const back = page.getByRole("button", { name: BACK }).first();
+        if (!(await back.count())) continue;
+        await back.click();
+        // Whatever it chose, it must not be the page we were already on.
+        await expect(page, `${path}'s back button returned to ${path}`).not.toHaveURL(
+          new RegExp(`${path.replace(/[/?]/g, "\\$&")}$`),
+        );
+      }
+    });
+
+    /**
+     * GROUP 5a / QA 4.1. The ID form's `← Back` pointed at /onboarding/kyc,
+     * which redirects straight back to the ID form for anyone who has reached
+     * it. The page-level link is gone; the wizard's own Back is the control,
+     * and from step 1 it must leave the wizard entirely.
+     */
+    test("the KYC wizard's Back leaves the wizard from step 1", async ({ page }) => {
+      await page.goto("/onboarding/kyc/individual");
+      // The redirect guard may send a verified fixture elsewhere; only assert
+      // when the form is genuinely on screen.
+      if (!/\/onboarding\/kyc\/individual/.test(page.url())) return;
+
+      await page.getByRole("button", { name: /^back$/i }).click();
+      await expect(page).not.toHaveURL(/\/onboarding\/kyc\/individual/);
+      await expect(page).not.toHaveURL(/\/onboarding\/kyc$/);
+    });
+  });
+
   test("no screen names a payment provider", async ({ page }) => {
     for (const path of ["/home", "/accounts", "/convert", "/deposit", "/withdraw", "/transactions", "/profile"]) {
       await page.goto(path);

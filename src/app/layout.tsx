@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Manrope, IBM_Plex_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { siteUrl } from "@/lib/site";
+import { NavigationTracker } from "@/components/layout/NavigationTracker";
 import "./globals.css";
 
 /**
@@ -80,6 +81,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       data-scroll-behavior="smooth"
     >
       <body className="antialiased">
+        {/* GROUP 5b. Mounted here, above every route group, because it has to
+            outlive the pages it counts navigations between — a tracker inside
+            a page only ever sees the last hop. Renders nothing. */}
+        <NavigationTracker />
         {children}
         <Toaster
           position="top-center"

@@ -25,6 +25,7 @@ import {
 } from "@/components/layout/NavIcons";
 import { BILLS_ENABLED, FLIGHTS_ENABLED } from "@/lib/flags";
 import { MaintenanceBadge } from "@/components/ui/MaintenanceBadge";
+import { HEADER_ICON_BUTTON_CLASS } from "@/lib/ui/escapeControl";
 
 /**
  * The app chrome.
@@ -209,7 +210,10 @@ function SupportLink({ unread }: { unread: number }) {
     <Link
       href="/support"
       aria-label={unread > 0 ? `Support, ${unread} unread` : "Support"}
-      className="relative flex size-11 items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+      // GROUP 5c. The two corner icon buttons are what somebody reaches for
+      // when something has gone wrong, and they were muted grey with a hover
+      // that only tinted the background. Gold, 44px, pressed state included.
+      className={HEADER_ICON_BUTTON_CLASS}
     >
       <SupportIcon className="size-5" />
       {unread > 0 && (
