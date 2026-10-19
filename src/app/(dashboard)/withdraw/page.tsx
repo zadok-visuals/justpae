@@ -48,6 +48,9 @@ export default async function WithdrawPage(props: PageProps<"/withdraw">) {
       title="Withdraw"
       subtitle="Send money out to your bank, mobile money or wallet."
       back={{ href: "/home", label: "Home" }}
+      /* GROUP 6a — room for MoneyFormLayout's summary column. The form itself
+         is still capped at 34rem by that component. */
+      width="split"
     >
       <WithdrawForm
         wallets={walletList}

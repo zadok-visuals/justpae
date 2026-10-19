@@ -43,6 +43,12 @@ export default async function AdminRatesPage() {
         <SupplierRateForm rates={(supplier ?? []) as SupplierRate[]} />
       </div>
 
+      {/* GROUP 6b. The sidebar's "Margin" entry deep-links here —
+          /admin/rates#markups — because the spread we charge is configured on
+          this page and nowhere else, and giving it its own route would mean
+          two editors for one setting. `scroll-mt` clears the sticky mobile
+          top bar so the heading does not land underneath it. */}
+      <div id="markups" className="scroll-mt-20" />
       <Card>
         <h2 className="mb-3 text-base font-semibold text-foreground">Current markups</h2>
         {markups.length === 0 ? (

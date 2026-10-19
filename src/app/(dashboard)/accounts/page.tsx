@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
-import { EmptyState } from "@/components/ui/Primitives";
+import { EmptyState, SectionHeader } from "@/components/ui/Primitives";
+import { ActivityRows } from "@/components/transactions/ActivityRows";
+import { fetchRecentActivity } from "@/lib/transactions";
 import { currencyMeta, formatAmount, CURRENCIES } from "@/lib/currencies";
 import { startRouteTiming } from "@/lib/perf/timing";
 import type { Currency, Wallet } from "@/lib/types/database";
@@ -30,7 +32,16 @@ export default async function AccountsPage() {
   const supabase = await createClient();
   const user = await requireSessionUser();
 
-  const { data } = await supabase.from("wallets").select("*").eq("user_id", user.id);
+  // GROUP 6a. Two queries, in parallel, for the two columns. The recent-
+  // activity read is new and is the only thing this page gained: it is the
+  // same indexed query Home already makes, it is what makes the second column
+  // real content rather than filler, and running it alongside the wallets read
+  // costs no extra wall-clock time. Group 9b moves it behind Suspense so a
+  // slow read cannot hold up the balances.
+  const [{ data }, recent] = await Promise.all([
+    supabase.from("wallets").select("*").eq("user_id", user.id),
+    fetchRecentActivity(supabase, user.id, 6),
+  ]);
   const wallets = (data ?? []) as Wallet[];
   endRouteTiming();
 
@@ -44,6 +55,26 @@ export default async function AccountsPage() {
       title="Accounts"
       subtitle="One wallet per currency. Open one to add money, convert or withdraw."
       back={{ href: "/home", label: "Home" }}
+      /* GROUP 6a — the same two-column pattern as /home and
+         /accounts/[currency]: the thing you act on in the left column, the
+         reference beside it. Before this, a list of five rows in a 42rem
+         column was 300px of content in a 1440px window. */
+      aside={
+        <section>
+          <SectionHeader
+            title="Recent activity"
+            action={{ href: "/transactions", label: "See all" }}
+          />
+          {recent.length === 0 ? (
+            <EmptyState
+              title="Nothing here yet"
+              body="Money moving in or out of any of your wallets shows up here."
+            />
+          ) : (
+            <ActivityRows rows={recent} grouped={false} />
+          )}
+        </section>
+      }
     >
       {ordered.length === 0 ? (
         <EmptyState

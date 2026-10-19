@@ -55,6 +55,8 @@ export default async function PayToChinaPage(props: PageProps<"/pay-to-china">) 
       title="Pay to China"
       subtitle="Pay a supplier, a landlord or family in China, in yuan."
       back={{ href: "/home", label: "Home" }}
+      /* GROUP 6a — room for MoneyFormLayout's summary column. */
+      width="split"
     >
       <PayToChinaForm
         wallets={(wallets ?? []) as Wallet[]}

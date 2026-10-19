@@ -112,12 +112,44 @@ export default async function AccountPage(props: PageProps<"/accounts/[currency]
       title={`${currency} account`}
       subtitle={meta.label}
       back={{ href: "/accounts", label: "Accounts" }}
-      wide
+      /* GROUP 6a. This page invented the two-column pattern by hand, inside a
+         max-w-4xl shell, with `lg:grid-cols-2` — two equal halves, which gave
+         the reference column as much width as the primary one and capped the
+         whole thing 200px narrower than it needed. It now uses PageShell's
+         own split: 1fr + 22rem at 1200px, with the aside sticky, and the
+         mobile stacking order owned by the shell rather than by this file.
+         Home and /accounts use the identical slot, which is what makes it a
+         pattern rather than three similar grids. */
+      aside={
+        <>
+          {rates.length > 0 && (
+            <section>
+              <SectionHeader title="Today's rates" />
+              <BuySellRates rates={rates} />
+              <div className="mt-1.5">
+                <LiveRefresh showTimestamp label="Rates updated" />
+              </div>
+            </section>
+          )}
+
+          <section>
+            <SectionHeader
+              title="Recent activity"
+              action={{ href: `/transactions?currency=${currency}`, label: "See all" }}
+            />
+            {activity.rows.length === 0 ? (
+              <EmptyState
+                title={`No ${currency} activity yet`}
+                body={`Money moving in or out of your ${currency} wallet shows up here.`}
+              />
+            ) : (
+              <ActivityRows rows={activity.rows} grouped={false} />
+            )}
+          </section>
+        </>
+      }
     >
-      {/* One column on a phone, two from `lg` up. The balance, the actions and
-          the funding instructions are the column a user reads top to bottom;
-          rates and activity are the reference column beside it. */}
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+      <div>
         <div className="space-y-6">
           <section>
             <SectionHeader title="Balance" />
@@ -168,33 +200,6 @@ export default async function AccountPage(props: PageProps<"/accounts/[currency]
             <Card>
               <p className="text-sm text-muted-foreground">{howToAddMoney(currency)}</p>
             </Card>
-          </section>
-        </div>
-
-        <div className="space-y-6">
-          {rates.length > 0 && (
-            <section>
-              <SectionHeader title="Today's rates" />
-              <BuySellRates rates={rates} />
-              <div className="mt-1.5">
-                <LiveRefresh showTimestamp label="Rates updated" />
-              </div>
-            </section>
-          )}
-
-          <section>
-            <SectionHeader
-              title="Recent activity"
-              action={{ href: `/transactions?currency=${currency}`, label: "See all" }}
-            />
-            {activity.rows.length === 0 ? (
-              <EmptyState
-                title={`No ${currency} activity yet`}
-                body={`Money moving in or out of your ${currency} wallet shows up here.`}
-              />
-            ) : (
-              <ActivityRows rows={activity.rows} grouped={false} />
-            )}
           </section>
         </div>
       </div>

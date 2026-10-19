@@ -88,6 +88,8 @@ export default async function ConvertPage(props: PageProps<"/convert">) {
       title="Convert"
       subtitle="Move money between your wallets at live rates."
       back={{ href: "/home", label: "Home" }}
+      /* GROUP 6a — room for MoneyFormLayout's summary column. */
+      width="split"
     >
       <ConvertForm
         wallets={list}

@@ -76,6 +76,18 @@ export default defineConfig({
       testMatch: /.*\.responsive\.spec\.ts/,
       use: { ...devices["Desktop Chrome"], viewport: { width: 768, height: 1024 } },
     },
+    /**
+     * GROUP 6a names four widths to check — 1024, 1280, 1440 and 1920 — and
+     * two of them were missing. 1024 is the breakpoint the whole two-column
+     * layout turns on at, so it is the one width where a split can be
+     * half-applied and look broken; 1920 is where a capped container can
+     * leave the "oversized empty areas" the brief asks about.
+     */
+    {
+      name: "desktop-1024",
+      testMatch: /.*\.responsive\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1024, height: 900 } },
+    },
     {
       name: "desktop-1280",
       testMatch: /.*\.responsive\.spec\.ts/,
@@ -85,6 +97,11 @@ export default defineConfig({
       name: "desktop-1440",
       testMatch: /.*\.responsive\.spec\.ts/,
       use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+    },
+    {
+      name: "desktop-1920",
+      testMatch: /.*\.responsive\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1920, height: 1080 } },
     },
   ],
 

@@ -44,6 +44,10 @@ export default async function DepositPage(props: PageProps<"/deposit">) {
       title="Add money"
       subtitle="Send a transfer and we'll credit your wallet."
       back={{ href: "/home", label: "Home" }}
+      /* GROUP 6a. The form itself stays 34rem wide — MoneyFormLayout caps it
+         — and this is what gives the summary column beside it somewhere to
+         live. Without it the shell's 42rem would crush the split. */
+      width="split"
     >
       <DepositForm
         wallets={list}

@@ -28,6 +28,7 @@ import {
 } from "@/lib/currencies";
 import type { Currency, Wallet } from "@/lib/types/database";
 import { unavailableSuffix } from "@/lib/ui/unavailability";
+import { MoneyFormLayout, WhatHappensNext } from "@/components/money/MoneyFormLayout";
 
 /**
  * /convert.
@@ -322,7 +323,59 @@ function ConvertFormFields({
     return rows;
   }
 
+  /**
+   * GROUP 6a — the summary column.
+   *
+   * Three things, in the order somebody reads them: the live quote (rate,
+   * spread, how long it is held), today's board for context, and what the
+   * product is about to do. Each is rendered inline under `lg:hidden` as
+   * well, in the position it already occupied — the quote above the submit
+   * button, the board after the form — because on a phone the quote has to
+   * come before the thing that commits to it. See MoneyFormLayout.
+   */
+  const quoteSummaryNode =
+    activeQuote && !quoting ? (
+      <QuoteSummary quote={activeQuote} secondsLeft={secondsLeft} expired={expired} />
+    ) : null;
+
+  const rateBoardNode =
+    rateBoard.length > 0 ? (
+      <section>
+        <SectionHeader title="Today's rates" />
+        <BuySellRates rates={rateBoard} />
+      </section>
+    ) : null;
+
+  const nextSteps = (
+    <WhatHappensNext
+      steps={[
+        "Type an amount in either field and we price it on the server — the rate you see is the rate that binds, held for the countdown above.",
+        // CNY is priced off a size ladder rather than a single rate, which
+        // is the one thing about this screen a user cannot work out by
+        // looking at it. Detected from the pair, not from the route's shape:
+        // RouteAvailability (what this component is given) deliberately
+        // carries availability and a rate and nothing about the plumbing.
+        from === "CNY" || to === "CNY"
+          ? "Yuan is priced from the size of the order, so the rate improves as the amount grows. Confirming moves both balances at once."
+          : isUsdPair(from, to)
+            ? "Dollar pairs have no route on this account yet, so this one cannot be priced at all."
+            : `Confirming debits your ${from} wallet and credits your ${to} wallet. There is no waiting period.`,
+        "The full breakdown — both amounts, the rate and our spread — stays on the transaction afterwards, so you can check it later.",
+      ]}
+      footnote="If a conversion fails part way through, the money goes back to the wallet it came from and we tell you why."
+    />
+  );
+
   return (
+    <MoneyFormLayout
+      summary={
+        <>
+          {quoteSummaryNode}
+          {rateBoardNode}
+          {nextSteps}
+        </>
+      }
+    >
     <>
     <form
       ref={formRef}
@@ -457,9 +510,7 @@ function ConvertFormFields({
         </Banner>
       )}
 
-      {activeQuote && !quoting && (
-        <QuoteSummary quote={activeQuote} secondsLeft={secondsLeft} expired={expired} />
-      )}
+      <div className="lg:hidden">{quoteSummaryNode}</div>
 
       {quoting && (
         <p aria-live="polite" className="text-center text-sm text-muted-foreground">
@@ -478,17 +529,16 @@ function ConvertFormFields({
       </SubmitButton>
     </form>
 
-    {/* The board, after the form. Two prices per local currency, both the
-        customer's own with the spread already in them — so the number here
-        and the number the quote above settles at are the same number read
-        two different ways, rather than a headline rate that quietly turns
-        into something worse at submit. */}
-    {rateBoard.length > 0 && (
-      <section className="mt-6">
-        <SectionHeader title="Today's rates" />
-        <BuySellRates rates={rateBoard} />
-      </section>
-    )}
+    {/* The board, after the form — on a phone. Two prices per local currency,
+        both the customer's own with the spread already in them, so the number
+        here and the number the quote settles at are the same number read two
+        different ways rather than a headline rate that quietly turns into
+        something worse at submit. At `lg` it is in the summary column, where
+        a reference table belongs. */}
+    <div className="mt-6 space-y-6 lg:hidden">
+      {rateBoardNode}
+      {nextSteps}
+    </div>
 
     <ConfirmDialog
       open={confirm.open}
@@ -513,6 +563,7 @@ function ConvertFormFields({
       }
     />
     </>
+    </MoneyFormLayout>
   );
 }
 

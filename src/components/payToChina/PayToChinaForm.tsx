@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { AmountInput, formatAmountInput, parseAmount } from "@/components/ui/AmountInput";
 import { PinField } from "@/components/ui/PinField";
 import { SubmitButton } from "@/components/ui/Button";
-import { Banner, Card, SectionHeader } from "@/components/ui/Primitives";
+import { Banner, Card, DetailRow, SectionHeader } from "@/components/ui/Primitives";
 import { SelectField, TextField } from "@/components/ui/Field";
 import { UploadField } from "@/components/ui/UploadField";
 import { ConfirmDialog, useConfirm, type ConfirmRow } from "@/components/ui/ConfirmDialog";
@@ -22,6 +22,7 @@ import type {
   SavedPayToChinaRecipient,
   Wallet,
 } from "@/lib/types/database";
+import { MoneyFormLayout, WhatHappensNext } from "@/components/money/MoneyFormLayout";
 
 /**
  * Pay to China.
@@ -186,7 +187,69 @@ function PayToChinaFields({
     );
   }
 
+  /**
+   * GROUP 6a — the summary column.
+   *
+   * The yuan figure, which is the only number on this screen the customer
+   * actually cares about (the invoice is in yuan; the naira is a
+   * consequence), plus the honest account of how this payment is settled.
+   *
+   * The sticky column earns its place here more than on any other money
+   * form: this one is three cards, a QR upload and a PIN, so on a laptop the
+   * amount field is off screen by the time the user reaches the submit
+   * button and the figure they are committing to had scrolled away with it.
+   */
+  const amountsCard = (
+    <Card>
+      <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        This payment
+      </h2>
+      <DetailRow label="You pay">
+        {amount > 0 ? formatAmount(sourceCurrency, amount) : "—"}
+      </DetailRow>
+      <DetailRow label="They receive">
+        {estimating ? (
+          <span className="text-muted-foreground">Working it out…</span>
+        ) : cnyAmount != null ? (
+          <strong>{formatAmount("CNY", cnyAmount)}</strong>
+        ) : (
+          "—"
+        )}
+      </DetailRow>
+      <DetailRow label="Paid by">
+        {METHODS.find((m) => m.value === method)?.label ?? method}
+      </DetailRow>
+      {sourceCurrency !== "CNY" && cnyAmount != null && (
+        <p className="pt-2 text-xs text-muted-foreground">
+          The yuan is bought as the payment goes out, so we confirm the exact figure when you
+          submit.
+        </p>
+      )}
+    </Card>
+  );
+
+  const nextSteps = (
+    <WhatHappensNext
+      steps={[
+        sourceCurrency === "CNY"
+          ? "You confirm with your PIN, and the yuan comes off your CNY balance."
+          : `You confirm with your PIN. The amount is held off your ${sourceCurrency} balance straight away, and the yuan is bought at the rate you were shown.`,
+        "Our team pays your recipient by hand — this one is not automated, and it is not instant.",
+        "You get a notification and an email at every step, and the payment's own screen shows where it has got to.",
+      ]}
+      footnote="If the payment cannot be made, the full amount goes back into the wallet it came from."
+    />
+  );
+
   return (
+    <MoneyFormLayout
+      summary={
+        <>
+          {amountsCard}
+          {nextSteps}
+        </>
+      }
+    >
     <>
       <form
         ref={formRef}
@@ -270,10 +333,16 @@ function PayToChinaFields({
 
           {/* The number the customer actually cares about, directly under the
               one they typed. An invoice is in yuan; the naira is a
-              consequence. */}
+              consequence.
+
+              GROUP 6a: below 1024px only. At `lg` the same figure is in the
+              sticky summary column beside the field, which is visible at the
+              same time and does not need repeating here — and a form this
+              long (three cards, a QR upload and a PIN) is exactly the case a
+              sticky summary exists for. */}
           <div
             aria-live="polite"
-            className="rounded-lg border border-border bg-secondary px-3 py-2.5"
+            className="rounded-lg border border-border bg-secondary px-3 py-2.5 lg:hidden"
           >
             {estimating ? (
               <p className="text-sm text-muted-foreground">Working out the yuan…</p>
@@ -420,6 +489,9 @@ function PayToChinaFields({
         <SubmitButton disabled={blocked} pendingLabel="Sending…">
           {cnyAmount != null ? `Send ${formatAmount("CNY", cnyAmount)}` : "Send to China"}
         </SubmitButton>
+
+        {/* The panel inline on a phone, where there is no second column. */}
+        <div className="lg:hidden">{nextSteps}</div>
       </form>
 
       <ConfirmDialog
@@ -438,6 +510,7 @@ function PayToChinaFields({
         }
       />
     </>
+    </MoneyFormLayout>
   );
 }
 

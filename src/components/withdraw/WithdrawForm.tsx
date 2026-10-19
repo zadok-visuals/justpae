@@ -15,6 +15,7 @@ import { currencyMeta, formatAmount } from "@/lib/currencies";
 import { withdrawAvailability } from "@/lib/accounts/actions";
 import { unavailableSuffix, type UnavailableKind } from "@/lib/ui/unavailability";
 import { LegalReminder } from "@/components/ui/LegalReminder";
+import { MoneyFormLayout, WhatHappensNext } from "@/components/money/MoneyFormLayout";
 import type { Currency, Wallet, WithdrawalRecipient } from "@/lib/types/database";
 
 /**
@@ -269,7 +270,46 @@ function WithdrawFormFields({
   const blocked =
     !hasPin || amount <= 0 || insufficient || pin.length < 4 || belowMinimum;
 
+  // GROUP 6a — the summary column's live half. Same node rendered inline
+  // under `lg:hidden` below; see MoneyFormLayout for why the review step is
+  // in two document positions rather than one styled two ways.
+  const feeCard = activeRouting ? (
+    <Card>
+      <DetailRow label="Amount">{formatAmount(currency, amount)}</DetailRow>
+      <DetailRow label="Fee">{formatAmount(currency, activeRouting.fee)}</DetailRow>
+      <DetailRow label="You'll receive">
+        <strong>{formatAmount(currency, activeRouting.netAmount)}</strong>
+      </DetailRow>
+    </Card>
+  ) : null;
+
+  const nextSteps = (
+    <WhatHappensNext
+      steps={[
+        "You confirm the amount and your PIN. Nothing moves until you do.",
+        // The honest answer, from the SAME evaluator the payout path uses, so
+        // this cannot promise instant and then queue it. Before a preview has
+        // landed it says both, rather than guessing one.
+        activeRouting === null
+          ? "We check the amount against your payout channel. Some withdrawals go straight out; larger ones are reviewed by a person first, and the screen tells you which before you confirm."
+          : activeRouting.automated
+            ? "It goes straight out to your saved destination. You'll get an email and a notification when it lands."
+            : "A person reviews this one before it goes out. The amount is held off your balance in the meantime, so it cannot be spent twice.",
+        "If the payout fails, the full amount goes back into your wallet and we tell you why.",
+      ]}
+      footnote="Changing your payout destination holds withdrawals to the new one for review for 24 hours."
+    />
+  );
+
   return (
+    <MoneyFormLayout
+      summary={
+        <>
+          {feeCard}
+          {nextSteps}
+        </>
+      }
+    >
     <>
     <form
       ref={formRef}
@@ -397,15 +437,11 @@ function WithdrawFormFields({
 
       {/* The fee and what actually arrives, BEFORE the confirmation — so the
           dialog confirms a figure the user has already seen rather than
-          springing it on them. */}
-      {activeRouting && (
-        <Card>
-          <DetailRow label="Fee">{formatAmount(currency, activeRouting.fee)}</DetailRow>
-          <DetailRow label="You'll receive">
-            {formatAmount(currency, activeRouting.netAmount)}
-          </DetailRow>
-        </Card>
-      )}
+          springing it on them.
+
+          GROUP 6a: inline below 1024px only, where it has to sit above the
+          button. The identical card is in the summary column at `lg`. */}
+      <div className="lg:hidden">{feeCard}</div>
 
       {hasPin && <PinField value={pin} onValueChange={setPin} />}
 
@@ -431,6 +467,9 @@ function WithdrawFormFields({
           the confirmation dialog below, which is the only thing between this
           button and money leaving. */}
       <LegalReminder />
+
+      {/* The panel inline on a phone, where there is no second column. */}
+      <div className="lg:hidden">{nextSteps}</div>
     </form>
 
     <ConfirmDialog
@@ -483,5 +522,6 @@ function WithdrawFormFields({
       }
     />
     </>
+    </MoneyFormLayout>
   );
 }

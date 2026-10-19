@@ -19,6 +19,7 @@ import type { Currency, Wallet } from "@/lib/types/database";
 import { unavailableSuffix, type UnavailableKind } from "@/lib/ui/unavailability";
 import { LegalReminder } from "@/components/ui/LegalReminder";
 import { DepositAddressQr, networkLabel } from "@/components/deposit/DepositAddressQr";
+import { MoneyFormLayout, WhatHappensNext } from "@/components/money/MoneyFormLayout";
 
 /**
  * GROUP 4f — the heading over the reason, matched to the reason.
@@ -129,7 +130,56 @@ export function DepositForm({
     );
   }
 
+  // GROUP 6a — the summary column. The quote card is the same markup rendered
+  // inline below under `lg:hidden`; see MoneyFormLayout for why the review
+  // step is genuinely in two different places rather than one place styled
+  // twice.
+  const quoteCard = quoteState.quoteId ? (
+    <Card>
+      <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        Review
+      </h2>
+      {/* The provider's own quoted source_amount, NOT the typed amount.
+          For a percentage-fee currency the two differ — the provider
+          grosses the transfer up to cover its fee — and showing the
+          typed figure here is what made these three numbers fail to add
+          up. See quoteForDesiredNetDeposit in actions/deposits.ts. */}
+      <DetailRow label="You transfer">
+        {formatAmount(currency, Number(quoteState.grossAmount ?? quoteState.amount ?? 0))}
+      </DetailRow>
+      <DetailRow label="Deposit fee">
+        −{formatAmount(currency, Number(quoteState.fee ?? 0))}
+      </DetailRow>
+      <DetailRow label="Lands in your wallet">
+        <strong>{formatAmount(currency, Number(quoteState.netAmount ?? 0))}</strong>
+      </DetailRow>
+    </Card>
+  ) : null;
+
+  // Declared once and rendered in both columns, so the two cannot drift into
+  // saying different things about what the product is about to do.
+  const nextSteps = (
+    <WhatHappensNext
+      steps={[
+        "You tell us the amount, and we price it — the fee is the provider's, and it comes off before the money reaches your wallet.",
+        current?.available && current.provider === "klasha"
+          ? "We hand you a secure payment page for this one deposit."
+          : `We generate ${currency === "USDT" ? "a wallet address" : "an account number"} for this one deposit. It expires, and it is never reusable.`,
+        "You send exactly the amount shown. The screen credits your wallet itself the moment the money lands — you can leave it open.",
+      ]}
+      footnote="Nothing leaves your bank until you make the transfer yourself. We never debit you."
+    />
+  );
+
+  const summary = (
+    <>
+      {quoteCard}
+      {nextSteps}
+    </>
+  );
+
   return (
+    <MoneyFormLayout summary={summary}>
     <div className="space-y-4">
       <StepIndicator step={quoteState.quoteId ? 2 : 1} total={3} />
 
@@ -209,25 +259,10 @@ export function DepositForm({
           <input type="hidden" name="quoteId" value={quoteState.quoteId} />
           <input type="hidden" name="amount" value={quoteState.amount ?? ""} />
 
-          <Card>
-            <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Review
-            </h2>
-            {/* The provider's own quoted source_amount, NOT the typed amount.
-                For a percentage-fee currency the two differ — the provider
-                grosses the transfer up to cover its fee — and showing the
-                typed figure here is what made these three numbers fail to add
-                up. See quoteForDesiredNetDeposit in actions/deposits.ts. */}
-            <DetailRow label="You transfer">
-              {formatAmount(currency, Number(quoteState.grossAmount ?? quoteState.amount ?? 0))}
-            </DetailRow>
-            <DetailRow label="Deposit fee">
-              −{formatAmount(currency, Number(quoteState.fee ?? 0))}
-            </DetailRow>
-            <DetailRow label="Lands in your wallet">
-              <strong>{formatAmount(currency, Number(quoteState.netAmount ?? 0))}</strong>
-            </DetailRow>
-          </Card>
+          {/* The review, inline, BELOW 1024px only — on a phone it has to be
+              above the button that commits to it. The identical card is in
+              the summary column at `lg`. */}
+          <div className="lg:hidden">{quoteCard}</div>
 
           {depositState.error && (
             <Banner tone="danger" title="Couldn't start that deposit">
@@ -247,7 +282,12 @@ export function DepositForm({
           <LegalReminder />
         </form>
       )}
+
+      {/* The same panel inline on a phone, where there is no second column to
+          put it in. `lg:hidden` is the mirror of MoneyFormLayout's aside. */}
+      <div className="lg:hidden">{nextSteps}</div>
     </div>
+    </MoneyFormLayout>
   );
 }
 
