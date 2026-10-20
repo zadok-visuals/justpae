@@ -3,9 +3,10 @@
 **Both `.html` files here are generated — don't hand-edit them.** Their
 content (copy, subject line, button label, whether there's a code panel) is
 defined in `scripts/build-emails.ts`; their actual layout, colours and
-light/dark-mode handling live in `src/lib/email/layout.ts`, the same shell the
-app's own transactional emails (KYC, withdrawals, support) will use later.
-Change one of those two files, then run:
+light/dark-mode handling live in `src/lib/email/layout.ts`, the same shell
+every transactional email the app sends (KYC, withdrawals, support, Pay to
+China, the admin notification composer — see `src/lib/email.ts`) renders
+from. Change one of those two files, then run:
 
 ```
 npm run emails:build
@@ -14,6 +15,12 @@ npm run emails:build
 and commit the regenerated `.html` — Supabase has no API this could push to
 directly, so the files in this directory have to be the actual thing you
 paste into the dashboard, not just a description of it.
+
+To see every shape `renderEmail()` produces — including these two — on one
+page before touching either file, visit `/dev/email-preview` in a local dev
+server (`npm run dev`). It renders the raw HTML in an iframe plus the
+plain-text part beside it, built from the exact same functions every sender
+calls, not a hand-copied approximation of them.
 
 ## Checklist for a new project
 
@@ -36,6 +43,18 @@ All dashboard-only — none of this is covered by `supabase db push`:
    Supabase's own callback, keyed to the project ref, not to `APP_URL` or
    the app's `/auth/callback` route. It changes every time the project does,
    even though the app's domain doesn't.
+6. **Confirm `public/email/justpae-logo@2x.png` is actually deployed** at
+   `https://justpae.com/email/justpae-logo@2x.png` before pasting either
+   template — the header band references that exact URL, and a missing
+   image there is a blank header band on every auth email, not an error
+   anyone sees.
+7. **Set `COMPANY_ADDRESS` in Vercel** (and in the shell before running
+   `emails:build`, since that script is plain Node and does not read
+   `.env.local`). `src/lib/email/layout.ts` omits the footer's address line
+   entirely rather than invent one — several of the jurisdictions this
+   product operates in require a real mailing address on commercial email,
+   so this has to be the company's actual registered address, not a
+   placeholder.
 
 **These are not applied by `supabase db push`, and the CLI cannot sync them to a
 remote project.** They have to be pasted into the dashboard once per project:

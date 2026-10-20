@@ -57,7 +57,7 @@ export interface EmailOptions {
 }
 
 const LIGHT = {
-  outerBg: "#f4f1ea",
+  outerBg: "#f6f3ee",
   cardBg: "#ffffff",
   cardBorder: "#e7e2d8",
   headerBg: "#0b0d10",
@@ -97,6 +97,21 @@ const GOLD_TEXT = "#1a1205";
 // what happened the first time this used double quotes.
 const FONT = `-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif`;
 const MONO = `'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace`;
+// The heading only. A web font (the app's own Fraunces) isn't an option here
+// — no linked stylesheet, see the file-level note — so this is a system
+// serif stack instead, close enough to carry the same editorial weight the
+// app's display type carries on screen, everywhere from macOS Mail through
+// to Outlook's Times New Roman fallback.
+const SERIF = `Georgia,Cambria,'Times New Roman',Times,serif`;
+
+/** Set once, from a Vercel env var, and omitted from the footer entirely
+ *  when unset — see README.md in supabase/email-templates for why this
+ *  isn't a hardcoded string: a footer address is required by anti-spam law
+ *  in several jurisdictions this product operates in, and a wrong or
+ *  invented one is worse than a missing one. */
+function companyAddress(): string | null {
+  return process.env.COMPANY_ADDRESS?.trim() || null;
+}
 
 // className goes on every individual <p>, not on a wrapping element: each of
 // these also carries its own inline color, and a child's inherited value —
@@ -128,7 +143,7 @@ function bulletproofButton(button: EmailButton): string {
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="mso-hide:all;">
   <tr>
     <td align="center" bgcolor="${GOLD}" style="border-radius:8px;background-color:${GOLD};">
-      <a href="${button.href}" target="_blank" style="display:inline-block;padding:14px 32px;font-family:${FONT};font-size:16px;font-weight:600;color:${GOLD_TEXT};text-decoration:none;border-radius:8px;">${button.label}</a>
+      <a href="${button.href}" target="_blank" style="display:inline-block;height:48px;line-height:48px;padding:0 32px;font-family:${FONT};font-size:16px;font-weight:600;color:${GOLD_TEXT};text-decoration:none;border-radius:8px;">${button.label}</a>
     </td>
   </tr>
 </table>
@@ -146,6 +161,7 @@ export function renderEmail(options: EmailOptions): string {
     fallbackIntro = "If the button doesn't work, copy this address into your browser:",
     closingParagraphs = [],
   } = options;
+  const address = companyAddress();
 
   return `<!doctype html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
@@ -184,7 +200,7 @@ export function renderEmail(options: EmailOptions): string {
 <body style="margin:0;padding:0;background-color:${LIGHT.outerBg};">
 <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;opacity:0;">${preheader}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>
 
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="email-outer-bg" style="background-color:${LIGHT.outerBg};margin:0;padding:32px 0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${LIGHT.outerBg}" class="email-outer-bg" style="background-color:${LIGHT.outerBg};margin:0;padding:32px 0;">
   <tr>
     <td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
@@ -193,11 +209,15 @@ export function renderEmail(options: EmailOptions): string {
 
             <!-- Header band: justpae's ink colour, wordmark hosted as a PNG
                  so it renders identically everywhere, incl. clients that
-                 strip the <style> block above. -->
+                 strip the <style> block above. Served from this repo's
+                 public/email/ (deployed at justpae.com/email/...), not an
+                 arbitrary external host — the same reason it's a PNG, not a
+                 web font: nothing here depends on a resource this app
+                 doesn't itself control. -->
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
                 <td bgcolor="${LIGHT.headerBg}" style="background-color:${LIGHT.headerBg};padding:20px 28px;">
-                  <img src="https://justpae.com/justpae-email-logo@2x.png" width="122" height="40" alt="justpae" style="display:block;border:0;outline:none;">
+                  <img src="https://justpae.com/email/justpae-logo@2x.png" width="122" height="40" alt="justpae" style="display:block;border:0;outline:none;">
                 </td>
               </tr>
             </table>
@@ -206,7 +226,7 @@ export function renderEmail(options: EmailOptions): string {
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
                 <td style="padding:28px 28px 0 28px;">
-                  <h1 class="email-heading" style="margin:0;font-family:${FONT};font-size:24px;font-weight:700;color:${LIGHT.heading};">${heading}</h1>
+                  <h1 class="email-heading" style="margin:0;font-family:${SERIF};font-size:26px;font-weight:600;color:${LIGHT.heading};">${heading}</h1>
                   ${paragraphs(bodyParagraphs, LIGHT.body, "email-body")}
                 </td>
               </tr>
@@ -251,8 +271,12 @@ export function renderEmail(options: EmailOptions): string {
               <tr>
                 <td style="padding:28px 28px 28px 28px;">
                   <p class="email-footer-text" style="margin:0;font-family:${FONT};font-size:12px;line-height:1.5;color:${LIGHT.footerText};">
-                    justpae &middot; Zadok Royal Limited<br>
-                    Need help? <a href="https://justpae.com/support" class="email-footer-text" style="color:${LIGHT.footerText};">justpae.com/support</a>
+                    justpae &middot; Zadok Royal Limited${address ? `<br>${address}` : ""}<br>
+                    <a href="https://justpae.com/support" class="email-footer-text" style="color:${LIGHT.footerText};">Support</a>
+                    &nbsp;&middot;&nbsp;
+                    <a href="https://justpae.com/terms" class="email-footer-text" style="color:${LIGHT.footerText};">Terms</a>
+                    &nbsp;&middot;&nbsp;
+                    <a href="https://justpae.com/privacy" class="email-footer-text" style="color:${LIGHT.footerText};">Privacy</a>
                   </p>
                 </td>
               </tr>
@@ -308,7 +332,13 @@ export function renderEmailText(options: EmailOptions): string {
 
   for (const p of closingParagraphs) lines.push(stripHtml(p), "");
 
-  lines.push("—", "justpae · Zadok Royal Limited", "Need help? https://justpae.com/support");
+  const address = companyAddress();
+  lines.push(
+    "—",
+    address ? `justpae · Zadok Royal Limited · ${address}` : "justpae · Zadok Royal Limited",
+    "Support: https://justpae.com/support",
+    "Terms: https://justpae.com/terms  ·  Privacy: https://justpae.com/privacy",
+  );
 
   // Collapse runs of blank lines the paragraph loop above produces.
   return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
