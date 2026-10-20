@@ -6,6 +6,8 @@ import { RateBoardSection } from "@/components/rates/RateBoardSection";
 import { RecentActivitySection } from "@/components/transactions/RecentActivitySection";
 import { SectionHeader } from "@/components/ui/Primitives";
 import { KycStatusBanner } from "@/components/kyc/KycStatusBanner";
+import { KycPromptModal } from "@/components/kyc/KycPromptModal";
+import { isKycPromptDismissed } from "@/lib/actions/kycPrompt";
 import { startRouteTiming } from "@/lib/perf/timing";
 import type { Wallet } from "@/lib/types/database";
 import { requireSessionUser } from "@/lib/auth/session";
@@ -50,18 +52,26 @@ export default async function HomePage() {
   const supabase = await createClient();
   const user = await requireSessionUser();
 
-  const [{ data: profile }, { data: wallets }] = await Promise.all([
+  const [{ data: profile }, { data: wallets }, promptDismissed] = await Promise.all([
     supabase
       .from("profiles")
       .select("full_name, phone, kyc_status, kyc_rejection_reason, kyc_type, country")
       .eq("id", user.id)
       .maybeSingle(),
     supabase.from("wallets").select("*").eq("user_id", user.id),
+    isKycPromptDismissed(),
   ]);
 
   endRouteTiming();
 
   const firstName = profile?.full_name?.trim().split(/\s+/)[0] ?? null;
+
+  // GROUP 4. The modal is the one-time interrupt for the two statuses that
+  // still need an action; `pending` has nothing to DO yet, so it keeps only
+  // the banner below.
+  const showKycPrompt =
+    (profile?.kyc_status === "not_started" || profile?.kyc_status === "rejected") &&
+    !promptDismissed;
 
   return (
     /**
@@ -106,6 +116,11 @@ export default async function HomePage() {
       }
     >
       <div className="space-y-6">
+        <KycPromptModal
+          initialOpen={showKycPrompt}
+          rejectionReason={profile?.kyc_status === "rejected" ? profile?.kyc_rejection_reason ?? null : null}
+        />
+
         <KycStatusBanner
           status={profile?.kyc_status}
           phone={profile?.phone}

@@ -291,6 +291,49 @@ test.describe("a rejected identity check", () => {
   });
 });
 
+/**
+ * GROUP 4. The modal, not the banner — `KycStatusBanner` is already covered
+ * by "a brand new account" and "a rejected identity check" above.
+ */
+test.describe("the KYC prompt modal", () => {
+  test("shows for an unverified account, and Later dismisses it for the day", async ({ page }) => {
+    await signIn(page, users.new);
+    await page.goto("/home");
+
+    const dialog = page.locator("dialog[open]");
+    await expect(dialog).toContainText(/verify your identity/i);
+
+    await dialog.getByRole("button", { name: /^later$/i }).click();
+    await expect(dialog).not.toBeVisible();
+
+    // The dismissal is a cookie set by a server action, not client memory —
+    // wait for that request to land before proving a reload still honours it.
+    await page.waitForLoadState("networkidle");
+    await page.reload();
+    await expect(page.locator("dialog[open]")).toHaveCount(0);
+
+    await signOut(page);
+  });
+
+  test("shows the rejection reason and offers Try again", async ({ page }) => {
+    await signIn(page, users.kyc_rejected);
+    await page.goto("/home");
+
+    const dialog = page.locator("dialog[open]");
+    await expect(dialog).toContainText(/unreadable/i);
+    await expect(dialog.getByRole("link", { name: /try again/i })).toBeVisible();
+
+    await signOut(page);
+  });
+
+  test("does not show for an approved account", async ({ page }) => {
+    await signIn(page, users.kyc_approved);
+    await page.goto("/home");
+    await expect(page.locator("dialog[open]")).toHaveCount(0);
+    await signOut(page);
+  });
+});
+
 test.describe("a suspended account", () => {
   test("cannot start a deposit", async ({ page }) => {
     await signIn(page, users.suspended);

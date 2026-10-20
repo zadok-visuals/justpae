@@ -41,6 +41,9 @@ const EXEMPT: Record<string, string> = {
   // Pure reads for the admin activity ledger view, gated by requireAdminUser
   // (which does its own getUser) at every call site.
   "activity.ts": "read-only, and gated by requireAdminUser",
+  // Sets a "don't show the KYC modal again today" cookie. No account or
+  // balance data moves, so there is nothing a revoked session could abuse.
+  "kycPrompt.ts": "writes only a UI dismissal cookie, no account or money data",
 };
 
 function sourceFiles(): string[] {
