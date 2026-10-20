@@ -23,9 +23,9 @@ import {
   SendIcon,
   FlightsIcon,
 } from "@/components/layout/NavIcons";
-import { toast } from "sonner";
 import { BILLS_ENABLED, FLIGHTS_ENABLED } from "@/lib/flags";
 import { MaintenanceBadge } from "@/components/ui/MaintenanceBadge";
+import { maintenanceToastFor } from "@/components/ui/maintenanceToast";
 import { HEADER_ICON_BUTTON_CLASS } from "@/lib/ui/escapeControl";
 
 /**
@@ -105,15 +105,6 @@ const SIDEBAR_LINKS: {
   TABS[TABS.length - 1]!,
 ];
 
-/**
- * GROUP 2c. The page behind a maintenance entry now redirects away rather
- * than rendering a "coming soon" screen (see src/proxy.ts), so the link
- * itself has to stop pretending there is somewhere to go — a tap now shows
- * the same sentence the page used to, as a toast, instead of navigating.
- */
-function maintenanceToastFor(label: string): void {
-  toast(`${label} is under maintenance. We'll let you know when it's back.`);
-}
 
 function isActive(pathname: string, href: string): boolean {
   // Prefix match so /bills/airtime keeps the Bills tab lit, but exact for

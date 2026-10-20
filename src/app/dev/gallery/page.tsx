@@ -330,7 +330,7 @@ export default function DevGallery() {
               />
             </Section>
 
-            <Section title="Add money">
+            <Section title="Deposit">
               <DepositForm wallets={wallets} availability={depositAvailability} />
             </Section>
 

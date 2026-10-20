@@ -9,7 +9,7 @@ import { startRouteTiming } from "@/lib/perf/timing";
 import type { Wallet } from "@/lib/types/database";
 import { requireSessionUser } from "@/lib/auth/session";
 
-export const metadata = { title: "Add money" };
+export const metadata = { title: "Deposit" };
 export const dynamic = "force-dynamic";
 
 export default async function DepositPage(props: PageProps<"/deposit">) {
@@ -49,7 +49,7 @@ export default async function DepositPage(props: PageProps<"/deposit">) {
 
   return (
     <PageShell
-      title="Add money"
+      title="Deposit"
       subtitle="Send a transfer and we'll credit your wallet."
       back={{ href: "/home", label: "Home" }}
       /* GROUP 6a. The form itself stays 34rem wide — MoneyFormLayout caps it

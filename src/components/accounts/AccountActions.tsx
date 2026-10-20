@@ -68,7 +68,9 @@ const ORDER: AccountActionKey[] = ["add", "convert", "payToChina", "withdraw"];
  * kept as the button's accessible name, where there is no width limit.
  */
 const SHORT_LABEL: Record<AccountActionKey, string> = {
-  add: "Add money",
+  // GROUP 3a. "Deposit" everywhere this action is named — Home's quick
+  // action, this row, and /deposit's own title — one word, not three.
+  add: "Deposit",
   convert: "Convert",
   payToChina: "Pay to China",
   withdraw: "Withdraw",

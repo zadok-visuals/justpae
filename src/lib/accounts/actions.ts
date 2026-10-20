@@ -189,7 +189,8 @@ export function accountActions(
     const deposit = depositAvailability(currency);
     actions.push({
       key: "add",
-      label: "Add money",
+      // GROUP 3a. "Deposit" everywhere, not "Add money" — see AccountActions.tsx.
+      label: "Deposit",
       href: `/deposit?currency=${currency}`,
       disabledReason: deposit.available ? null : deposit.reason,
       disabledKind: deposit.available ? null : deposit.kind,

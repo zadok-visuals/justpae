@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { DepositIcon } from "@/components/layout/NavIcons";
+import { QuickActionButton, QUICK_ACTION_WRAPPER_CLASS } from "@/components/home/QuickActionTile";
 import { currencyMeta } from "@/lib/currencies";
 import type { Currency } from "@/lib/types/database";
 
@@ -59,20 +60,15 @@ export function AddMoneyMenu({ choices }: { choices: AddMoneyChoice[] }) {
   }, [open]);
 
   return (
-    <div ref={containerRef} className="relative min-w-[4.5rem] shrink-0 sm:min-w-0">
-      <button
-        ref={triggerRef}
-        type="button"
+    <div ref={containerRef} className={`relative ${QUICK_ACTION_WRAPPER_CLASS}`}>
+      <QuickActionButton
+        buttonRef={triggerRef}
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="flex w-full min-w-[4.5rem] flex-col items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-3 text-xs font-medium text-foreground sm:min-w-0"
-      >
-        <span className="text-primary">
-          <DepositIcon className="size-6" />
-        </span>
-        Add money
-      </button>
+        label="Deposit"
+        Icon={DepositIcon}
+      />
 
       {open && (
         <>
