@@ -122,12 +122,11 @@ function securityHeaders() {
   return [
     { key: "Content-Security-Policy", value: csp },
 
-    // Two years, subdomains included, preload-eligible. Safe to assert: the
-    // app is HTTPS-only in every deployed environment and the apex is ours.
-    {
-      key: "Strict-Transport-Security",
-      value: "max-age=63072000; includeSubDomains; preload",
-    },
+    // Strict-Transport-Security is set in src/proxy.ts, not here — see the
+    // comment there on why a static header in this file cannot be the e2e
+    // harness's own loopback server safely: next.config.ts's headers() is
+    // baked into the build's routes manifest at `next build` time, before the
+    // harness's `next start`-only E2E_MOCK_PROVIDERS flag is even set.
 
     // Stops a browser from deciding a stored document is HTML and running it.
     // It matters here specifically: this app serves user-uploaded files back

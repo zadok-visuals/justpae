@@ -7,6 +7,7 @@ import {
   type FixtureUser,
 } from "./fixtures/users";
 import { signIn, signOut } from "./fixtures/signIn";
+import { totpCode } from "./fixtures/totp";
 
 /**
  * The signed-in journeys, driven as each of the six fixture roles.
@@ -312,12 +313,64 @@ test.describe("an approved account", () => {
 });
 
 test.describe("an admin", () => {
-  test("reaches the admin area and a non-admin does not", async ({ page }) => {
+  /**
+   * GROUP 12 / QA 6.1. The fixture admin had a role but no second factor, so
+   * every page but /admin/security bounced to the MFA gate — the eleven pages
+   * the sweep in Group 3 could never reach. Enrolling for real, rather than
+   * writing a verified factor straight into the database, is the point: it
+   * exercises the same enrol → QR → code → aal2 path a human admin walks, with
+   * a code computed from the secret GoTrue actually issued (see
+   * e2e/fixtures/totp.ts) instead of one hand-typed from an authenticator app.
+   */
+  test("enrols a TOTP factor, reaches aal2, and opens every admin page without an error boundary", async ({
+    page,
+  }) => {
     await signIn(page, users.admin);
-    await page.goto("/admin");
-    await expect(page).toHaveURL(/\/admin/);
-    await signOut(page);
+    await page.goto("/admin/security");
 
+    await page.getByText(/can.t scan it\?/i).click();
+    const secret = await page.evaluate(() => {
+      const match = Array.from(document.querySelectorAll("p")).find((p) =>
+        /^[A-Z2-7]{16,}$/.test(p.textContent?.trim() ?? ""),
+      );
+      return match?.textContent?.trim() ?? null;
+    });
+    if (!secret) throw new Error("Enrolment screen did not show a TOTP secret to read.");
+
+    await page.getByLabel(/code from your app/i).fill(totpCode(secret));
+    await page.getByRole("button", { name: /confirm and turn on/i }).click();
+    // verifyTotpEnrollment redirects straight to /admin on success — the
+    // session is aal2 the moment the code checks out, with no second
+    // "sign in again" step.
+    await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
+
+    // The eleven pages AdminNav links to, /admin/security excepted — it is the
+    // one page reachable without aal2, so it proves nothing here.
+    const adminPages = [
+      "/admin",
+      "/admin/kyc",
+      "/admin/withdrawals",
+      "/admin/pay-to-china",
+      "/admin/support",
+      "/admin/transactions",
+      "/admin/rates",
+      "/admin/pnl",
+      "/admin/users",
+      "/admin/notifications",
+      "/admin/activity",
+    ];
+    for (const path of adminPages) {
+      await page.goto(path);
+      await expect(page, `${path} bounced to the MFA gate`).not.toHaveURL(/\/admin\/security$/);
+      await expect(page.locator("body"), `${path} rendered an error boundary`).not.toContainText(
+        /application error|something went wrong/i,
+      );
+    }
+
+    await signOut(page);
+  });
+
+  test("a non-admin cannot reach the admin area", async ({ page }) => {
     await signIn(page, users.verified);
     await page.goto("/admin");
     await expect(page).not.toHaveURL(/\/admin$/);

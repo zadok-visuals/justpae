@@ -48,6 +48,18 @@ export default defineConfig({
     baseURL: BASE_URL,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
+    launchOptions: {
+      // Chromium dropped the old headless mode this project's pinned
+      // Playwright build still asks for by default; --headless=new is the
+      // supported replacement and is harmless on older builds too, so it is
+      // always added rather than only when the override below is used.
+      args: ["--headless=new"],
+      // Opt-in only: set when the environment's own Chromium build doesn't
+      // match what this Playwright version would otherwise download (e.g. a
+      // container that pre-installs its own browser). Unset, this is
+      // `undefined` and Playwright resolves its usual managed browser.
+      executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
+    },
   },
 
   projects: [
@@ -121,6 +133,13 @@ export default defineConfig({
       // the server refuses to start, which is the point.
       APP_URL: BASE_URL,
       PERF_TIMING: process.env.PERF_TIMING ?? "",
+      // Passed through rather than inherited implicitly: reuseExistingServer
+      // means this value can otherwise be whatever an EARLIER invocation
+      // started the server with, not this one's — which is exactly how a
+      // stale server without proxy credentials kept serving authed runs
+      // behind this session's agent proxy, every protected route redirect
+      // looping (the Next server's own Supabase calls failing silently).
+      NODE_USE_ENV_PROXY: process.env.NODE_USE_ENV_PROXY ?? "",
     },
   },
 });
