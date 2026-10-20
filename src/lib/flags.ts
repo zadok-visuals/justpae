@@ -26,14 +26,18 @@ function flag(value: string | undefined): boolean {
 export const USD_COLLECTION_ENABLED = flag(process.env.NEXT_PUBLIC_FEATURE_USD_COLLECTION);
 
 /**
- * FEATURE 2 — GHS deposits via Klasha.
+ * FEATURE 2 — the whole GHS wallet, Klasha deposits included.
  * Waiting on: Klasha account access (every live call has returned an
  * account-wide 403), the real request-body encryption scheme, and the webhook
  * signature scheme. Busha rejects GHS outright on this account ("Invalid
- * Currency GHS"), so GHS deposit has no other route. While off, GHS deposit
- * shows as unavailable rather than failing at submit.
+ * Currency GHS"), so GHS deposit has no other route.
+ *
+ * GROUP 2. Renamed from the deposit-only KLASHA_GHS_DEPOSIT_ENABLED: the
+ * wallet is locked as a whole now (deposit, convert, withdraw, Pay to China
+ * funding), not just the one rail. One flag, one meaning, read from
+ * src/lib/services.ts everywhere that needs to know whether GHS is usable.
  */
-export const KLASHA_GHS_DEPOSIT_ENABLED = flag(process.env.NEXT_PUBLIC_FEATURE_KLASHA_GHS_DEPOSIT);
+export const GHS_WALLET_ENABLED = flag(process.env.NEXT_PUBLIC_FEATURE_GHS_WALLET);
 
 /**
  * FEATURE 5 — bills and airtime.
@@ -63,9 +67,17 @@ export const BILLS_ENABLED = flag(process.env.NEXT_PUBLIC_FEATURE_BILLS);
  */
 export const FLIGHTS_ENABLED = flag(process.env.NEXT_PUBLIC_FEATURE_FLIGHTS);
 
+/**
+ * FEATURE 7 — the USD wallet (deposit, convert, withdraw, Pay to China
+ * funding). Off by default like every other flag here: a service only
+ * becomes live when this is set explicitly, never by omission.
+ */
+export const USD_WALLET_ENABLED = flag(process.env.NEXT_PUBLIC_FEATURE_USD_WALLET);
+
 export const FLAGS = {
+  usdWallet: USD_WALLET_ENABLED,
+  ghsWallet: GHS_WALLET_ENABLED,
   usdCollection: USD_COLLECTION_ENABLED,
-  klashaGhsDeposit: KLASHA_GHS_DEPOSIT_ENABLED,
   bills: BILLS_ENABLED,
   flights: FLIGHTS_ENABLED,
 } as const;

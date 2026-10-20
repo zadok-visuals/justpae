@@ -5,6 +5,8 @@ import { EmptyState } from "@/components/ui/Primitives";
 import { RecentActivitySection } from "@/components/transactions/RecentActivitySection";
 import { currencyMeta, formatAmount, CURRENCIES } from "@/lib/currencies";
 import { startRouteTiming } from "@/lib/perf/timing";
+import { isWalletLocked } from "@/lib/services";
+import { MaintenanceBadge } from "@/components/ui/MaintenanceBadge";
 import type { Currency, Wallet } from "@/lib/types/database";
 import { requireSessionUser } from "@/lib/auth/session";
 
@@ -72,29 +74,40 @@ export default async function AccountsPage() {
         <ul className="grid gap-2 sm:grid-cols-2">
           {ordered.map((wallet) => {
             const meta = currencyMeta(wallet.currency);
+            const locked = isWalletLocked(wallet.currency);
+            const rowClassName =
+              "flex min-h-16 items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3";
+            const row = (
+              <>
+                <span className="flex min-w-0 items-center gap-2">
+                  <span aria-hidden="true" className="text-lg leading-none">
+                    {meta.flag}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-foreground">
+                      {wallet.currency}
+                    </span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {meta.label}
+                    </span>
+                  </span>
+                  {/* GROUP 2b */}
+                  {locked && <MaintenanceBadge className="shrink-0" />}
+                </span>
+                <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-foreground">
+                  {formatAmount(wallet.currency, wallet.balance)}
+                </span>
+              </>
+            );
             return (
               <li key={wallet.currency}>
-                <Link
-                  href={`/accounts/${wallet.currency}`}
-                  className="flex min-h-16 items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3"
-                >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span aria-hidden="true" className="text-lg leading-none">
-                      {meta.flag}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-sm font-medium text-foreground">
-                        {wallet.currency}
-                      </span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {meta.label}
-                      </span>
-                    </span>
-                  </span>
-                  <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-foreground">
-                    {formatAmount(wallet.currency, wallet.balance)}
-                  </span>
-                </Link>
+                {locked ? (
+                  <div className={`${rowClassName} opacity-80`}>{row}</div>
+                ) : (
+                  <Link href={`/accounts/${wallet.currency}`} className={rowClassName}>
+                    {row}
+                  </Link>
+                )}
               </li>
             );
           })}

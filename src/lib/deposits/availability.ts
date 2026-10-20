@@ -4,7 +4,7 @@
 // (flags.ts) or type-only. tsconfig's allowImportingTsExtensions is what lets
 // the app's own build read the same specifiers.
 import type { Currency } from "../types/database.ts";
-import { KLASHA_GHS_DEPOSIT_ENABLED } from "../flags.ts";
+import { GHS_WALLET_ENABLED } from "../flags.ts";
 import type { UnavailableKind } from "../ui/unavailability.ts";
 
 /**
@@ -42,7 +42,7 @@ export function depositAvailability(currency: Currency): DepositAvailability {
   }
 
   if (currency === "GHS") {
-    return KLASHA_GHS_DEPOSIT_ENABLED
+    return GHS_WALLET_ENABLED
       ? { available: true, provider: "klasha" }
       : {
           available: false,

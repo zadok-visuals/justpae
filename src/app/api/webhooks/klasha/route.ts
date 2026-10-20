@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptBody } from "@/lib/klasha/client";
-import { KLASHA_GHS_DEPOSIT_ENABLED } from "@/lib/flags";
+import { GHS_WALLET_ENABLED } from "@/lib/flags";
 import { notifyDepositCredited } from "@/lib/notify/events";
 import { recordWebhookDelivery, markWebhookProcessed } from "@/lib/webhooks/record";
 
@@ -52,7 +52,7 @@ function verifySignature(headers: Record<string, string>): boolean | null {
 }
 
 export async function POST(request: Request) {
-  if (!KLASHA_GHS_DEPOSIT_ENABLED) {
+  if (!GHS_WALLET_ENABLED) {
     // The path is off, so no legitimate delivery can be expected. Refusing is
     // strictly better than recording payloads for a disabled integration.
     console.warn("[klasha webhook] received a delivery while the GHS path is disabled");

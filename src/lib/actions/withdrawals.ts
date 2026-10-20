@@ -20,6 +20,7 @@ import {
   RECIPIENT_CHANGE_HOLD_HOURS,
   pinFormatError,
   recipientFieldError,
+  usdWithdrawalError,
   withdrawalFee,
 } from "@/lib/withdrawals/rules";
 import { sendRecipientChangedEmail } from "@/lib/email";
@@ -73,9 +74,8 @@ async function parseRecipientFields(
   if (currency === "GHS" && (!bankAccountNumber || !bankName)) {
     return { error: "Bank account number and bank name are required." };
   }
-  if (currency === "USD") {
-    return { error: "USD can't be withdrawn directly. Convert it first." };
-  }
+  const usdError = usdWithdrawalError(currency);
+  if (usdError) return { error: usdError };
 
   // Shape, not just presence. The client runs the same function so this is
   // normally already satisfied — it runs here because a client check is not a

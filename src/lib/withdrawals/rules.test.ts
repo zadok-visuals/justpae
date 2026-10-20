@@ -5,6 +5,7 @@ import {
   decideWithdrawalRouting,
   pinFormatError,
   recipientFieldError,
+  usdWithdrawalError,
   withdrawalFee,
 } from "./rules.ts";
 
@@ -175,4 +176,11 @@ test("Ghanaian account numbers are not length-checked, because they vary by bank
 
 test("the recipient-change hold is a whole day", () => {
   assert.equal(RECIPIENT_CHANGE_HOLD_HOURS, 24);
+});
+
+test("USD is refused on the server, not only in the picker", () => {
+  assert.match(usdWithdrawalError("USD") ?? "", /convert/i);
+  for (const currency of ["NGN", "KES", "USDT", "GHS", "CNY"]) {
+    assert.equal(usdWithdrawalError(currency), null, currency);
+  }
 });

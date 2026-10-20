@@ -4,6 +4,7 @@ import { getUsdtPairRates } from "@/lib/busha/rate";
 import { quoteWithMarkup, type MarkupQuote } from "@/lib/rates/markup";
 import { applyMarkupToRate } from "@/lib/rates/markupMath";
 import { isUsdPair, USD_CONVERSION_UNAVAILABLE } from "@/lib/currencies";
+import { isServiceLive } from "@/lib/services";
 import {
   cnyRouteBlocker,
   cnyBlockerKind,
@@ -160,8 +161,14 @@ export async function resolveRoute(
   // One short-circuit covers every caller: quoteConversion, executeConversion,
   // listRoutesFrom (so the select is disabled with the real reason before the
   // user picks it) and Home's rate strip all route through here.
-  if (isUsdPair(from, to)) {
-    return unavailable(from, to, USD_CONVERSION_UNAVAILABLE, "unsupported");
+  // GROUP 2b: gated on the flag, not a standing fact — but flipping it
+  // alone does not make this route PRICEABLE. There is still no USDT/USD
+  // pair on this account; turning the flag on only stops this short-circuit
+  // from firing, and the lookup below will then fail on its own with
+  // "USDT/USD isn't quoted by our liquidity provider yet" until that pair
+  // actually exists.
+  if (isUsdPair(from, to) && !isServiceLive("usdWallet")) {
+    return unavailable(from, to, USD_CONVERSION_UNAVAILABLE, "maintenance");
   }
 
   // ── CNY: priced internally, not by the provider. ────────────────────────

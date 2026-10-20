@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/types/database";
 import { requireEnv } from "@/lib/supabase/env";
 import { isProtectedPath, isPublicPath } from "@/lib/routes/access";
+import { maintenanceRedirect } from "@/lib/routes/maintenance";
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -77,6 +78,20 @@ export async function updateSession(request: NextRequest) {
     url.pathname = "/login";
     url.search = "";
     return NextResponse.redirect(url);
+  }
+
+  // GROUP 2c. A locked service's page is refused here, not only by its own
+  // component — direct URL, bookmark or prefetch included. Checked before
+  // the signed-in-only checks below because it applies to every request the
+  // matcher admits, the same scope isProtectedPath above has.
+  if (signedIn) {
+    const to = maintenanceRedirect(pathname, request.nextUrl.searchParams);
+    if (to) {
+      const url = request.nextUrl.clone();
+      url.pathname = to;
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
   }
 
   // THE EMAIL-CONFIRMATION FUNNEL IS NOT HERE ANY MORE, deliberately.

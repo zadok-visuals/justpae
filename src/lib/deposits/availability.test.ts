@@ -9,7 +9,7 @@ import { CURRENCY_CODES } from "../currencies.ts";
  *
  * These tests assume the GHS flag is OFF, which is how it ships and how every
  * environment this has ever run in is configured (see src/lib/flags.ts). If
- * NEXT_PUBLIC_FEATURE_KLASHA_GHS_DEPOSIT is ever turned on in a test
+ * NEXT_PUBLIC_FEATURE_GHS_WALLET is ever turned on in a test
  * environment, the cedi assertion below is the one that should be updated
  * rather than deleted — a flipped flag means a REAL deposit path, and the
  * picker should then carry no suffix at all.

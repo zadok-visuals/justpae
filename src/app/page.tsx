@@ -5,7 +5,7 @@ import { CURRENCIES } from "@/lib/currencies";
 import { BILL_CATEGORIES } from "@/lib/providers/bills";
 import {
   BILLS_ENABLED,
-  KLASHA_GHS_DEPOSIT_ENABLED,
+  GHS_WALLET_ENABLED,
   USD_COLLECTION_ENABLED,
 } from "@/lib/flags";
 import { depositAvailability } from "@/lib/deposits/availability";
@@ -239,7 +239,7 @@ export default function LandingPage() {
             <p className="mt-3 text-sm text-muted-foreground">
               Everyone gets a dollar wallet. Your local one is added for Nigeria, Ghana and Kenya.
             </p>
-            {!KLASHA_GHS_DEPOSIT_ENABLED && (
+            {!GHS_WALLET_ENABLED && (
               <p className="mt-2 text-sm text-muted-foreground">
                 Cedi deposits are under maintenance while we finish setup with our Ghana
                 collection partner — a cedi wallet still holds, converts and withdraws in the

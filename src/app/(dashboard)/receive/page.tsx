@@ -1,9 +1,11 @@
+import { redirect } from "next/navigation";
 import { PageShell } from "@/components/layout/PageShell";
 import { Card, Banner, DetailRow } from "@/components/ui/Primitives";
 import { CopyField } from "@/components/ui/CopyButton";
 import { ShareLink } from "@/components/receive/ShareLink";
 import { MaintenanceBadge } from "@/components/ui/MaintenanceBadge";
 import { getReceivingDetails } from "@/lib/actions/receive";
+import { isServiceLive } from "@/lib/services";
 
 export const metadata = { title: "Receive dollars" };
 export const dynamic = "force-dynamic";
@@ -20,6 +22,9 @@ export const dynamic = "force-dynamic";
  * dollars here" is the one failure mode that loses somebody real money.
  */
 export default async function ReceivePage() {
+  // GROUP 2c.
+  if (!isServiceLive("receiveUsd")) redirect("/home");
+
   const state = await getReceivingDetails();
 
   return (

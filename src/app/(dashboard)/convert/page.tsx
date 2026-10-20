@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { ConvertForm } from "@/components/convert/ConvertForm";
@@ -5,6 +6,7 @@ import { EmptyState } from "@/components/ui/Primitives";
 import { LiveRefresh } from "@/components/ui/LiveRefresh";
 import { listRoutesFrom } from "@/lib/actions/convert";
 import { RateBoardSection } from "@/components/rates/RateBoardSection";
+import { isWalletLocked } from "@/lib/services";
 import { parseCurrencyParam, preselectCurrency } from "@/lib/accounts/preselect";
 import { startRouteTiming } from "@/lib/perf/timing";
 import type { Wallet } from "@/lib/types/database";
@@ -19,6 +21,11 @@ export default async function ConvertPage(props: PageProps<"/convert">) {
   const user = await requireSessionUser();
 
   const params = await props.searchParams;
+
+  // GROUP 2c. Both sides — ?currency= and ?to=.
+  for (const requested of [parseCurrencyParam(params.currency), parseCurrencyParam(params.to)]) {
+    if (requested && isWalletLocked(requested)) redirect("/home");
+  }
 
   // has_transaction_pin() rather than selecting from withdrawal_pins: the
   // select policy that allowed that also allowed selecting pin_hash, so it was

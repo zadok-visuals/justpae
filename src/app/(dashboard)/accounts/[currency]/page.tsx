@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { isWalletLocked } from "@/lib/services";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { AccountActions } from "@/components/accounts/AccountActions";
@@ -45,6 +46,10 @@ export default async function AccountPage(props: PageProps<"/accounts/[currency]
   const { currency: raw } = await props.params;
   if (!isCurrency(raw)) notFound();
   const currency: Currency = raw;
+
+  // GROUP 2c. The wallet still exists and still holds a balance — "gone to
+  // the list one level up" is the honest answer, not /home.
+  if (isWalletLocked(currency)) redirect("/accounts");
 
   const endRouteTiming = startRouteTiming(`/accounts/${currency}`);
   const supabase = await createClient();

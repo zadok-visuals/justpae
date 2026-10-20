@@ -164,3 +164,15 @@ export function recipientFieldError(
 
   return null;
 }
+
+/**
+ * GROUP 2b. There is no USD payout rail — a dollar balance is converted out
+ * before it can be sent anywhere. Not flag-gated like USD_WALLET_ENABLED
+ * elsewhere: even once the wallet itself is live, withdrawing USD directly
+ * still has nowhere to go, so this stays a standing fact rather than reading
+ * from src/lib/services.ts.
+ */
+export function usdWithdrawalError(currency: string): string | null {
+  if (currency !== "USD") return null;
+  return "USD can't be withdrawn directly. Convert it first.";
+}

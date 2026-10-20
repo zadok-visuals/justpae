@@ -318,9 +318,9 @@ export async function listRoutesFrom(from: Currency): Promise<RouteAvailability[
       reason: isUsdPair(from, to)
         ? USD_CONVERSION_UNAVAILABLE
         : "Rates are unavailable right now. Please try again in a moment.",
-      // A provider outage IS maintenance; USD's unavailability is not, and
-      // the same reasoning as the `reason` above applies to the word.
-      unavailableKind: isUsdPair(from, to) ? "unsupported" : "maintenance",
+      // GROUP 2b — both are "maintenance" now: USD joined GHS as a wallet
+      // that is off until its own flag is set, not a permanent refusal.
+      unavailableKind: "maintenance",
       customerRate: null,
     }));
   }

@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { CURRENCIES, currencyMeta, formatAmount } from "@/lib/currencies";
+import { isWalletLocked } from "@/lib/services";
+import { MaintenanceBadge } from "@/components/ui/MaintenanceBadge";
 import type { Currency, Wallet } from "@/lib/types/database";
 
 /**
@@ -42,26 +44,51 @@ const WASHES: Record<Currency, string> = {
  */
 function WalletCard({ wallet }: { wallet: Wallet }) {
   const meta = currencyMeta(wallet.currency);
+  const locked = isWalletLocked(wallet.currency);
 
-  return (
-    <Link
-      href={`/accounts/${wallet.currency}`}
-      aria-label={`${meta.label} account, balance ${formatAmount(wallet.currency, wallet.balance)}`}
-      className={`snap-item flex min-w-[15rem] shrink-0 flex-col justify-between gap-5 rounded-xl border border-border bg-gradient-to-br p-4 sm:min-w-0 ${
-        WASHES[wallet.currency]
-      }`}
-    >
+  const content = (
+    <>
       <span className="flex items-center gap-2">
         <span aria-hidden="true" className="text-lg leading-none">
           {meta.flag}
         </span>
         <span className="text-sm font-medium text-foreground">{wallet.currency}</span>
         <span className="truncate text-xs text-muted-foreground">{meta.label}</span>
+        {locked && <MaintenanceBadge className="ml-auto shrink-0" />}
       </span>
 
       <span className="font-display text-2xl font-semibold tabular-nums text-foreground">
         {formatAmount(wallet.currency, wallet.balance)}
       </span>
+    </>
+  );
+
+  const className = `snap-item flex min-w-[15rem] shrink-0 flex-col justify-between gap-5 rounded-xl border border-border bg-gradient-to-br p-4 sm:min-w-0 ${
+    WASHES[wallet.currency]
+  }`;
+
+  // GROUP 2b. A locked wallet (USD, GHS while their flag is off) shows the
+  // same card but is not a link — there is nowhere useful to send a tap, and
+  // a card that looks tappable and does nothing is worse than one that is
+  // honestly not a button.
+  if (locked) {
+    return (
+      <div
+        aria-label={`${meta.label} account, under maintenance, balance ${formatAmount(wallet.currency, wallet.balance)}`}
+        className={`${className} opacity-80`}
+      >
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={`/accounts/${wallet.currency}`}
+      aria-label={`${meta.label} account, balance ${formatAmount(wallet.currency, wallet.balance)}`}
+      className={className}
+    >
+      {content}
     </Link>
   );
 }

@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { Banner, Card } from "@/components/ui/Primitives";
@@ -35,6 +36,11 @@ export const dynamic = "force-dynamic";
  * `feature_interest` (migration 0031) and nothing else.
  */
 export default async function FlightsPage() {
+  // GROUP 2c. Supersedes the disabled-form approach above: the page itself
+  // is locked now, not just its submit button. The proxy's
+  // maintenanceRedirect() backs this up for a direct URL or a bookmark.
+  if (!FLIGHTS_ENABLED) redirect("/home");
+
   const supabase = await createClient();
   const user = await requireSessionUser();
 

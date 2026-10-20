@@ -9,9 +9,12 @@ import type { Currency } from "@/lib/types/database";
  * module — nothing else enumerates currencies.
  *
  * THE ORDER OF THE ARRAY IS THE DISPLAY ORDER, everywhere. Wallet cards, the
- * accounts list, every picker. GHS is last because it is under maintenance
- * and an unusable option belongs at the bottom of a list, not in the middle
- * of one.
+ * accounts list, every picker.
+ *
+ * GROUP 2b. USD moved to the very end: NGN, CNY, USDT, KES, GHS, USD. It
+ * joins GHS as a wallet under maintenance (see src/lib/services.ts), and an
+ * unusable option belongs at the bottom of a list, not in the middle or the
+ * front of one.
  */
 export interface CurrencyMeta {
   code: Currency;
@@ -38,7 +41,6 @@ export interface CurrencyMeta {
 }
 
 export const CURRENCIES: CurrencyMeta[] = [
-  { code: "USD", label: "US Dollar", symbol: "$", flag: "🇺🇸", decimals: 2, kind: "fiat" },
   { code: "NGN", label: "Nigerian Naira", symbol: "₦", flag: "🇳🇬", decimals: 2, kind: "fiat", country: "NG" },
   // Deliberately NO `country`. A `country` here means "signing up from there
   // provisions this wallet and bills can be paid in it" (see
@@ -48,9 +50,10 @@ export const CURRENCIES: CurrencyMeta[] = [
   { code: "CNY", label: "Chinese Yuan", symbol: "¥", flag: "🇨🇳", decimals: 2, kind: "synthetic" },
   { code: "USDT", label: "Tether USD", symbol: "₮", flag: "₮", decimals: 2, kind: "crypto" },
   { code: "KES", label: "Kenyan Shilling", symbol: "KSh", flag: "🇰🇪", decimals: 2, kind: "fiat", country: "KE" },
-  // Last, deliberately: cedis are under maintenance, and an option nobody can
-  // use belongs at the bottom of every list rather than the middle of one.
+  // GHS and USD are both under maintenance (src/lib/services.ts) — unusable
+  // options belong at the bottom of every list, not the middle or the front.
   { code: "GHS", label: "Ghanaian Cedi", symbol: "₵", flag: "🇬🇭", decimals: 2, kind: "fiat", country: "GH" },
+  { code: "USD", label: "US Dollar", symbol: "$", flag: "🇺🇸", decimals: 2, kind: "fiat" },
 ];
 
 export const CURRENCY_CODES: Currency[] = CURRENCIES.map((c) => c.code);
@@ -120,12 +123,14 @@ export function formatRate(base: Currency, quote: Currency, rate: number): strin
  * PIN and then meet "rates are unavailable right now", which is both wrong
  * and the most expensive possible moment to be wrong.
  *
- * It is tied to dollar receiving because that is the same dependency: the
- * provider that will hold real USD for this account is the one that would
- * quote it. When /receive launches, this goes away.
+ * GROUP 2. The USD wallet is now modelled as its own maintenance service
+ * (src/lib/services.ts, NEXT_PUBLIC_FEATURE_USD_WALLET) rather than a
+ * standing, permanent fact — the flag is what resolveRoute() in
+ * src/lib/rates/routes.ts actually checks before falling back to this
+ * message, so the two cannot drift: turn the flag on and this stops firing.
  */
 export const USD_CONVERSION_UNAVAILABLE =
-  "USD conversions open when dollar receiving launches. Dollars you hold can't be converted yet.";
+  "USD is under maintenance. We'll let you know when it's back.";
 
 /** True when a pair cannot be routed because one side is USD. */
 export function isUsdPair(from: Currency, to: Currency): boolean {

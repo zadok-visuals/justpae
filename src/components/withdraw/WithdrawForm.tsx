@@ -103,7 +103,12 @@ function withdrawOptionKind(
   currency: Currency,
   recipients: WithdrawalRecipient[],
 ): UnavailableKind | null {
-  if (withdrawAvailability(currency).mode === "never") return "unsupported";
+  if (withdrawAvailability(currency).mode === "never") {
+    // GROUP 2b. USD is a locked wallet now, not a standing refusal like CNY
+    // (migration 0026 forbids a CNY withdrawal outright, for good) — same
+    // "never" mode, different word on the option.
+    return currency === "USD" ? "maintenance" : "unsupported";
+  }
   if (!recipients.some((r) => r.currency === currency)) return "setup";
   return null;
 }

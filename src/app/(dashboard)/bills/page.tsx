@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { Banner, SectionHeader, EmptyState } from "@/components/ui/Primitives";
@@ -21,6 +22,11 @@ export const dynamic = "force-dynamic";
  * one they use once.
  */
 export default async function BillsPage() {
+  // GROUP 2c. The proxy's maintenanceRedirect() already refuses a direct URL;
+  // this is the page's own half of the same gate, the way requireAdminUser
+  // backs up the proxy's aal2 check.
+  if (!isBillsAvailable()) redirect("/home");
+
   const supabase = await createClient();
   const user = await requireSessionUser();
 

@@ -1,6 +1,8 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { WithdrawForm } from "@/components/withdraw/WithdrawForm";
+import { isWalletLocked } from "@/lib/services";
 import { parseCurrencyParam, preselectCurrency } from "@/lib/accounts/preselect";
 import type { Wallet, WithdrawalRecipient } from "@/lib/types/database";
 import { requireSessionUser } from "@/lib/auth/session";
@@ -13,6 +15,10 @@ export default async function WithdrawPage(props: PageProps<"/withdraw">) {
   const user = await requireSessionUser();
 
   const params = await props.searchParams;
+
+  // GROUP 2c.
+  const requestedCurrency = parseCurrencyParam(params.currency);
+  if (requestedCurrency && isWalletLocked(requestedCurrency)) redirect("/home");
 
   // See the note in /convert: withdrawal_pins is no longer readable by a user
   // session, because reading it meant being able to read pin_hash.

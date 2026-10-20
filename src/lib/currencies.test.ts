@@ -30,15 +30,16 @@ test("isUsdPair catches USD on EITHER side, not just the source", () => {
   assert.equal(isUsdPair("NGN", "KES"), false);
 });
 
-test("the USD message explains the cause and never reads as a passing outage", () => {
+test("the USD message reads as maintenance, not a passing outage or a bare refusal", () => {
   // "try again" wording is exactly what this message replaces: the state is
   // standing, not transient, and telling the user to retry wastes their time.
   assert.ok(
     !/try again|temporar|right now/i.test(USD_CONVERSION_UNAVAILABLE),
     "must not imply retrying will help",
   );
-  // It has to say what unblocks it, or it is just a refusal.
-  assert.match(USD_CONVERSION_UNAVAILABLE, /receiving/i);
+  // GROUP 2 — the USD wallet is its own maintenance service now (see
+  // src/lib/services.ts), matching every other locked wallet's wording.
+  assert.match(USD_CONVERSION_UNAVAILABLE, /maintenance/i);
 });
 
 test("no customer-facing currency copy says 'exchange'", () => {

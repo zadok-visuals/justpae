@@ -1,7 +1,9 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { DepositForm } from "@/components/deposit/DepositForm";
 import { depositAvailability } from "@/lib/deposits/availability";
+import { isWalletLocked } from "@/lib/services";
 import { parseCurrencyParam, preselectCurrency } from "@/lib/accounts/preselect";
 import { startRouteTiming } from "@/lib/perf/timing";
 import type { Wallet } from "@/lib/types/database";
@@ -20,6 +22,12 @@ export default async function DepositPage(props: PageProps<"/deposit">) {
     props.searchParams,
   ]);
   const list = (wallets ?? []) as Wallet[];
+
+  // GROUP 2c. Belt-and-suspenders with src/proxy.ts's maintenanceRedirect():
+  // that one stops a direct URL before this page ever runs; this is the
+  // page's own copy of the same check.
+  const requested = parseCurrencyParam(params.currency);
+  if (requested && isWalletLocked(requested)) redirect("/home");
 
   // Resolved on the server so the form knows which currencies are depositable
   // before the first render, rather than enabling an option and then rejecting

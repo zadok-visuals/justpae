@@ -10,7 +10,9 @@ import { createCipheriv, createDecipheriv } from "node:crypto";
  * this file.
  *
  * THE WHOLE MODULE IS BEHIND A FEATURE FLAG THAT SHIPS OFF
- * (NEXT_PUBLIC_FEATURE_KLASHA_GHS_DEPOSIT). It has never completed a single
+ * (NEXT_PUBLIC_FEATURE_GHS_WALLET, renamed in GROUP 2 from the deposit-only
+ * NEXT_PUBLIC_FEATURE_KLASHA_GHS_DEPOSIT — the whole wallet is locked now,
+ * not just this rail). It has never completed a single
  * live call: every attempt has returned the same account-wide 403, including a
  * bodyless GET, which means the account itself is not cleared rather than the
  * request being malformed. Shipping it enabled would show GHS as depositable

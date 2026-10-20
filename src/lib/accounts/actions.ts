@@ -4,6 +4,7 @@ import { isAutomatablePayoutCurrency } from "@/lib/busha/payout";
 import { USD_COLLECTION_ENABLED } from "@/lib/flags";
 import { USD_CONVERSION_UNAVAILABLE, currencyMeta } from "@/lib/currencies";
 import { cnyRouteBlocker, cnyBlockerKind } from "@/lib/cny/priceCore";
+import { usdWithdrawalError } from "@/lib/withdrawals/rules";
 import type { UnavailableKind } from "@/lib/ui/unavailability";
 
 /**
@@ -112,13 +113,12 @@ export function withdrawAvailability(currency: Currency): {
     };
   }
 
-  if (currency === "USD") {
-    // Matches requestWithdrawal's own refusal (src/lib/actions/withdrawals.ts),
-    // so the screen and the server say the same thing.
-    return {
-      mode: "never",
-      reason: "Dollars can't be sent out directly. Convert to spend or withdraw it.",
-    };
+  const usdReason = usdWithdrawalError(currency);
+  if (usdReason) {
+    // GROUP 2b. Reads requestWithdrawal's own refusal
+    // (src/lib/withdrawals/rules.ts) instead of a second copy of the
+    // sentence, so the screen and the server cannot drift apart again.
+    return { mode: "never", reason: usdReason };
   }
 
   if (isAutomatablePayoutCurrency(currency)) return { mode: "automated", reason: null };

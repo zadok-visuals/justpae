@@ -23,6 +23,7 @@ import {
   SendIcon,
   FlightsIcon,
 } from "@/components/layout/NavIcons";
+import { toast } from "sonner";
 import { BILLS_ENABLED, FLIGHTS_ENABLED } from "@/lib/flags";
 import { MaintenanceBadge } from "@/components/ui/MaintenanceBadge";
 import { HEADER_ICON_BUTTON_CLASS } from "@/lib/ui/escapeControl";
@@ -103,6 +104,16 @@ const SIDEBAR_LINKS: {
   { href: "/flights", label: "Flights", Icon: FlightsIcon, maintenance: !FLIGHTS_ENABLED },
   TABS[TABS.length - 1]!,
 ];
+
+/**
+ * GROUP 2c. The page behind a maintenance entry now redirects away rather
+ * than rendering a "coming soon" screen (see src/proxy.ts), so the link
+ * itself has to stop pretending there is somewhere to go — a tap now shows
+ * the same sentence the page used to, as a toast, instead of navigating.
+ */
+function maintenanceToastFor(label: string): void {
+  toast(`${label} is under maintenance. We'll let you know when it's back.`);
+}
 
 function isActive(pathname: string, href: string): boolean {
   // Prefix match so /bills/airtime keeps the Bills tab lit, but exact for
@@ -280,24 +291,40 @@ export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
         <ul className="space-y-1">
           {SIDEBAR_LINKS.map(({ href, label, Icon, maintenance }) => {
             const active = isActive(pathname, href);
+            const className = `flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium ${
+              active
+                ? "bg-sidebar-accent text-primary"
+                : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+            }`;
+            const inner = (
+              <>
+                <Icon className="size-5" />
+                <span className="min-w-0 flex-1 truncate">{label}</span>
+                {/* The badge is the whole reason the row is shown at all
+                    while the flag is off — without it this is a navigation
+                    item that leads somewhere disappointing. */}
+                {maintenance && <MaintenanceBadge className="shrink-0" />}
+              </>
+            );
             return (
               <li key={href}>
-                <Link
-                  href={href}
-                  aria-current={active ? "page" : undefined}
-                  className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium ${
-                    active
-                      ? "bg-sidebar-accent text-primary"
-                      : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-                  }`}
-                >
-                  <Icon className="size-5" />
-                  <span className="min-w-0 flex-1 truncate">{label}</span>
-                  {/* The badge is the whole reason the link is shown at all
-                      while the flag is off — without it this is a navigation
-                      item that leads somewhere disappointing. */}
-                  {maintenance && <MaintenanceBadge className="shrink-0" />}
-                </Link>
+                {/* GROUP 2c. Not a link while under maintenance: the page it
+                    points at redirects away immediately now, so navigating
+                    there would be a tap that silently bounces the user back
+                    to where they started. */}
+                {maintenance ? (
+                  <button
+                    type="button"
+                    onClick={() => maintenanceToastFor(label)}
+                    className={className}
+                  >
+                    {inner}
+                  </button>
+                ) : (
+                  <Link href={href} aria-current={active ? "page" : undefined} className={className}>
+                    {inner}
+                  </Link>
+                )}
               </li>
             );
           })}

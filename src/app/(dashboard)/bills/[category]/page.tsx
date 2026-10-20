@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { BillForm } from "@/components/bills/BillForm";
@@ -21,6 +21,9 @@ export async function generateMetadata(props: PageProps<"/bills/[category]">) {
 }
 
 export default async function BillCategoryPage(props: PageProps<"/bills/[category]">) {
+  // GROUP 2c. Same gate as /bills itself.
+  if (!isBillsAvailable()) redirect("/home");
+
   const [{ category }, search] = await Promise.all([props.params, props.searchParams]);
 
   if (!VALID_CATEGORIES.includes(category as BillCategory)) notFound();
