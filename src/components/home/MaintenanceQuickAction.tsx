@@ -12,15 +12,16 @@ import { maintenanceToastFor } from "@/components/ui/maintenanceToast";
  */
 export function MaintenanceQuickAction({
   label,
-  Icon,
+  icon,
 }: {
   label: string;
-  Icon: (props: { className?: string }) => ReactElement;
+  /** Already rendered — see QuickActionTile.tsx's QuickActionTileProps. */
+  icon: ReactElement;
 }) {
   return (
     <QuickActionButton
       label={label}
-      Icon={Icon}
+      icon={icon}
       maintenance
       onClick={() => maintenanceToastFor(label)}
     />

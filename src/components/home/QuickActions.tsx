@@ -67,22 +67,37 @@ export function QuickActions({ wallets }: { wallets: Wallet[] }) {
   // Rendered up front so the tile count (and so the grid's column class)
   // reflects exactly what ends up on screen.
   const tiles: React.ReactElement[] = [
-    <QuickActionLink key="pay-to-china" href="/pay-to-china" label="Pay to China" Icon={SendIcon} />,
+    <QuickActionLink
+      key="pay-to-china"
+      href="/pay-to-china"
+      label="Pay to China"
+      icon={<SendIcon className="size-6" />}
+    />,
     isServiceLive("receiveUsd") ? (
-      <QuickActionLink key="receive" href="/receive" label="Receive USD" Icon={ReceiveIcon} />
+      <QuickActionLink
+        key="receive"
+        href="/receive"
+        label="Receive USD"
+        icon={<ReceiveIcon className="size-6" />}
+      />
     ) : (
-      <MaintenanceQuickAction key="receive" label="Receive USD" Icon={ReceiveIcon} />
+      <MaintenanceQuickAction key="receive" label="Receive USD" icon={<ReceiveIcon className="size-6" />} />
     ),
     ...(billsLive
       ? [
-          <QuickActionLink key="bills" href="/bills" label="Bills" Icon={BillsIcon} />,
-          <QuickActionLink key="airtime" href="/bills/airtime" label="Airtime" Icon={AirtimeIcon} />,
+          <QuickActionLink key="bills" href="/bills" label="Bills" icon={<BillsIcon className="size-6" />} />,
+          <QuickActionLink
+            key="airtime"
+            href="/bills/airtime"
+            label="Airtime"
+            icon={<AirtimeIcon className="size-6" />}
+          />,
         ]
-      : [<MaintenanceQuickAction key="bills" label="Bills" Icon={BillsIcon} />]),
+      : [<MaintenanceQuickAction key="bills" label="Bills" icon={<BillsIcon className="size-6" />} />]),
     isServiceLive("flights") ? (
-      <QuickActionLink key="flights" href="/flights" label="Flights" Icon={FlightsIcon} />
+      <QuickActionLink key="flights" href="/flights" label="Flights" icon={<FlightsIcon className="size-6" />} />
     ) : (
-      <MaintenanceQuickAction key="flights" label="Flights" Icon={FlightsIcon} />
+      <MaintenanceQuickAction key="flights" label="Flights" icon={<FlightsIcon className="size-6" />} />
     ),
   ];
 

@@ -67,7 +67,7 @@ export function AddMoneyMenu({ choices }: { choices: AddMoneyChoice[] }) {
         aria-haspopup="dialog"
         aria-expanded={open}
         label="Deposit"
-        Icon={DepositIcon}
+        icon={<DepositIcon className="size-6" />}
       />
 
       {open && (

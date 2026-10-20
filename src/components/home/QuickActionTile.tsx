@@ -24,18 +24,16 @@ const TILE_CLASS =
 
 function TileContent({
   label,
-  Icon,
+  icon,
   maintenance,
 }: {
   label: string;
-  Icon: (props: { className?: string }) => ReactElement;
+  icon: ReactElement;
   maintenance?: boolean;
 }) {
   return (
     <>
-      <span className={maintenance ? "text-muted-foreground" : "text-primary"}>
-        <Icon className="size-6" />
-      </span>
+      <span className={maintenance ? "text-muted-foreground" : "text-primary"}>{icon}</span>
       {/* Balanced wrapping over two lines rather than three — a tile this
           narrow runs out of width on "Pay to China" at a plain center-align. */}
       <span className="line-clamp-2 leading-tight text-balance">{label}</span>
@@ -57,7 +55,15 @@ function TileContent({
 
 interface QuickActionTileProps {
   label: string;
-  Icon: (props: { className?: string }) => ReactElement;
+  /**
+   * A RENDERED icon (`<SendIcon className="size-6" />`), not the component
+   * itself. QuickActionLink stays server-renderable, but MaintenanceQuickAction
+   * is a Client Component, and a Server Component passing a bare function
+   * reference as a prop into one crashes the whole page at render time — "Functions
+   * cannot be passed directly to Client Components" — where an already-built
+   * element serializes across that boundary fine.
+   */
+  icon: ReactElement;
   maintenance?: boolean;
   className?: string;
 }
@@ -65,13 +71,13 @@ interface QuickActionTileProps {
 export function QuickActionLink({
   href,
   label,
-  Icon,
+  icon,
   maintenance,
   className = "",
 }: QuickActionTileProps & { href: string }) {
   return (
     <Link href={href} className={`${TILE_CLASS} ${className}`}>
-      <TileContent label={label} Icon={Icon} maintenance={maintenance} />
+      <TileContent label={label} icon={icon} maintenance={maintenance} />
     </Link>
   );
 }
@@ -79,7 +85,7 @@ export function QuickActionLink({
 export function QuickActionButton({
   onClick,
   label,
-  Icon,
+  icon,
   maintenance,
   className = "",
   buttonRef,
@@ -97,7 +103,7 @@ export function QuickActionButton({
       className={`${TILE_CLASS} ${className}`}
       {...aria}
     >
-      <TileContent label={label} Icon={Icon} maintenance={maintenance} />
+      <TileContent label={label} icon={icon} maintenance={maintenance} />
     </button>
   );
 }
