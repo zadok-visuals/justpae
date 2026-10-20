@@ -278,20 +278,43 @@ export function AdminNav({
     return () => window.removeEventListener("keydown", onKey);
   }, [drawerOpen]);
 
+  // GROUP 1c. Locks the page behind the drawer rather than letting it scroll
+  // under the scrim — a touch drag on the backdrop would otherwise scroll
+  // <body> while the drawer sits fixed on top of it.
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [drawerOpen]);
+
   return (
     <>
       {/* ── Desktop sidebar ──────────────────────────────────────────────
           w-60 and the sidebar ground, matching the customer app's sidebar
           exactly, because an admin is the same person switching context and
-          two different chromes for one product is two products. */}
-      <aside className="hidden w-60 shrink-0 flex-col self-stretch border-r border-sidebar-border bg-sidebar lg:flex">
+          two different chromes for one product is two products.
+
+          GROUP 1b — lg:sticky lg:top-0 lg:h-dvh, not self-stretch. Beside a
+          flex row, self-stretch makes this element as tall as its tallest
+          sibling — on a long admin page that is <main>, so the sidebar grew
+          past the viewport and scrolled away with the page. h-dvh caps it to
+          the viewport's own height regardless of sibling height, and sticky
+          keeps it pinned there as the page scrolls, so only the content
+          scrolls with the window. */}
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex lg:sticky lg:top-0 lg:h-dvh">
         <div className="shrink-0 border-b border-sidebar-border px-5 py-3">
           <Link href="/admin" aria-label="justpae admin" className="inline-flex min-h-11 items-center">
             <Wordmark />
           </Link>
         </div>
 
-        <nav aria-label="Admin" className="flex-1 overflow-y-auto px-3 py-3">
+        {/* min-h-0: a flex child's default min-height is its content size, not
+            0 — without it overflow-y-auto never actually triggers, because
+            the nav simply grows to fit every link instead of scrolling. */}
+        <nav aria-label="Admin" className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
           <NavList counts={counts} pathname={pathname} />
         </nav>
 

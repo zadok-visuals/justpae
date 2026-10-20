@@ -202,69 +202,117 @@ export default async function AdminPnlPage() {
           )}
 
           {recent.length > 0 && (
-            <Card>
+            <>
               <h2 className="mb-3 text-base font-semibold text-foreground">
                 Last {recent.length} orders
               </h2>
-              <div className="scroll-x">
-                <table className="w-full min-w-[44rem] text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left text-muted-foreground">
-                      <th scope="col" className="pb-2 font-medium">
-                        When
-                      </th>
-                      <th scope="col" className="pb-2 font-medium">
-                        Route
-                      </th>
-                      <th scope="col" className="pb-2 text-right font-medium">
-                        Paid
-                      </th>
-                      <th scope="col" className="pb-2 text-right font-medium">
-                        Got
-                      </th>
-                      <th scope="col" className="pb-2 text-right font-medium">
-                        Margin (USDT)
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recent.map((order) => (
-                      <tr key={order.id} className="border-b border-border last:border-0">
-                        <td className="py-2 whitespace-nowrap text-muted-foreground">
-                          {new Date(order.createdAt).toLocaleDateString("en-GB")}
-                        </td>
-                        <td className="py-2 font-medium text-foreground">
+
+              {/* GROUP 1c. Phone: a card per order, same rule as the
+                  transactions ledger — a five-column table has no honest
+                  layout at 360px. */}
+              <ul className="space-y-2 sm:hidden">
+                {recent.map((order) => (
+                  <li key={order.id}>
+                    <Card className="space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="font-medium text-foreground">
                           {order.routeLabel}
                           {order.estimated && (
-                            <span className="ml-2 text-xs font-normal text-muted-foreground">
+                            <span className="ml-1.5 text-xs font-normal text-muted-foreground">
                               estimated
                             </span>
                           )}
-                        </td>
-                        <td className="py-2 text-right tabular-nums text-foreground">
-                          {order.paidLabel}
-                        </td>
-                        <td className="py-2 text-right tabular-nums text-muted-foreground">
-                          {order.gotLabel}
-                        </td>
-                        <td className="py-2 text-right tabular-nums">
-                          {order.pnlUsdt == null ? (
-                            <span
-                              className="text-muted-foreground"
-                              title={order.skippedReason ?? undefined}
-                            >
-                              not valued
-                            </span>
-                          ) : (
-                            <span className="text-naira-light">{formatNumber(order.pnlUsdt)}</span>
-                          )}
-                        </td>
+                        </span>
+                        <time
+                          dateTime={order.createdAt}
+                          className="shrink-0 whitespace-nowrap text-xs text-muted-foreground"
+                        >
+                          {new Date(order.createdAt).toLocaleDateString("en-GB")}
+                        </time>
+                      </div>
+                      <div className="flex items-end justify-between gap-3 text-sm">
+                        <span className="text-muted-foreground">
+                          {order.paidLabel} → {order.gotLabel}
+                        </span>
+                        {order.pnlUsdt == null ? (
+                          <span
+                            className="text-xs text-muted-foreground"
+                            title={order.skippedReason ?? undefined}
+                          >
+                            not valued
+                          </span>
+                        ) : (
+                          <span className="tabular-nums text-naira-light">
+                            {formatNumber(order.pnlUsdt)}
+                          </span>
+                        )}
+                      </div>
+                    </Card>
+                  </li>
+                ))}
+              </ul>
+
+              <Card className="hidden sm:block">
+                <div className="scroll-x">
+                  <table className="w-full min-w-[44rem] text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-muted-foreground">
+                        <th scope="col" className="pb-2 font-medium">
+                          When
+                        </th>
+                        <th scope="col" className="pb-2 font-medium">
+                          Route
+                        </th>
+                        <th scope="col" className="pb-2 text-right font-medium">
+                          Paid
+                        </th>
+                        <th scope="col" className="pb-2 text-right font-medium">
+                          Got
+                        </th>
+                        <th scope="col" className="pb-2 text-right font-medium">
+                          Margin (USDT)
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
+                    </thead>
+                    <tbody>
+                      {recent.map((order) => (
+                        <tr key={order.id} className="border-b border-border last:border-0">
+                          <td className="py-2 whitespace-nowrap text-muted-foreground">
+                            {new Date(order.createdAt).toLocaleDateString("en-GB")}
+                          </td>
+                          <td className="py-2 font-medium text-foreground">
+                            {order.routeLabel}
+                            {order.estimated && (
+                              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                                estimated
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2 text-right tabular-nums text-foreground">
+                            {order.paidLabel}
+                          </td>
+                          <td className="py-2 text-right tabular-nums text-muted-foreground">
+                            {order.gotLabel}
+                          </td>
+                          <td className="py-2 text-right tabular-nums">
+                            {order.pnlUsdt == null ? (
+                              <span
+                                className="text-muted-foreground"
+                                title={order.skippedReason ?? undefined}
+                              >
+                                not valued
+                              </span>
+                            ) : (
+                              <span className="text-naira-light">{formatNumber(order.pnlUsdt)}</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </>
           )}
         </>
       )}

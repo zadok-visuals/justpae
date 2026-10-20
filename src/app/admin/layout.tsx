@@ -29,12 +29,19 @@ import type { AdminDashboardStats } from "@/lib/types/database";
  * rather than a header stacked above content, and the content column gets the
  * width the sidebar leaves rather than a fixed max-w-5xl in the middle of the
  * window.
+ *
+ * GROUP 1a — flex-col, not flex, below lg. A plain `flex` is a row at every
+ * width, so AdminNav's mobile header (lg:hidden, meant to sit ABOVE <main>)
+ * was instead placed BESIDE it, off to the side of the viewport. `flex-col
+ * lg:flex-row` makes it a column on mobile — the header stacks on top as a
+ * sticky bar — and only becomes a row at the breakpoint where AdminNav
+ * switches to the sidebar.
  */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const actor = await requireAdminRoleOnly();
 
   return (
-    <div className="flex min-h-screen-dvh bg-background">
+    <div className="flex min-h-screen-dvh flex-col bg-background lg:flex-row">
       <AdminNav counts={await loadQueueCounts()} role={actor.role} email={actor.email} />
 
       {/* min-w-0 is load-bearing beside a flex sidebar: without it a wide

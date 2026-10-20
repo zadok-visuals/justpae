@@ -7,7 +7,8 @@ import {
   type FixtureUser,
 } from "./fixtures/users";
 import { signIn, signOut } from "./fixtures/signIn";
-import { totpCode } from "./fixtures/totp";
+import { enrollAdminTotp } from "./fixtures/adminMfa";
+import { ADMIN_PAGES } from "./fixtures/adminPages";
 
 /**
  * The signed-in journeys, driven as each of the six fixture roles.
@@ -326,40 +327,12 @@ test.describe("an admin", () => {
     page,
   }) => {
     await signIn(page, users.admin);
-    await page.goto("/admin/security");
-
-    await page.getByText(/can.t scan it\?/i).click();
-    const secret = await page.evaluate(() => {
-      const match = Array.from(document.querySelectorAll("p")).find((p) =>
-        /^[A-Z2-7]{16,}$/.test(p.textContent?.trim() ?? ""),
-      );
-      return match?.textContent?.trim() ?? null;
-    });
-    if (!secret) throw new Error("Enrolment screen did not show a TOTP secret to read.");
-
-    await page.getByLabel(/code from your app/i).fill(totpCode(secret));
-    await page.getByRole("button", { name: /confirm and turn on/i }).click();
-    // verifyTotpEnrollment redirects straight to /admin on success — the
-    // session is aal2 the moment the code checks out, with no second
-    // "sign in again" step.
+    await enrollAdminTotp(page);
+    // enrollAdminTotp lands on /admin once the code checks out — the session
+    // is aal2 the moment it verifies, with no second "sign in again" step.
     await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
 
-    // The eleven pages AdminNav links to, /admin/security excepted — it is the
-    // one page reachable without aal2, so it proves nothing here.
-    const adminPages = [
-      "/admin",
-      "/admin/kyc",
-      "/admin/withdrawals",
-      "/admin/pay-to-china",
-      "/admin/support",
-      "/admin/transactions",
-      "/admin/rates",
-      "/admin/pnl",
-      "/admin/users",
-      "/admin/notifications",
-      "/admin/activity",
-    ];
-    for (const path of adminPages) {
+    for (const path of ADMIN_PAGES) {
       await page.goto(path);
       await expect(page, `${path} bounced to the MFA gate`).not.toHaveURL(/\/admin\/security$/);
       await expect(page.locator("body"), `${path} rendered an error boundary`).not.toContainText(

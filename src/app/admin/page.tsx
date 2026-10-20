@@ -178,14 +178,19 @@ export default async function AdminPage() {
           The last seven days
         </h2>
         {/* Not links. These are for reading, and making them clickable would
-            invite the reader to treat them as a queue. */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            invite the reader to treat them as a queue.
+
+            GROUP 1c. One column below sm, and the label and number share a
+            row instead of stacking — two grid-cols-2 cards side by side at
+            360px left no room for either the number or the label to read
+            cleanly. */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {health.map((tile) => (
-            <Card key={tile.label} className="space-y-0.5">
-              <p className="font-display text-xl font-semibold tabular-nums text-foreground">
+            <Card key={tile.label} className="flex items-baseline justify-between gap-3">
+              <span className="text-sm text-muted-foreground">{tile.label}</span>
+              <span className="font-display text-xl font-semibold tabular-nums text-foreground">
                 {tile.value.toLocaleString("en-GB")}
-              </p>
-              <p className="text-xs text-muted-foreground">{tile.label}</p>
+              </span>
             </Card>
           ))}
         </div>

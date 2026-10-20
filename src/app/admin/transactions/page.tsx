@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdminUser } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, Banner, StatusPill } from "@/components/ui/Primitives";
+import { CopyButton } from "@/components/ui/CopyButton";
 import { Pager, parsePageParam, pageRange } from "@/components/ui/Pager";
 import { LedgerFilters } from "@/components/admin/LedgerFilters";
 import { ledgerKindLabel, isLedgerKind, isLedgerStatus } from "@/lib/admin/ledger";
@@ -180,12 +181,15 @@ export default async function AdminTransactionsPage({
                     </span>
                     <AmountCell row={row} />
                   </div>
-                  <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                  <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                     <time dateTime={row.created_at}>
                       {new Date(row.created_at).toLocaleString("en-GB")}
                     </time>
                     {row.reference && (
-                      <span className="truncate font-mono">{row.reference}</span>
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <span className="truncate font-mono">{row.reference}</span>
+                        <CopyButton value={row.reference} label="Copy" />
+                      </span>
                     )}
                   </div>
                 </Card>
@@ -227,8 +231,15 @@ export default async function AdminTransactionsPage({
                       <td className="py-2 pr-3 align-top">
                         <StatusPill status={row.status} />
                       </td>
-                      <td className="max-w-40 truncate py-2 align-top font-mono text-xs text-muted-foreground">
-                        {row.reference ?? "—"}
+                      <td className="max-w-40 py-2 align-top font-mono text-xs text-muted-foreground">
+                        {row.reference ? (
+                          <span className="flex min-w-0 items-center gap-1">
+                            <span className="truncate">{row.reference}</span>
+                            <CopyButton value={row.reference} label="Copy" />
+                          </span>
+                        ) : (
+                          "—"
+                        )}
                       </td>
                     </tr>
                   ))}

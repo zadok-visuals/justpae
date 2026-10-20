@@ -7,6 +7,8 @@ import {
   type FixtureUser,
 } from "./fixtures/users";
 import { signIn } from "./fixtures/signIn";
+import { enrollAdminTotp, challengeAdminTotp } from "./fixtures/adminMfa";
+import { ADMIN_PAGES } from "./fixtures/adminPages";
 
 /**
  * GROUP 6a, measured — the signed-in half of the responsive sweep.
@@ -189,14 +191,33 @@ test.describe("the dashboard uses the width it has", () => {
 });
 
 /**
- * The admin frame, which 6b replaced wholesale. The fixture admin has no
- * enrolled TOTP factor, so the proxy admits only /admin/security — which is
- * enough for the property that matters here, since the nav is in the layout
- * and renders on every admin page.
+ * The admin frame, which 6b replaced wholesale and GROUP 1 fixed the mobile
+ * direction and sticky-sidebar height of.
+ *
+ * Enrols TOTP ONCE, in beforeAll, on a throwaway page/context — not per test,
+ * since GoTrue refuses a second factor under the same friendly name once one
+ * is verified. Every test below signs in fresh (aal1) and presents a new
+ * code from that same secret to reach aal2, which is the normal shape of a
+ * returning admin's session, not a special test path.
  */
 test.describe("the admin nav", () => {
+  let adminTotpSecret: string;
+
+  test.beforeAll(async ({ browser }) => {
+    // browser.newContext() does not inherit the project's `use.baseURL` the
+    // way the page/context fixtures do — it has to be passed explicitly
+    // here, matching playwright.config.ts's own derivation of the same URL.
+    const baseURL = `http://127.0.0.1:${process.env.E2E_PORT ?? 3100}`;
+    const context = await browser.newContext({ baseURL });
+    const page = await context.newPage();
+    await signIn(page, users.admin);
+    adminTotpSecret = await enrollAdminTotp(page);
+    await context.close();
+  });
+
   test.beforeEach(async ({ page }) => {
     await signIn(page, users.admin);
+    await challengeAdminTotp(page, adminTotpSecret);
   });
 
   test("replaces the pill row and never cuts a label off", async ({ page }, testInfo) => {
@@ -234,5 +255,52 @@ test.describe("the admin nav", () => {
 
     // "Back to app", at the bottom of whichever of the two is showing.
     await expect(page.getByRole("link", { name: /back to app/i })).toBeVisible();
+  });
+
+  /**
+   * GROUP 1a/1c/1d. Every admin page, not only /admin/security — the mobile
+   * header's actual bug (`flex` instead of `flex-col` on the shell) could
+   * only show up once more than the one aal2-exempt page was reachable.
+   */
+  for (const path of ADMIN_PAGES) {
+    test(`${path} does not scroll sideways`, async ({ page }, testInfo) => {
+      await page.goto(path);
+      await page.waitForLoadState("networkidle");
+      const overflow = await horizontalOverflow(page);
+      expect(overflow, `${path} at ${testInfo.project.name} overflows by ${overflow}px`).toBeLessThanOrEqual(1);
+    });
+  }
+
+  test("on mobile the menu bar sits above the content, not beside it", async ({ page }) => {
+    const viewport = page.viewportSize()!;
+    test.skip(viewport.width >= 1024, "the sidebar replaces the bar from 1024 up");
+
+    await page.goto("/admin");
+    await page.waitForLoadState("networkidle");
+
+    const barBox = await page.getByRole("button", { name: /admin menu/i }).boundingBox();
+    const mainBox = await page.locator("main").first().boundingBox();
+    if (!barBox || !mainBox) throw new Error("menu bar or main content not found");
+
+    // Above, not beside: the bar's bottom edge at or above main's top edge,
+    // and the bar spans from the left edge rather than sitting in a column
+    // next to a full-height <main> (the `flex` row the fix replaced).
+    expect(barBox.y, "the menu bar is not above the page content").toBeLessThan(mainBox.y + 1);
+    expect(barBox.x, "the menu bar is offset sideways, not spanning the top").toBeLessThan(16);
+  });
+
+  test("on desktop, Back to app stays visible after scrolling to the bottom of a long admin page", async ({
+    page,
+  }) => {
+    const viewport = page.viewportSize()!;
+    test.skip(viewport.width < 1024, "the sticky sidebar only applies from 1024 up");
+
+    // /admin/rates stacks five forms plus a table — long regardless of how
+    // much data this run's database happens to hold.
+    await page.goto("/admin/rates");
+    await page.waitForLoadState("networkidle");
+    await page.mouse.wheel(0, 100_000);
+
+    await expect(page.getByRole("link", { name: /back to app/i })).toBeInViewport();
   });
 });
