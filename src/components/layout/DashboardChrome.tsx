@@ -111,6 +111,32 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+/**
+ * GROUP 11c — WHY NO `prefetch` PROP ON ANY LINK BELOW, WHICH IS A DECISION
+ * AND NOT AN OMISSION.
+ *
+ * The brief asks to make sure nav links prefetch. They do: `<Link>` prefetches
+ * by default, and for these routes the default is the setting you want. The
+ * fix that was actually needed was elsewhere — see (dashboard)/loading.tsx,
+ * which gave /pay-to-china and /flights the shell the prefetch had nothing to
+ * fetch without.
+ *
+ * `prefetch={true}` is the tempting upgrade and it would be a mistake here.
+ * Every destination in this nav is `force-dynamic`, so a full prefetch does
+ * not warm a cache — it RUNS THE PAGE on the server: the wallet reads, the
+ * profile read, and on /home and /convert the provider rate lookups too. With
+ * eight links in a viewport that means up to eight full dynamic renders,
+ * including paid third-party calls, for pages the user has not asked for and
+ * mostly will not open. On a phone scrolling past the sidebar it would fire
+ * repeatedly.
+ *
+ * It is also the wrong data to hold. A prefetched money page is a snapshot of
+ * a balance and a rate; serving it on a tap thirty seconds later shows figures
+ * that were right when nobody was looking. The default — layout plus
+ * loading.tsx, which is static and has no balance in it — gives the instant
+ * response without ever caching a number.
+ */
+
 export function BottomTabBar() {
   const pathname = usePathname();
 

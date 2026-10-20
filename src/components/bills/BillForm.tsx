@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AmountInput, parseAmount } from "@/components/ui/AmountInput";
@@ -11,6 +11,7 @@ import { Banner, Card, DetailRow } from "@/components/ui/Primitives";
 import { CopyField } from "@/components/ui/CopyButton";
 import { ConfirmDialog, useConfirm } from "@/components/ui/ConfirmDialog";
 import { payBill, validateBillCustomer } from "@/lib/actions/bills";
+import { useDebouncedQuote } from "@/lib/hooks/useDebouncedQuote";
 import { formatAmount, currencyMeta } from "@/lib/currencies";
 import type { Biller } from "@/lib/providers/bills";
 import type { BillCategory, Currency, Wallet } from "@/lib/types/database";
@@ -133,7 +134,7 @@ function BillFormFields({
     error?: string;
     unsupported?: boolean;
   } | null>(null);
-  const [, startLookup] = useTransition();
+
 
   // The confirmation. A mistyped meter number credits a stranger's meter and
   // there is no recall, so the name the biller returned — or the explicit fact
@@ -150,22 +151,21 @@ function BillFormFields({
 
   // Debounced name lookup: every keystroke of a meter number would otherwise
   // be a biller API call, and the number is only meaningful once it is whole.
-  const latest = useRef(0);
-  useEffect(() => {
-    if (!biller?.supportsNameValidation) return;
-    if (identifier.trim().length < 6) return;
-
-    const requestId = ++latest.current;
-    const timer = setTimeout(() => {
-      startLookup(async () => {
-        const result = await validateBillCustomer(biller.code, identifier.trim());
-        if (requestId !== latest.current) return;
-        setLookup(result);
-      });
-    }, 600);
-
-    return () => clearTimeout(timer);
-  }, [biller, identifier]);
+  //
+  // GROUP 11a: through the shared hook. 600ms, not the 300 the money forms
+  // use, and deliberately the longest wait in the app — this is the one input
+  // where a partial value is not an approximation of the right answer but a
+  // different meter belonging to somebody else.
+  useDebouncedQuote({
+    key: `${biller?.code ?? ""}|${identifier.trim()}`,
+    enabled: !!biller?.supportsNameValidation && identifier.trim().length >= 6,
+    // `enabled` is the guard: the thunk is only ever called when a biller that
+    // supports a name lookup is selected. TypeScript cannot carry that
+    // narrowing across the closure, hence the assertion.
+    request: () => validateBillCustomer(biller!.code, identifier.trim()),
+    onResult: setLookup,
+    debounceMs: 600,
+  });
 
   // Derived rather than cleared from the effect, so an old name can't linger
   // beside a newly edited number.

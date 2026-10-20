@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import QRCode from "qrcode";
 
 /**
  * GROUP 4h — the USDT deposit address as a QR code.
@@ -64,6 +63,31 @@ import QRCode from "qrcode";
  * space with a pulse. A QR that pops in and reflows the page under somebody's
  * thumb while they are aiming a camera is worse than one that arrives a tick
  * later in a box that was already the right size.
+ *
+ * ──────────────────────────────────────────────────────────────────────────
+ * GROUP 11c — THE LIBRARY IS IMPORTED WHEN A CODE IS ENCODED, NOT BEFORE
+ *
+ * `import QRCode from "qrcode"` at the top of this file put the whole encoder
+ * — a 96 kB chunk in the production build, measured, which is the largest
+ * single third-party thing in this app's client bundle — into /deposit's
+ * payload for EVERY deposit.
+ *
+ * Most deposits never show a QR. Naira and shilling deposits are bank
+ * transfers: the screen renders an account number and a reference, and this
+ * component is not mounted at all. The one currency that does need it is
+ * USDT. So the common case was downloading an encoder it would never call,
+ * on the screen where somebody is waiting to be told where to send money.
+ *
+ * The import moved into the effect, which is the right place rather than
+ * merely a later one: the component already renders its white tile at full
+ * size before the data URL exists, so the extra round trip for the chunk
+ * lands inside a wait that was already there and shows the same pulse. There
+ * is no new loading state and nothing moves on screen.
+ *
+ * next/dynamic on this component would have been the weaker fix. The
+ * component is small; the library is the weight, and dynamic() on the wrapper
+ * still bundles whatever the wrapper statically imports into the lazy chunk
+ * while adding a second loading state to a screen that did not need one.
  */
 
 /** Hard-coded, NOT theme variables. See the note above — this is the bug. */
@@ -117,12 +141,20 @@ export function DepositAddressQr({
   useEffect(() => {
     let active = true;
 
-    QRCode.toDataURL(address, {
-      errorCorrectionLevel: "M",
-      margin: 2,
-      width: 512,
-      color: { dark: QR_DARK, light: QR_LIGHT },
-    })
+    // GROUP 11c — see the note above. The dynamic import is inside the same
+    // promise chain as the encode, so a chunk that fails to load is handled by
+    // the same catch as an encode that fails: the QR is dropped, the address
+    // and its copy button stay, and nothing throws on a screen holding live
+    // transfer details.
+    import("qrcode")
+      .then(({ default: QRCode }) =>
+        QRCode.toDataURL(address, {
+          errorCorrectionLevel: "M",
+          margin: 2,
+          width: 512,
+          color: { dark: QR_DARK, light: QR_LIGHT },
+        }),
+      )
       .then((url) => {
         if (active) setEncoded({ address, dataUrl: url, failed: false });
       })

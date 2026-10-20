@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AmountInput, formatAmountInput, parseAmount } from "@/components/ui/AmountInput";
@@ -14,6 +14,7 @@ import { ConfirmDialog, useConfirm, type ConfirmRow } from "@/components/ui/Conf
 // fewer thing in the /convert client bundle, and one fewer place that could
 // render a rate differently from the other three.
 import { useCountdown, formatCountdown } from "@/lib/hooks/useCountdown";
+import { useDebouncedQuote } from "@/lib/hooks/useDebouncedQuote";
 import {
   quoteConversion,
   executeConversion,
@@ -155,7 +156,6 @@ function ConvertFormFields({
 
   const [quote, setQuote] = useState<ConversionQuote | null>(null);
   const [unavailable, setUnavailable] = useState<string | null>(null);
-  const [quoting, startQuoting] = useTransition();
   const [pin, setPin] = useState("");
 
   const secondsLeft = useCountdown(quote?.expiresAt);
@@ -184,48 +184,46 @@ function ConvertFormFields({
   const typedAmount = edited === "source" ? parseAmount(sourceText) : parseAmount(targetText);
   const insufficient = edited === "source" && parseAmount(sourceText) > balance;
 
-  // Re-quote when the pair or the typed amount changes. Debounced so a
-  // six-digit naira amount is one request at the end rather than one per
-  // keystroke — each of these costs a live provider lookup.
-  const latestRequest = useRef(0);
-  useEffect(() => {
-    // Returns without touching state when there is nothing to price. The quote
-    // is DERIVED below rather than cleared here — clearing would be a
-    // synchronous state write in the effect body on every keystroke back to
-    // empty.
-    if (typedAmount <= 0) return;
-    // A USD pair has a known answer that no round trip can change, and the
-    // banner is already showing it. Quoting anyway would only risk replacing
-    // that specific message with a generic "couldn't price that".
-    if (isUsdPair(from, to)) return;
+  /**
+   * Re-quote when the pair or the typed amount changes.
+   *
+   * GROUP 11a. The debounce, the supersede rule and the transition are
+   * useDebouncedQuote's now — this had its own copy, and so did
+   * PayToChinaForm, and two hand-rolled implementations of "ignore the
+   * response that belongs to an amount the user has already typed over" is
+   * one more than can be kept in agreement. See that file for why the
+   * supersede check is a money rule rather than a performance one.
+   *
+   * `enabled` is false in the two cases where there is nothing to ask:
+   *
+   *   - no amount typed. The quote is DERIVED below rather than cleared
+   *     here, because clearing would be a synchronous state write on every
+   *     keystroke back to empty.
+   *   - a USD pair, whose answer no round trip can change and whose banner is
+   *     already on screen. Quoting anyway would risk replacing that specific
+   *     message with a generic "couldn't price that".
+   */
+  const { pending: quoting } = useDebouncedQuote({
+    key: `${from}|${to}|${typedAmount}|${edited}`,
+    enabled: typedAmount > 0 && !isUsdPair(from, to),
+    request: () => quoteConversion({ from, to, amount: typedAmount, field: edited }),
+    onResult: (result) => {
+      if (result.unavailableReason) {
+        setUnavailable(result.unavailableReason);
+        setQuote(null);
+        return;
+      }
+      setUnavailable(result.error ?? null);
+      setQuote(result.quote ?? null);
 
-    const requestId = ++latestRequest.current;
-    const timer = setTimeout(() => {
-      startQuoting(async () => {
-        const result = await quoteConversion({ from, to, amount: typedAmount, field: edited });
-        // Out-of-order responses would otherwise overwrite a newer quote with
-        // an older one, showing a rate for an amount no longer on screen.
-        if (requestId !== latestRequest.current) return;
-
-        if (result.unavailableReason) {
-          setUnavailable(result.unavailableReason);
-          setQuote(null);
-          return;
-        }
-        setUnavailable(result.error ?? null);
-        setQuote(result.quote ?? null);
-
-        if (result.quote) {
-          // Only the derived side is rewritten. Writing both would fight the
-          // user's own typing.
-          if (edited === "source") setTargetText(formatAmountInput(result.quote.targetAmount.toFixed(2)));
-          else setSourceText(formatAmountInput(result.quote.sourceAmount.toFixed(2)));
-        }
-      });
-    }, 400);
-
-    return () => clearTimeout(timer);
-  }, [from, to, typedAmount, edited]);
+      if (result.quote) {
+        // Only the derived side is rewritten. Writing both would fight the
+        // user's own typing.
+        if (edited === "source") setTargetText(formatAmountInput(result.quote.targetAmount.toFixed(2)));
+        else setSourceText(formatAmountInput(result.quote.sourceAmount.toFixed(2)));
+      }
+    },
+  });
 
   function swap() {
     const nextFrom = to;

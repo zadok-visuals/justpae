@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AmountInput, formatAmountInput, parseAmount } from "@/components/ui/AmountInput";
@@ -11,6 +11,7 @@ import { Banner, Card, DetailRow } from "@/components/ui/Primitives";
 import { ConfirmDialog, useConfirm } from "@/components/ui/ConfirmDialog";
 import { requestWithdrawal, previewWithdrawalRouting } from "@/lib/actions/withdrawals";
 import { MINIMUM_WITHDRAWAL_USDT_THRESHOLD } from "@/lib/busha/limits";
+import { useDebouncedQuote } from "@/lib/hooks/useDebouncedQuote";
 import { currencyMeta, formatAmount } from "@/lib/currencies";
 import { withdrawAvailability } from "@/lib/accounts/actions";
 import { unavailableSuffix, type UnavailableKind } from "@/lib/ui/unavailability";
@@ -156,7 +157,7 @@ function WithdrawFormFields({
   const [routing, setRouting] = useState<Awaited<
     ReturnType<typeof previewWithdrawalRouting>
   > | null>(null);
-  const [, startPreview] = useTransition();
+
 
   // The confirmation step. Nothing leaves the account until this is answered —
   // before it existed, a withdrawal committed on a single tap with the fee
@@ -181,23 +182,21 @@ function WithdrawFormFields({
 
   // Debounced: each preview costs a live rate probe plus a rolling-window
   // query, so one request after typing stops rather than one per keystroke.
-  const latest = useRef(0);
-  useEffect(() => {
-    // Returns without touching state when there is nothing to preview. The
-    // displayed routing is DERIVED below instead of being cleared here.
-    if (amount <= 0 || insufficient) return;
-
-    const requestId = ++latest.current;
-    const timer = setTimeout(() => {
-      startPreview(async () => {
-        const result = await previewWithdrawalRouting(currency, amount);
-        if (requestId !== latest.current) return;
-        setRouting(result);
-      });
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [currency, amount, insufficient]);
+  //
+  // GROUP 11a: through the shared hook. 500ms rather than the 300 that
+  // /convert and /pay-to-china use, kept deliberately — this preview is two
+  // server round trips deep and nothing on screen is waiting on it the way a
+  // conversion's own amount field is.
+  //
+  // `enabled` false when there is nothing to preview. The displayed routing is
+  // DERIVED below instead of being cleared here.
+  useDebouncedQuote({
+    key: `${currency}|${amount}|${insufficient}`,
+    enabled: amount > 0 && !insufficient,
+    request: () => previewWithdrawalRouting(currency, amount),
+    onResult: setRouting,
+    debounceMs: 500,
+  });
 
   if (!kycApproved) {
     // The gate names the stage the user is actually at. "Start verification"

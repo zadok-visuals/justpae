@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AmountInput, formatAmountInput, parseAmount } from "@/components/ui/AmountInput";
@@ -15,6 +15,7 @@ import {
   submitPayToChina,
   type PayToChinaEstimate,
 } from "@/lib/actions/payToChina";
+import { useDebouncedQuote } from "@/lib/hooks/useDebouncedQuote";
 import { currencyMeta, formatAmount } from "@/lib/currencies";
 import type {
   Currency,
@@ -123,7 +124,6 @@ function PayToChinaFields({
   const [pin, setPin] = useState("");
 
   const [estimate, setEstimate] = useState<PayToChinaEstimate | null>(null);
-  const [estimating, startEstimating] = useTransition();
 
   const confirm = useConfirm<{ sourceAmount: number; cnyAmount: number }>();
   const formRef = useRef<HTMLFormElement>(null);
@@ -136,21 +136,16 @@ function PayToChinaFields({
 
   // Debounced, because each call costs a live provider lookup for the fiat
   // leg — one request at the end of a six-digit amount rather than six.
-  const latestRequest = useRef(0);
-  useEffect(() => {
-    if (amount <= 0) return;
-    const requestId = ++latestRequest.current;
-    const timer = setTimeout(() => {
-      startEstimating(async () => {
-        const result = await estimatePayToChina({ sourceCurrency, amount });
-        // An out-of-order response would otherwise overwrite a newer estimate
-        // with an older one, showing a figure for an amount no longer typed.
-        if (requestId !== latestRequest.current) return;
-        setEstimate(result);
-      });
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [sourceCurrency, amount]);
+  //
+  // GROUP 11a: through the shared hook, which also owns the rule that an
+  // out-of-order response must never overwrite a newer estimate. This form
+  // and ConvertForm had their own copies of that; see useDebouncedQuote.
+  const { pending: estimating } = useDebouncedQuote({
+    key: `${sourceCurrency}|${amount}`,
+    enabled: amount > 0,
+    request: () => estimatePayToChina({ sourceCurrency, amount }),
+    onResult: setEstimate,
+  });
 
   const active = amount > 0 ? estimate : null;
   const cnyAmount = active?.cnyAmount ?? null;

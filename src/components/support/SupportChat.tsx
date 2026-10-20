@@ -7,6 +7,7 @@ import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 import { PaperclipIcon, SendIcon } from "@/components/layout/NavIcons";
 import { Spinner } from "@/components/ui/Button";
+import { usePolling } from "@/lib/hooks/usePolling";
 import {
   sendSupportMessage,
   markMySupportThreadRead,
@@ -38,6 +39,15 @@ import type { SupportMessage } from "@/lib/types/database";
  * table, to serve a page a user has open for a minute at a time. A visibility-
  * gated refresh every 20s costs one cheap request while the tab is actually in
  * front of someone and nothing at all when it isn't.
+ *
+ * GROUP 11b. That gating was real but it was only half of it: the check was
+ * `if (!document.hidden)` INSIDE the tick, which skipped the request and left
+ * the timer running — and, more visibly, meant a reply that arrived while the
+ * tab was in the background did not appear until up to twenty seconds after
+ * the user came back to look. On the one screen whose entire purpose is "did
+ * they answer me", that is the wrong twenty seconds to be silent for. It now
+ * uses the shared hook, which tears the timer down while hidden and refreshes
+ * once on the way back.
  */
 
 const POLL_INTERVAL_MS = 20_000;
@@ -216,15 +226,10 @@ export function SupportChat({
     }
   }, [state]);
 
-  // Visibility-gated polling. document.hidden is checked on every tick rather
-  // than only at setup, so a backgrounded tab stops costing requests without
-  // needing a visibilitychange listener to tear the timer down and rebuild it.
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (!document.hidden) router.refresh();
-    }, POLL_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [router]);
+  // Visibility-gated polling, owned by usePolling — see the note at the top.
+  // `active: true` because a support thread has no final state: there is
+  // always another reply that could arrive.
+  usePolling(() => router.refresh(), { active: true, intervalMs: POLL_INTERVAL_MS });
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];

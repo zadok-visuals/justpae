@@ -1,17 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePolling } from "@/lib/hooks/usePolling";
-
-function subscribeToVisibility(onChange: () => void) {
-  document.addEventListener("visibilitychange", onChange);
-  return () => document.removeEventListener("visibilitychange", onChange);
-}
-
-function isDocumentVisible() {
-  return document.visibilityState === "visible";
-}
 
 /**
  * Re-renders the server component tree it sits in, on an interval, so the
@@ -33,6 +24,14 @@ function isDocumentVisible() {
  * background tab polling a paid provider API every minute forever is somebody
  * else's bill, and the moment the user looks at the tab again is exactly when
  * the number needs to be right.
+ *
+ * GROUP 11b moved both halves of that paragraph into usePolling, where every
+ * other poller in the app can reach them. This component used to own the only
+ * implementation — a visibilitychange subscription, an `active: visible` gate
+ * and a ref comparing the previous visibility to catch the transition — which
+ * is why the deposit sheet and the activity detail view, which use the same
+ * hook, did not have it. What is left here is the part that is actually about
+ * rates: re-render the server tree, and say when.
  */
 export function LiveRefresh({
   intervalMs = 60_000,
@@ -45,32 +44,18 @@ export function LiveRefresh({
   label?: string;
 }) {
   const router = useRouter();
-  // Subscribed rather than mirrored into state from an effect: visibility is
-  // an external store, and useSyncExternalStore is what React provides for
-  // reading one without a synchronous setState on mount.
-  const visible = useSyncExternalStore(subscribeToVisibility, isDocumentVisible, () => true);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
-  // Refresh on coming BACK to the tab, which is exactly the moment the number
-  // needs to be right. Compared against the previous value so this fires on
-  // the transition and not on first paint — on first render the data is as
-  // fresh as the request that produced it.
-  const wasVisible = useRef(visible);
-  useEffect(() => {
-    const became = visible && !wasVisible.current;
-    wasVisible.current = visible;
-    if (became) {
-      router.refresh();
-      setUpdatedAt(new Date());
-    }
-  }, [visible, router]);
-
+  // `active: true` because there is no state in which a rate board stops
+  // being worth refreshing — unlike a transaction, a price has no final
+  // status. Pausing while the tab is hidden and refreshing once on the way
+  // back is the hook's, and is what `active: true` now means here.
   usePolling(
     () => {
       router.refresh();
       setUpdatedAt(new Date());
     },
-    { active: visible, intervalMs },
+    { active: true, intervalMs },
   );
 
   if (!showTimestamp || !updatedAt) return null;

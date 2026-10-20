@@ -4,8 +4,7 @@ import { Banner } from "@/components/ui/Primitives";
 import { BottomTabBar, Sidebar, TopBar } from "@/components/layout/DashboardChrome";
 import { PageTitleProvider } from "@/components/layout/PageTitleContext";
 import { UnreadCountsProvider } from "@/components/layout/UnreadCountsContext";
-import { getUnreadNotificationCount } from "@/lib/actions/notifications";
-import { getUnreadSupportCount } from "@/lib/actions/support";
+import { getUnreadCounts } from "@/lib/actions/unread";
 
 /**
  * The suspension banner is PURELY the explanation, never the enforcement.
@@ -37,14 +36,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const fullName = typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : "";
 
   // Two cheap RPC counts (both auth.uid()-scoped anti-joins, see migration
-  // 0017), fetched in parallel because neither depends on the other, and
-  // fetched HERE rather than in each bar because this layout renders once per
-  // request while MobileTopBar is mounted by every page's own PageShell.
-  // Either failing resolves to 0 inside the action rather than throwing — the
-  // header must render even when a count doesn't.
-  const [unreadNotifications, unreadSupport, admin, suspension] = await Promise.all([
-    getUnreadNotificationCount(),
-    getUnreadSupportCount(),
+  // 0017), fetched HERE rather than in each bar because this layout renders
+  // once per request while MobileTopBar is mounted by every page's own
+  // PageShell. Either failing resolves to 0 inside the action rather than
+  // throwing — the header must render even when a count doesn't.
+  //
+  // GROUP 11b: one action for both counts rather than two. The pair used to be
+  // two entries in this Promise.all, which costs nothing extra here, but the
+  // badge poller added in UnreadCountsProvider calls the same code on a timer
+  // where every tick is a fresh request — and there the two would have been
+  // two auth round trips instead of one. Same definition on both sides, so the
+  // polled number and the rendered one cannot drift.
+  const [unread, admin, suspension] = await Promise.all([
+    getUnreadCounts(),
     isAdmin(user.id, user.email),
     getSuspension(user.id),
   ]);
@@ -62,9 +66,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <PageTitleProvider>
       {/* Wraps children too, not just TopBar: the mobile bar is rendered by
           each page's PageShell, which is inside children. */}
-      <UnreadCountsProvider
-        counts={{ notifications: unreadNotifications, support: unreadSupport }}
-      >
+      <UnreadCountsProvider counts={unread}>
         <div className="flex h-screen-dvh flex-col overflow-hidden bg-background">
           <TopBar userName={fullName} />
 
