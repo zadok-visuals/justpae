@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdminUser } from "@/lib/auth/admin";
+import { appUrl, sendAnnouncementEmails } from "@/lib/email";
 import type { Notification } from "@/lib/types/database";
 
 /**
@@ -120,6 +122,7 @@ export async function sendNotification(
   const href = String(formData.get("href") ?? "").trim();
   const audience = String(formData.get("audience") ?? "broadcast");
   const targetEmail = String(formData.get("targetEmail") ?? "").trim().toLowerCase();
+  const alsoEmail = formData.get("sendEmail") === "on";
 
   // Carried by every failure return below. The draft is the expensive thing
   // on this form; the admin can retype an email address, not a notice.
@@ -168,6 +171,65 @@ export async function sendNotification(
     recipients = count ?? 0;
   }
 
+  // GROUP 5. Queued AFTER the response, not awaited here: the admin's
+  // confirmation is the in-app notification existing, which already
+  // happened above. A slow or failed Resend batch call must never turn into
+  // a slow or failed "notification sent" for an action that, from the
+  // database's point of view, already succeeded. email_announcements is the
+  // one preference this respects — set in Profile, and scoped to exactly
+  // this composer, never to an account or security notice.
+  if (alsoEmail) {
+    after(async () => {
+      const emailRecipients = await resolveAnnouncementRecipients(service, targetUserId);
+      if (emailRecipients.length === 0) return;
+
+      const { failed } = await sendAnnouncementEmails({
+        recipients: emailRecipients,
+        subject: title,
+        preheader: body.length > 140 ? `${body.slice(0, 140)}…` : body,
+        heading: title,
+        bodyParagraphs: [body],
+        button: href ? { label: "Open it", href: `${appUrl()}${href}` } : undefined,
+      });
+      // sendAnnouncementEmails already logs each failed batch's own detail;
+      // this is only the top-level signal that this particular broadcast had
+      // losses, findable by the title an admin will recognise.
+      if (failed > 0) {
+        console.error("[notifications.sendNotification] some announcement emails did not send", {
+          title,
+          failed,
+        });
+      }
+    });
+  }
+
   revalidatePath("/admin/notifications");
   return { ok: true, recipients };
+}
+
+/**
+ * The email addresses for the "also send by email" option — one user's, or
+ * everyone who hasn't turned announcements off. Checked here rather than
+ * left to RLS because this reads through the service-role client, the same
+ * reason sendNotification uses it for the write above.
+ */
+async function resolveAnnouncementRecipients(
+  service: ReturnType<typeof createAdminClient>,
+  targetUserId: string | null,
+): Promise<string[]> {
+  if (targetUserId) {
+    const { data } = await service
+      .from("profiles")
+      .select("email, email_announcements")
+      .eq("id", targetUserId)
+      .maybeSingle();
+    return data?.email && data.email_announcements ? [data.email] : [];
+  }
+
+  const { data } = await service
+    .from("profiles")
+    .select("email")
+    .eq("email_announcements", true)
+    .not("email", "is", null);
+  return (data ?? []).map((row) => row.email).filter((email): email is string => !!email);
 }

@@ -106,6 +106,12 @@ export type Profile = {
   suspended_at: string | null;
   suspended_reason: string | null;
   suspended_by: string | null;
+  /**
+   * General-announcement email only (migration 0035) — the admin broadcast
+   * composer, nothing else. Account and security email (PIN locks,
+   * withdrawals, KYC decisions) ignores this and always sends.
+   */
+  email_announcements: boolean;
   created_at: string;
 };
 

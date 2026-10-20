@@ -1,4 +1,8 @@
-import { renderEmail, type EmailOptions } from "@/lib/email/layout";
+// Relative, with extension: email.test.ts runs under `node --test` with no
+// bundler, so no "@/" alias resolution — see src/lib/cny/priceCore.ts for the
+// same note. layout.ts has no imports of its own, so this is the only
+// specifier in the chain that needs it.
+import { renderEmail, renderEmailText, type EmailButton, type EmailOptions } from "./email/layout.ts";
 
 /**
  * Server-only. Sends the app's own transactional email.
@@ -81,6 +85,7 @@ export async function sendEmail(input: SendEmailInput): Promise<boolean> {
         to: recipients,
         subject: options.subject,
         html: renderEmail(options),
+        text: renderEmailText(options),
       }),
     });
 
@@ -104,6 +109,92 @@ export async function sendEmail(input: SendEmailInput): Promise<boolean> {
     });
     return false;
   }
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+/**
+ * The admin notification composer's "also send by email", for one person or
+ * for every announcement-opted-in user at once.
+ *
+ * BATCHED, NOT ONE CALL PER RECIPIENT. A broadcast can be every user on the
+ * platform, and Resend's batch endpoint takes up to 100 emails in a single
+ * request — one array entry per recipient, each its own `to`, so nobody in
+ * the list can see anybody else's address. Chunking at 100 is the provider's
+ * own documented limit, not a number chosen here.
+ *
+ * Callers run this through next/server's after() so a slow or failed email
+ * send can never hold up — or fail — the admin action that queued it. This
+ * function reflects that in its own shape: it never throws, and it returns a
+ * count rather than letting one bad chunk abort the rest.
+ */
+export async function sendAnnouncementEmails(params: {
+  recipients: string[];
+  subject: string;
+  preheader: string;
+  heading: string;
+  bodyParagraphs: string[];
+  button?: EmailButton;
+}): Promise<{ sent: number; failed: number }> {
+  const recipients = Array.from(new Set(params.recipients.filter(Boolean)));
+  if (recipients.length === 0) return { sent: 0, failed: 0 };
+
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("[email] RESEND_API_KEY is not set, skipping announcement send", {
+      subject: params.subject,
+      recipients: recipients.length,
+    });
+    return { sent: 0, failed: recipients.length };
+  }
+
+  const { subject, preheader, heading, bodyParagraphs, button } = params;
+  const html = renderEmail({ subject, preheader, heading, bodyParagraphs, button });
+  const text = renderEmailText({ subject, preheader, heading, bodyParagraphs, button });
+  const from = fromAddress();
+
+  let sent = 0;
+  let failed = 0;
+
+  for (const batch of chunk(recipients, 100)) {
+    try {
+      const response = await fetch(`${RESEND_ENDPOINT}/batch`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(batch.map((to) => ({ from, to, subject, html, text }))),
+      });
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+        // Count only — never the addresses themselves, in a log line that
+        // could end up somewhere less access-controlled than the database.
+        console.error("[email] announcement batch failed", {
+          status: response.status,
+          batchSize: batch.length,
+          body: body.slice(0, 500),
+        });
+        failed += batch.length;
+        continue;
+      }
+
+      sent += batch.length;
+    } catch (err) {
+      console.error("[email] announcement batch threw", {
+        batchSize: batch.length,
+        error: err instanceof Error ? err.message : err,
+      });
+      failed += batch.length;
+    }
+  }
+
+  return { sent, failed };
 }
 
 /** Shared escaping for anything user-supplied that lands in email HTML. */
@@ -192,7 +283,7 @@ export async function sendSupportMessageEmail(params: {
 }
 
 /** Where links in transactional email point. */
-function appUrl(): string {
+export function appUrl(): string {
   return (process.env.APP_URL ?? "https://justpae.com").replace(/\/$/, "");
 }
 

@@ -6,6 +6,7 @@ import { Card, Pill, Banner, DetailRow, SkeletonCard } from "@/components/ui/Pri
 import { SubmitButton } from "@/components/ui/Button";
 import { TransactionPinCard } from "@/components/settings/TransactionPinCard";
 import { RecipientCard } from "@/components/settings/RecipientCard";
+import { EmailPreferenceToggle } from "@/components/settings/EmailPreferenceToggle";
 import { logOut } from "@/lib/actions/auth";
 import { isAdmin } from "@/lib/auth/admin";
 import { getBanks, type BushaBank } from "@/lib/busha/client";
@@ -38,7 +39,7 @@ export default async function ProfilePage() {
   ] = await Promise.all([
       supabase
         .from("profiles")
-        .select("full_name, email, phone, business_name, kyc_status, kyc_type, country")
+        .select("full_name, email, phone, business_name, kyc_status, kyc_type, country, email_announcements")
         .eq("id", user.id)
         .maybeSingle(),
       supabase.from("wallets").select("*").eq("user_id", user.id),
@@ -128,6 +129,8 @@ export default async function ProfilePage() {
         )}
 
         <TransactionPinCard hasPin={hasPin === true} />
+
+        <EmailPreferenceToggle initialEnabled={profile?.email_announcements ?? true} />
 
         {/* GROUP 9c. The bank list is a PROVIDER call, and it was awaited in
             the page body — so the whole of Profile (name, verification

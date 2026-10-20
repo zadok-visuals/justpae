@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireAdminUser } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { Card } from "@/components/ui/Primitives";
+import { Card, Banner } from "@/components/ui/Primitives";
 import { formatAmount } from "@/lib/currencies";
 import { startRouteTiming } from "@/lib/perf/timing";
 import type { AdminDashboardStats } from "@/lib/types/database";
@@ -71,6 +71,19 @@ export default async function AdminPage() {
   const stats = (data as AdminDashboardStats | null) ?? ZERO;
   const unavailable = !!error || !data;
 
+  // GROUP 5. Checked here, not just documented, because the failure mode is
+  // silent either way: sendEmail() and sendAnnouncementEmails() both log a
+  // warning and return rather than throw — correct for not taking down a
+  // withdrawal because a mail provider is unconfigured, but it means nobody
+  // sees it unless something is tailing production logs. Named separately
+  // because they are not the same failure: no RESEND_API_KEY means EVERY
+  // email this product sends — PIN locks, receipts, KYC decisions, the
+  // admin composer — silently does not go out; no ADMIN_NOTIFICATION_EMAILS
+  // only means the ops team stops hearing about KYC submissions, support
+  // messages and Pay to China requests.
+  const missingResendKey = !process.env.RESEND_API_KEY;
+  const missingAdminEmails = !process.env.ADMIN_NOTIFICATION_EMAILS;
+
   const queues = [
     { href: "/admin/kyc", label: "Waiting on verification", count: stats.kyc_pending },
     { href: "/admin/withdrawals", label: "Withdrawals in the queue", count: stats.withdrawals_queued },
@@ -110,6 +123,22 @@ export default async function AdminPage() {
             there. Reload, and check the logs if it persists.
           </p>
         </div>
+      )}
+
+      {missingResendKey && (
+        <Banner tone="danger" title="No email is going out">
+          RESEND_API_KEY is not set in this environment. PIN locks, receipts, KYC decisions and the
+          notification composer&apos;s email option are all silently not sending. Set it in Vercel
+          and redeploy.
+        </Banner>
+      )}
+
+      {!missingResendKey && missingAdminEmails && (
+        <Banner tone="warning" title="Ops alerts have nowhere to go">
+          ADMIN_NOTIFICATION_EMAILS is not set, so KYC submissions, support messages and Pay to
+          China requests aren&apos;t emailing anyone on the team. Customer-facing email is
+          unaffected.
+        </Banner>
       )}
 
       <section>

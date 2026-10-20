@@ -268,3 +268,48 @@ export function renderEmail(options: EmailOptions): string {
 </html>
 `;
 }
+
+/**
+ * The plain-text sibling every HTML email needs, not as a formality but
+ * because a meaningful share of real inboxes render it instead of the HTML
+ * part — a corporate client that strips HTML for a security scan, a screen
+ * reader that prefers it, a client that failed to parse the table markup.
+ * Without one, those readers get Resend's own auto-generated stripped-tag
+ * fallback, which keeps raw href URLs and drops the paragraph breaks that
+ * make the HTML version readable.
+ *
+ * Built from the exact same EmailOptions the HTML version renders from, so
+ * the two can never drift the way a hand-written second copy would.
+ */
+function stripHtml(value: string): string {
+  return value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .trim();
+}
+
+export function renderEmailText(options: EmailOptions): string {
+  const { heading, bodyParagraphs, button, fallbackIntro, closingParagraphs = [] } = options;
+
+  const lines: string[] = [heading, ""];
+  for (const p of bodyParagraphs) lines.push(stripHtml(p), "");
+
+  if (button) {
+    lines.push(`${button.label}: ${button.href}`, "");
+    if (fallbackIntro) lines.push(stripHtml(fallbackIntro), button.href, "");
+  }
+
+  for (const p of closingParagraphs) lines.push(stripHtml(p), "");
+
+  lines.push("—", "justpae · Zadok Royal Limited", "Need help? https://justpae.com/support");
+
+  // Collapse runs of blank lines the paragraph loop above produces.
+  return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
+}

@@ -125,6 +125,21 @@ export function NotificationComposer() {
         defaultValue={state.values?.href ?? ""}
       />
 
+      <label className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
+        <input
+          type="checkbox"
+          name="sendEmail"
+          defaultChecked={false}
+          className="size-5 accent-[var(--color-gold)]"
+        />
+        <span className="text-sm text-foreground">
+          Also send by email
+          <span className="block text-xs font-normal text-muted-foreground">
+            Only to people who haven&apos;t turned off announcement email.
+          </span>
+        </span>
+      </label>
+
       <SubmitButton pendingLabel="Sending…">Send notification</SubmitButton>
       <FieldError>{state.error}</FieldError>
     </form>
