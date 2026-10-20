@@ -2,6 +2,7 @@ import { SendIcon, BillsIcon, AirtimeIcon, FlightsIcon, ReceiveIcon } from "@/co
 import { AddMoneyMenu, type AddMoneyChoice } from "@/components/home/AddMoneyMenu";
 import { QuickActionLink, QUICK_ACTION_WRAPPER_CLASS } from "@/components/home/QuickActionTile";
 import { MaintenanceQuickAction } from "@/components/home/MaintenanceQuickAction";
+import { MoreActionsSheet, type MoreAction } from "@/components/home/MoreActionsSheet";
 import { depositAvailability } from "@/lib/deposits/availability";
 import { isServiceLive } from "@/lib/services";
 import { CURRENCIES } from "@/lib/currencies";
@@ -36,6 +37,23 @@ const COLUMN_CLASS: Record<number, string> = {
  * a destination — the page behind each one now redirects straight back
  * (GROUP 2c), so an absent tile would be the only honest alternative, and
  * that teaches a user justpae does not do the thing at all.
+ *
+ * ──────────────────────────────────────────────────────────────────────────
+ * GROUP 6 — MOBILE GETS A DIFFERENT SHAPE, NOT A SCALED-DOWN ONE
+ *
+ * This used to be one scrollable rail at every width, grid at sm+. On a
+ * phone that meant five or six equal tiles in a row nobody could see all of
+ * at once — the ones past the fold were reachable only by swiping, and nobody
+ * swiped a row that doesn't visually hint it continues.
+ *
+ * So mobile now shows exactly three tiles, always, and always equal: Deposit,
+ * Pay to China — the two things used from zero — and More, which opens
+ * everything else in the same bottom sheet AddMoneyMenu already uses for
+ * "which wallet". Nothing is hidden, nothing needs a swipe, and the row's
+ * width never depends on how many services happen to be live today.
+ *
+ * Desktop keeps the plain grid: there is room to show every tile directly,
+ * so a "More" button there would just be an extra tap to the same content.
  */
 export function QuickActions({ wallets }: { wallets: Wallet[] }) {
   // Config order first, so the sheet does not reshuffle between loads; then
@@ -67,81 +85,68 @@ export function QuickActions({ wallets }: { wallets: Wallet[] }) {
     .sort((a, b) => Number(a.disabledReason !== null) - Number(b.disabledReason !== null));
 
   const billsLive = isServiceLive("bills");
+  const receiveLive = isServiceLive("receiveUsd");
+  const flightsLive = isServiceLive("flights");
 
-  // Rendered up front so the tile count (and so the grid's column class)
-  // reflects exactly what ends up on screen. Each entry names a stable key
-  // and builds its own element; wrapping happens once below in
-  // QUICK_ACTION_WRAPPER_CLASS — the same wrapper AddMoneyMenu already gives
-  // its own Deposit tile. Without it, a tile sits as a DIRECT flex/grid
-  // child, and TILE_CLASS's `w-full` then resolves against the whole row
-  // instead of one cell: on mobile's flex rail that stretched the tile to
-  // fill all remaining space (pushing its neighbours off-screen), and on the
-  // desktop grid it was implicated in the Deposit popover's layout breaking
-  // too.
-  const tileEntries: { key: string; element: React.ReactElement }[] = [
-    {
-      key: "pay-to-china",
-      element: <QuickActionLink href="/pay-to-china" label="Pay to China" icon={<SendIcon className="size-6" />} />,
-    },
-    {
-      key: "receive",
-      element: isServiceLive("receiveUsd") ? (
-        <QuickActionLink href="/receive" label="Receive USD" icon={<ReceiveIcon className="size-6" />} />
-      ) : (
-        <MaintenanceQuickAction label="Receive USD" icon={<ReceiveIcon className="size-6" />} />
-      ),
-    },
+  // One list of what "the rest" of the row is, read two ways below: as
+  // rendered grid tiles for desktop, and as plain data for the mobile More
+  // sheet. Keeping a single source is what stops the two from ever disagreeing
+  // about which services are live.
+  const restEntries: { key: string; label: string; icon: React.ReactElement; href: string | null }[] = [
+    { key: "receive", label: "Receive USD", icon: <ReceiveIcon className="size-6" />, href: receiveLive ? "/receive" : null },
     ...(billsLive
       ? [
-          {
-            key: "bills",
-            element: <QuickActionLink href="/bills" label="Bills" icon={<BillsIcon className="size-6" />} />,
-          },
-          {
-            key: "airtime",
-            element: (
-              <QuickActionLink href="/bills/airtime" label="Airtime" icon={<AirtimeIcon className="size-6" />} />
-            ),
-          },
+          { key: "bills", label: "Bills", icon: <BillsIcon className="size-6" />, href: "/bills" },
+          { key: "airtime", label: "Airtime", icon: <AirtimeIcon className="size-6" />, href: "/bills/airtime" },
         ]
-      : [
-          {
-            key: "bills",
-            element: <MaintenanceQuickAction label="Bills" icon={<BillsIcon className="size-6" />} />,
-          },
-        ]),
-    {
-      key: "flights",
-      element: isServiceLive("flights") ? (
-        <QuickActionLink href="/flights" label="Flights" icon={<FlightsIcon className="size-6" />} />
-      ) : (
-        <MaintenanceQuickAction label="Flights" icon={<FlightsIcon className="size-6" />} />
-      ),
-    },
+      : [{ key: "bills", label: "Bills", icon: <BillsIcon className="size-6" />, href: null }]),
+    { key: "flights", label: "Flights", icon: <FlightsIcon className="size-6" />, href: flightsLive ? "/flights" : null },
   ];
 
-  const tiles = tileEntries.map(({ key, element }) => (
+  const moreActions: MoreAction[] = restEntries.map(({ key, label, icon, href }) => ({
+    key,
+    label,
+    icon,
+    href: href ?? undefined,
+  }));
+
+  const payToChina = <QuickActionLink href="/pay-to-china" label="Pay to China" icon={<SendIcon className="size-6" />} />;
+
+  // The tiles desktop shows beyond Deposit and Pay to China, each wrapped in
+  // QUICK_ACTION_WRAPPER_CLASS — the same wrapper AddMoneyMenu gives its own
+  // Deposit tile — because a tile as a DIRECT grid child lets TILE_CLASS's
+  // `w-full` resolve against the whole row instead of one cell.
+  const restTiles = restEntries.map(({ key, label, icon, href }) => (
     <div key={key} className={QUICK_ACTION_WRAPPER_CLASS}>
-      {element}
+      {href ? <QuickActionLink href={href} label={label} icon={icon} /> : <MaintenanceQuickAction label={label} icon={icon} />}
     </div>
   ));
 
-  // +1 for the Deposit tile, which isn't in the array above. Written as
-  // whole literal class names because Tailwind scans source text: a
-  // template-built `sm:grid-cols-${n}` produces no CSS at all.
-  const columnClass = COLUMN_CLASS[tiles.length + 1] ?? "sm:grid-cols-3";
+  // Deposit + Pay to China + every rest tile. Written as whole literal class
+  // names because Tailwind scans source text: a template-built
+  // `sm:grid-cols-${n}` produces no CSS at all.
+  const columnClass = COLUMN_CLASS[restTiles.length + 2] ?? "sm:grid-cols-3";
 
   return (
-    <div
-      // sm:overflow-visible matters beyond tidiness: overflow-x-auto with no
-      // overflow-y set computes overflow-y to auto too (CSS Overflow §3), so
-      // without this the desktop grid stayed a scroll container — clipping
-      // AddMoneyMenu's absolutely-positioned popover, which escapes clipping
-      // on mobile only because it's `fixed` there instead of `absolute`.
-      className={`snap-rail -mx-4 flex items-stretch gap-2 overflow-x-auto px-4 sm:mx-0 sm:grid sm:overflow-visible sm:px-0 ${columnClass}`}
-    >
+    // One grid, not two separately mounted layouts: AddMoneyMenu keeps a
+    // single `open` state either way. grid-cols-3 is the MOBILE shape —
+    // Deposit, Pay to China, More, always exactly three, never a scroll —
+    // and sm:grid-cols-N below replaces it once there is room to show every
+    // tile directly instead of behind More.
+    <div className={`grid grid-cols-3 gap-2 ${columnClass}`}>
       <AddMoneyMenu choices={choices} />
-      {tiles}
+
+      <div className={`${QUICK_ACTION_WRAPPER_CLASS} sm:hidden`}>{payToChina}</div>
+      <MoreActionsSheet actions={moreActions} />
+
+      {/* display:contents on the wrapper, not on the tiles: this group needs
+          to disappear from mobile's 3-column grid as a whole (hidden), and
+          at sm+ hand its children straight to the outer grid as ordinary
+          items (contents) rather than becoming one grid cell itself. */}
+      <div className="hidden sm:contents">
+        <div className={QUICK_ACTION_WRAPPER_CLASS}>{payToChina}</div>
+        {restTiles}
+      </div>
     </div>
   );
 }

@@ -194,3 +194,15 @@ export function LogOutIcon(props: IconProps) {
     </Icon>
   );
 }
+
+/** The mobile "More actions" tile. Filled dots, not stroked — at 24px a
+ *  stroked circle this small reads as a faint ring rather than a dot. */
+export function MoreIcon({ className = "size-6" }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <circle cx="5" cy="12" r="1.75" />
+      <circle cx="12" cy="12" r="1.75" />
+      <circle cx="19" cy="12" r="1.75" />
+    </svg>
+  );
+}

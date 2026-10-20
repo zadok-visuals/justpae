@@ -24,12 +24,20 @@ export interface AddMoneyChoice {
  * wallet they actually meant, with the amount field already the next thing to
  * touch.
  *
- * A SHEET ON MOBILE, A POPOVER ON DESKTOP, and the difference is not
- * decoration. A popover anchored to a tile near the top of a phone screen
- * opens furthest from the thumb and gets dismissed by accident; a full-height
- * panel for a three-item list is absurd on a desktop. Both shapes are the
- * same DOM with different classes — no viewport branching in JS, so no
- * hydration mismatch and no resize listener.
+ * A SHEET ON MOBILE, A CENTERED MODAL ON DESKTOP, and the difference is not
+ * decoration. A full-height panel from the bottom edge is where a thumb
+ * expects it on a phone; a popover anchored under a tile in the middle of a
+ * desktop page is not a "modal" at all — it is still part of the page, so it
+ * still takes its place in the page's own layout. GROUP 6 moved away from
+ * exactly that: the earlier `position: absolute` popover sat inside the
+ * quick-actions row's own box, and opening it grew that box, which read as
+ * the whole dashboard shifting just to show four currency names. `position:
+ * fixed` at both widths is what actually makes this an overlay — fixed
+ * elements are laid out against the viewport, not their scrolling ancestor,
+ * so nothing below the trigger ever moves to make room for it.
+ *
+ * Both shapes are the same DOM with different classes — no viewport
+ * branching in JS, so no hydration mismatch and no resize listener.
  *
  * Unavailable currencies stay in the list with their reason, for the same
  * reason the account pages keep disabled tiles: a missing option tells
@@ -60,7 +68,7 @@ export function AddMoneyMenu({ choices }: { choices: AddMoneyChoice[] }) {
   }, [open]);
 
   return (
-    <div ref={containerRef} className={`relative ${QUICK_ACTION_WRAPPER_CLASS}`}>
+    <div ref={containerRef} className={QUICK_ACTION_WRAPPER_CLASS}>
       <QuickActionButton
         buttonRef={triggerRef}
         onClick={() => setOpen((v) => !v)}
@@ -73,13 +81,14 @@ export function AddMoneyMenu({ choices }: { choices: AddMoneyChoice[] }) {
       {open && (
         <>
           {/* The scrim is a real button so a keyboard user can reach and
-              dismiss it. Opaque on mobile where it is the sheet's backdrop;
-              invisible on desktop where it is only a click-catcher. */}
+              dismiss it, and dims the page at every width now — on desktop
+              it used to be sm:bg-transparent, which was right for a popover
+              that was still part of the page, and wrong for a modal. */}
           <button
             type="button"
             aria-label="Close"
             onClick={() => setOpen(false)}
-            className="jp-fade-in fixed inset-0 z-40 bg-ink/70 backdrop-blur-sm sm:bg-transparent sm:backdrop-blur-none"
+            className="jp-fade-in fixed inset-0 z-40 bg-ink/70 backdrop-blur-sm"
           />
 
           <div
@@ -93,9 +102,15 @@ export function AddMoneyMenu({ choices }: { choices: AddMoneyChoice[] }) {
               // Mobile: a sheet from the bottom edge, where the thumb is.
               "jp-sheet-in fixed inset-x-0 bottom-0 max-h-[80dvh] overflow-y-auto rounded-t-2xl border-t",
               "pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]",
-              // Desktop: a popover anchored under the tile it came from.
-              "sm:absolute sm:inset-x-auto sm:left-0 sm:bottom-auto sm:top-full sm:mt-2 sm:w-72",
-              "sm:max-h-none sm:rounded-xl sm:border sm:pb-2 sm:shadow-lg",
+              // Desktop: centered in the viewport. `inset-0` + `m-auto` on a
+              // fixed element with an explicit width centers it on both axes
+              // without a transform — a native <dialog>'s own default
+              // positioning does the same thing — which leaves the entrance
+              // animation's transform free instead of fighting a
+              // translate(-50%,-50%) that would otherwise need to coexist
+              // with it.
+              "sm:inset-0 sm:m-auto sm:h-fit sm:max-h-[min(80vh,28rem)] sm:w-full sm:max-w-sm",
+              "sm:rounded-xl sm:border sm:pb-2 sm:shadow-xl",
             ].join(" ")}
           >
             <p
