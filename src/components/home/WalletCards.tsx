@@ -25,7 +25,11 @@ const WASHES: Record<Currency, string> = {
   USD: "from-naira/25 to-card",
   NGN: "from-gold/25 to-card",
   CNY: "from-gold-dark/25 to-card",
-  USDT: "from-ink-raised to-card",
+  // GROUP 9. Was from-ink-raised, a fixed near-black — ink-raised stays fixed
+  // on purpose (see globals.css), but a near-black-to-white gradient is what
+  // that produces in light mode. from-muted is themed, giving USDT the same
+  // neutral, non-brand-colour identity in both themes instead of a broken one.
+  USDT: "from-muted to-card",
   KES: "from-naira-light/20 to-card",
   GHS: "from-gold-dark/30 to-card",
 };

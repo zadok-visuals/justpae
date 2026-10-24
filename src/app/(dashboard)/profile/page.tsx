@@ -7,11 +7,13 @@ import { SubmitButton } from "@/components/ui/Button";
 import { TransactionPinCard } from "@/components/settings/TransactionPinCard";
 import { RecipientCard } from "@/components/settings/RecipientCard";
 import { EmailPreferenceToggle } from "@/components/settings/EmailPreferenceToggle";
+import { ThemeToggle } from "@/components/settings/ThemeToggle";
 import { logOut } from "@/lib/actions/auth";
 import { isAdmin } from "@/lib/auth/admin";
 import { getBanks, type BushaBank } from "@/lib/busha/client";
 import { countryName } from "@/lib/countries";
 import { startRouteTiming } from "@/lib/perf/timing";
+import { getThemePreference } from "@/lib/theme";
 import type { Currency, Wallet, WithdrawalRecipient } from "@/lib/types/database";
 import { requireSessionUser } from "@/lib/auth/session";
 
@@ -36,6 +38,7 @@ export default async function ProfilePage() {
     { data: recipients },
     { data: hasPin },
     showAdmin,
+    themePreference,
   ] = await Promise.all([
       supabase
         .from("profiles")
@@ -51,6 +54,9 @@ export default async function ProfilePage() {
       // Admin is a database role now, not an email match, so this is a query
       // rather than a string compare — hence its place in this batch.
       isAdmin(user.id, user.email),
+      // GROUP 9. Cookie-backed, not a column — nothing here is per-account,
+      // so there is no row to join and no reason to add one.
+      getThemePreference(),
     ]);
 
   endRouteTiming();
@@ -131,6 +137,8 @@ export default async function ProfilePage() {
         <TransactionPinCard hasPin={hasPin === true} />
 
         <EmailPreferenceToggle initialEnabled={profile?.email_announcements ?? true} />
+
+        <ThemeToggle initialPreference={themePreference} />
 
         {/* GROUP 9c. The bank list is a PROVIDER call, and it was awaited in
             the page body — so the whole of Profile (name, verification

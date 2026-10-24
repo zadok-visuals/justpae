@@ -44,6 +44,10 @@ const EXEMPT: Record<string, string> = {
   // Sets a "don't show the KYC modal again today" cookie. No account or
   // balance data moves, so there is nothing a revoked session could abuse.
   "kycPrompt.ts": "writes only a UI dismissal cookie, no account or money data",
+  // GROUP 9. Sets the light/dark/system theme cookie. Same reasoning as
+  // kycPrompt.ts: no account, no session, no money — a signed-out visitor
+  // on the landing page can set this too.
+  "theme.ts": "writes only a UI theme-preference cookie, no account or money data",
 };
 
 function sourceFiles(): string[] {

@@ -250,7 +250,11 @@ export default function LandingPage() {
         </section>
 
         {/* ── What you can do ───────────────────────────────────────────── */}
-        <section className="border-y border-border bg-ink-light/40">
+        {/* GROUP 9. Was bg-ink-light/40, a fixed near-black wash — correct
+            as a subtle band on the dark theme, a dark smear across a light
+            page. bg-muted/60 is themed, giving the same "the section behind
+            this one" separation in both. */}
+        <section className="border-y border-border bg-muted/60">
           <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6 sm:py-20">
             <h2 className="font-display text-2xl font-semibold text-foreground sm:text-3xl">
               What you can do with it
@@ -341,7 +345,7 @@ export default function LandingPage() {
         </section>
 
         {/* ── Security, stated specifically ─────────────────────────────── */}
-        <section className="border-y border-border bg-ink-light/40">
+        <section className="border-y border-border bg-muted/60">
           <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6 sm:py-20">
             <div className="max-w-2xl">
               <h2 className="font-display text-2xl font-semibold text-foreground sm:text-3xl">
