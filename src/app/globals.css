@@ -53,6 +53,15 @@
 
   /* ── Base radius (was --radius: 0.75rem) ──────────────────────────────── */
   --jp-radius: 0.75rem;
+
+  /* GROUP 8. The bottom tab bar's own content height (excluding the safe
+   * area it adds on top of this) — one number, read by both the bar
+   * itself (DashboardChrome.tsx) and the scrolling content that has to
+   * clear it ((dashboard)/layout.tsx, dev/gallery). Two Tailwind arbitrary
+   * values that happened to both say "3.5rem" were the same number by
+   * coincidence, not by reference — nothing stopped one from changing
+   * without the other. */
+  --jp-tabbar-height: 3.5rem;
 }
 
 @theme inline {

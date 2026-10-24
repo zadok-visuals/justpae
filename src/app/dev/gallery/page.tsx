@@ -201,7 +201,7 @@ export default function DevGallery() {
       <div className="flex min-h-0 flex-1">
       <Sidebar isAdmin />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
-        <main className="min-w-0 flex-1 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] sm:pb-0">
+        <main className="min-w-0 flex-1 pb-[calc(var(--jp-tabbar-height)+env(safe-area-inset-bottom,0px))] sm:pb-0">
           <MobileTopBar title="Component gallery" />
           <div className="mx-auto w-full max-w-2xl space-y-6 px-4 py-5 sm:px-6 sm:py-8">
             <Banner

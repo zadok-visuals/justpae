@@ -158,7 +158,7 @@ export function BottomTabBar() {
               <Link
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-14 flex-col items-center justify-center gap-0.5 py-2 text-[0.6875rem] font-medium ${
+                className={`flex min-h-[var(--jp-tabbar-height)] flex-col items-center justify-center gap-0.5 py-2 text-[0.6875rem] font-medium ${
                   active ? "text-primary" : "text-muted-foreground"
                 }`}
               >

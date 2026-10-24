@@ -78,7 +78,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                   Without it the last row of every scrolling page is permanently
                   hidden behind the bar — which is the single most common bug in a
                   bottom-tab layout. Dropped at sm, where there is no bar. */}
-              <main className="min-w-0 flex-1 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] sm:pb-0">
+              <main className="min-w-0 flex-1 pb-[calc(var(--jp-tabbar-height)+env(safe-area-inset-bottom,0px))] sm:pb-0">
                 {suspension && (
                   // Inside main and above children, so it is the first thing
                   // read on every page rather than something only the home
