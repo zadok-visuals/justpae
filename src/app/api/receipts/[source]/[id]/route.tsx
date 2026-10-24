@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -6,6 +8,23 @@ import { loadActivityDetail, type ActivityDetail } from "@/lib/activity/detail";
 import { receiptTitle } from "@/lib/activity/receiptTitle";
 import { formatAmount, formatRate } from "@/lib/currencies";
 import type { ActivitySource } from "@/lib/transactions";
+
+/**
+ * GROUP 7. next/og's default font has no glyphs for ₦ (naira), ₵ (cedi) or
+ * ₮ (used here for USDT) — every one of those rendered as an empty box on a
+ * receipt before this, which is the one artefact in this whole product most
+ * likely to get forwarded to someone outside it. DejaVu Sans's Unicode
+ * coverage is unusually broad and specifically includes the full Currency
+ * Symbols block — see fonts/README.md for why this one and its licence, and
+ * fonts/receiptFonts.test.ts for the mechanical check that the two files
+ * actually committed here still carry every glyph this route draws.
+ *
+ * Read once per cold start, not per request — these are small, static files
+ * on disk, and re-reading them on every receipt would be pure waste.
+ */
+const FONTS_DIR = join(process.cwd(), "src/lib/receipts/fonts");
+const FONT_REGULAR = readFileSync(join(FONTS_DIR, "DejaVuSans.ttf"));
+const FONT_BOLD = readFileSync(join(FONTS_DIR, "DejaVuSans-Bold.ttf"));
 
 /**
  * GROUP 4a — the receipt, as an image.
@@ -172,6 +191,11 @@ export async function GET(
           flexDirection: "column",
           background: INK,
           padding: 56,
+          // Set once here, not per element: Satori resolves font-family by
+          // normal CSS inheritance, and every text node below needs this —
+          // the currency symbols this font exists for appear throughout,
+          // not just in one place.
+          fontFamily: "DejaVu Sans",
         }}
       >
         {/* ── Header: the mark, and what this is a receipt for ───────────── */}
@@ -344,6 +368,16 @@ export async function GET(
         // another's browser.
         "Cache-Control": "private, no-store",
       },
+      fonts: [
+        { name: "DejaVu Sans", data: FONT_REGULAR, weight: 400, style: "normal" },
+        // Registered at both 600 and 700: every bold-ish weight this file
+        // actually requests (600 for most labels, 700 for the headline
+        // amount) should resolve to the bold face rather than Satori
+        // falling back to a synthetic or default weight for 600, which has
+        // no registered font of its own.
+        { name: "DejaVu Sans", data: FONT_BOLD, weight: 600, style: "normal" },
+        { name: "DejaVu Sans", data: FONT_BOLD, weight: 700, style: "normal" },
+      ],
     },
   );
 }

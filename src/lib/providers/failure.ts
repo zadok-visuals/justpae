@@ -90,7 +90,13 @@ const PATTERNS: Array<{ failure: ProviderFailure; test: RegExp }> = [
   },
   {
     failure: "unsupported",
-    test: /not\s+supported|unsupported|invalid\s+network|not\s+enabled|not\s+available|no\s+such\s+pair|unavailable\s+(pair|currency|corridor)|disabled/i,
+    // restricted_feature is the exact shape of Busha's error.name for a
+    // corridor or network this account's agreement doesn't cover — observed
+    // live, not guessed at. It carries no English words a prose pattern
+    // could match (toCustomerError appends the code to the classified
+    // text precisely so this line has something to match against), so it's
+    // matched as its own alternative rather than folded into "restricted".
+    test: /not\s+supported|unsupported|invalid\s+network|not\s+enabled|not\s+available|no\s+such\s+pair|unavailable\s+(pair|currency|corridor)|disabled|restricted/i,
   },
   // The real shape of a Busha refusal on this account, and the least
   // informative. Deliberately last among the text patterns.
@@ -115,6 +121,14 @@ export function classifyProviderFailure(
   // KlashaError constructor calls for "is not configured". Caught before the
   // 5xx branch below, which would otherwise call it an outage.
   if (message && /is not configured|no readable expiry/i.test(message)) return "not_configured";
+
+  // GROUP 7. Busha returns restricted_feature as a 403 — the same status the
+  // blanket rule two lines down reads as "our own API key is wrong". Those
+  // are different problems with different customer messages (this account's
+  // agreement doesn't cover a corridor, vs. an outage that isn't the
+  // customer's concern), so the named business-rule code is checked first,
+  // same precedence as "is not configured" above it.
+  if (message && /restricted/i.test(message)) return "unsupported";
 
   if (status === 401 || status === 403) return "not_configured";
   if (status === 429) return "rate_limited";

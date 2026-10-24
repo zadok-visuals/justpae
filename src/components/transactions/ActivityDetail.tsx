@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SheetPanel } from "@/components/ui/SheetPanel";
@@ -9,6 +9,7 @@ import { DetailRow, SkeletonText, StatusPill } from "@/components/ui/Primitives"
 import { CopyButton, CopyField } from "@/components/ui/CopyButton";
 import { Button } from "@/components/ui/Button";
 import { Lightbox } from "@/components/ui/Lightbox";
+import { Modal } from "@/components/ui/Modal";
 import { formatAmount, formatNumber, formatRate } from "@/lib/currencies";
 import { getActivityDetail } from "@/lib/actions/activity";
 // The TYPE comes from the plain module, the ACTION from the "use server" one.
@@ -486,6 +487,30 @@ function fileShareSupported(): boolean {
   return fileShareSupportedCache;
 }
 
+/**
+ * GROUP 7. Whether a programmatic `<a download>` click can be trusted here.
+ *
+ * It cannot, on a lot of phones. Desktop browsers download a same-origin
+ * blob: URL reliably; plenty of mobile browsers — older mobile Safari
+ * chief among them, and almost every in-app webview (Instagram, TikTok,
+ * Facebook) a receipt might get opened from — either silently navigate to
+ * the blob instead of saving it, or do nothing at all. There is no feature
+ * flag for "download actually works here", so this reads the one real
+ * signal that correlates with it: a coarse (touch) primary pointer, which
+ * is also already the right signal for "show a tap-and-hold-to-save sheet
+ * instead", since that gesture does not exist on desktop.
+ *
+ * Checked only once share has already said no — a phone that CAN share
+ * files never reaches this at all.
+ */
+let coarsePointerCache: boolean | null = null;
+function coarsePointer(): boolean {
+  if (coarsePointerCache !== null) return coarsePointerCache;
+  coarsePointerCache =
+    typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
+  return coarsePointerCache;
+}
+
 function ReceiptButton({
   detail,
   source,
@@ -497,6 +522,8 @@ function ReceiptButton({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const previewTitleId = useId();
 
   // Feature detection that is correct on BOTH renders.
   //
@@ -542,17 +569,36 @@ function ReceiptButton({
         }
       }
 
+      // GROUP 7. A coarse-pointer device without file-share support gets an
+      // in-app preview instead of an <a download> click — see
+      // coarsePointer()'s note on why that click cannot be trusted there.
+      if (coarsePointer()) {
+        setPreviewUrl(URL.createObjectURL(file));
+        return;
+      }
+
       const url = URL.createObjectURL(file);
       const anchor = document.createElement("a");
       anchor.href = url;
       anchor.download = file.name;
       anchor.click();
-      URL.revokeObjectURL(url);
+      // GROUP 7. Revoking in the same tick raced the download on some
+      // browsers — click() hands the URL to the download machinery
+      // asynchronously, and a blob: URL revoked before that machinery has
+      // actually read it produces a 0-byte or missing file. A few seconds'
+      // delay costs nothing (the object is only held in memory until then)
+      // and gives every browser time to finish reading it first.
+      window.setTimeout(() => URL.revokeObjectURL(url), 4000);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "That didn't work. Try again.");
     } finally {
       setBusy(false);
     }
+  }
+
+  function closePreview() {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
   }
 
   return (
@@ -572,6 +618,26 @@ function ReceiptButton({
           </Button>
         )}
       </div>
+
+      <Modal open={Boolean(previewUrl)} onClose={closePreview} labelledBy={previewTitleId}>
+        <h2 id={previewTitleId} className="text-sm font-semibold text-foreground">
+          Your receipt
+        </h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Press and hold the image to save or share it.
+        </p>
+        {previewUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={previewUrl}
+            alt="justpae receipt"
+            className="mx-auto mt-3 max-h-[60vh] w-auto max-w-full rounded-lg object-contain"
+          />
+        )}
+        <Button type="button" variant="secondary" fullWidth className="mt-3" onClick={closePreview}>
+          Close
+        </Button>
+      </Modal>
     </div>
   );
 }

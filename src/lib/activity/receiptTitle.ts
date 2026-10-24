@@ -11,9 +11,28 @@ import type { ActivityDetail } from "@/lib/activity/detail";
  *
  * Customer copy rules apply: no provider name, and "convert" rather than
  * "exchange".
+ *
+ * GROUP 7. `status` matters for exactly one branch: a deposit. "Money added"
+ * is an outcome, not a category — true only once the money is actually in
+ * the wallet — and a failed or expired deposit's receipt said it anyway,
+ * printed right above a status pill reading "Failed". Every other title here
+ * ("Conversion", "Withdrawal", "Airtime"…) names what KIND of thing this is
+ * rather than claiming an outcome, so the status pill beside it is the only
+ * place those need to say how it went.
  */
-export function receiptTitle(detail: Pick<ActivityDetail, "source" | "type">): string {
-  if (detail.source === "deposit") return "Money added";
+export function receiptTitle(detail: Pick<ActivityDetail, "source" | "type" | "status">): string {
+  if (detail.source === "deposit") {
+    switch (detail.status) {
+      case "completed":
+        return "Money added";
+      case "failed":
+        return "Deposit failed";
+      case "expired":
+        return "Deposit expired";
+      default:
+        return "Deposit pending";
+    }
+  }
   if (detail.source === "bill") {
     switch (detail.type) {
       case "airtime":
@@ -40,8 +59,6 @@ export function receiptTitle(detail: Pick<ActivityDetail, "source" | "type">): s
       return "Withdrawal";
     case "pay_to_china":
       return "Pay to China";
-    case "deposit":
-      return "Money added";
     default:
       return "Transaction";
   }

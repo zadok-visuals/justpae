@@ -1,6 +1,6 @@
 import { test, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { toRpcError } from "./provider-error.ts";
+import { toRpcError, toCustomerError } from "./provider-error.ts";
 
 /**
  * The line between "copy we wrote for the customer" and "the database
@@ -81,4 +81,31 @@ test("an over-long P0001 is treated as a developer message, not as copy", () => 
 
 test("a P0001 message is trimmed before it is shown", () => {
   assert.equal(toRpcError({ code: "P0001", message: "  That PIN is wrong.  " }, "test"), "That PIN is wrong.");
+});
+
+/**
+ * GROUP 7. restricted_feature is Busha's error.name for a corridor this
+ * account's agreement doesn't cover — observed live, carrying no English
+ * words a text pattern could ever match on its own. The error shape mirrors
+ * what BushaError actually constructs: status, and body = json.error
+ * (which has .name, the machine code — see busha/client.ts).
+ */
+test("a Busha restricted_feature error gets the unsupported message, not the generic one", () => {
+  const err = Object.assign(new Error("Request validation failed"), {
+    status: 403,
+    body: { name: "restricted_feature", message: "Request validation failed" },
+  });
+
+  const shown = toCustomerError(err, "test", { currency: "GHS", action: "deposit" });
+  assert.equal(shown, "We can't process GHS this way at the moment.");
+  assert.ok(!shown.startsWith(GENERIC), "should not fall through to the generic line");
+});
+
+test("without the code, the same prose message is classified as a bare refusal", () => {
+  // The control: strip the code and the same message, now genuinely
+  // unrecognisable, falls back to the generic refusal rather than claiming
+  // "unsupported" it has no basis for.
+  const err = Object.assign(new Error("Request validation failed"), { status: 403 });
+  const shown = toCustomerError(err, "test", { currency: "GHS", action: "deposit" });
+  assert.ok(!shown.includes("this way"), shown);
 });

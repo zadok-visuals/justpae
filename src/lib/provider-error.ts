@@ -43,10 +43,23 @@ export function toCustomerError(
     ? (err as { body?: unknown }).body
     : undefined;
   const text = err instanceof Error ? err.message : typeof err === "string" ? err : undefined;
+  // Busha's machine-readable error code — {"error":{"name":"restricted_feature",
+  // "message":…}} — lives on `body.name`, separately from the human-readable
+  // `message` BushaError.message is built from (see busha/client.ts). A code
+  // like "restricted_feature" carries no English words a text pattern could
+  // ever match, so it has to be classified alongside the prose, not instead
+  // of it — appended rather than substituted, so a provider's own wording
+  // still gets its chance to match first.
+  const code = typeof body === "object" && body !== null && "name" in body
+    ? (body as { name?: unknown }).name
+    : undefined;
+  const classificationText = [text, typeof code === "string" ? code : undefined]
+    .filter(Boolean)
+    .join(" ");
 
   const failure = classifyProviderFailure(
     typeof status === "number" ? status : undefined,
-    text,
+    classificationText || undefined,
   );
 
   console.error(`[${context}] provider call failed`, {

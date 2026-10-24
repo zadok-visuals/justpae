@@ -4,7 +4,7 @@
 // (flags.ts) or type-only. tsconfig's allowImportingTsExtensions is what lets
 // the app's own build read the same specifiers.
 import type { Currency } from "../types/database.ts";
-import { GHS_WALLET_ENABLED } from "../flags.ts";
+import { GHS_WALLET_ENABLED, NGN_BANK_DEPOSIT_MAINTENANCE, KES_BANK_DEPOSIT_MAINTENANCE } from "../flags.ts";
 import type { UnavailableKind } from "../ui/unavailability.ts";
 
 /**
@@ -17,13 +17,26 @@ import type { UnavailableKind } from "../ui/unavailability.ts";
  * would force every caller to await a pure lookup.
  *
  * The mapping is the result of live testing, not preference:
- *   NGN, KES, USDT  primary provider, confirmed working
+ *   NGN, KES, USDT  primary provider, confirmed working — NGN and KES each
+ *                   carry their own kill switch (GROUP 7, see flags.ts) so
+ *                   ops can take one rail down without the other or without
+ *                   touching USDT.
  *   GHS             secondary provider, because the primary rejects GHS
  *                   outright on this account. Behind a flag that ships OFF.
  *   USD             not depositable. Dollars arrive via /receive.
  */
 
 const BUSHA_DEPOSIT_CURRENCIES: Currency[] = ["NGN", "KES", "USDT"];
+
+const BANK_DEPOSIT_MAINTENANCE: Partial<Record<Currency, boolean>> = {
+  NGN: NGN_BANK_DEPOSIT_MAINTENANCE,
+  KES: KES_BANK_DEPOSIT_MAINTENANCE,
+};
+
+const BANK_DEPOSIT_MAINTENANCE_REASON: Partial<Record<Currency, string>> = {
+  NGN: "Naira bank deposits are under maintenance. We'll let you know the moment they're back — your naira wallet still converts and withdraws in the meantime.",
+  KES: "Shilling bank deposits are under maintenance. We'll let you know the moment they're back — your shilling wallet still converts and withdraws in the meantime.",
+};
 
 /**
  * GROUP 4f added `kind`. The REASON was always here; what was missing was a
@@ -38,6 +51,13 @@ export type DepositAvailability =
 
 export function depositAvailability(currency: Currency): DepositAvailability {
   if (BUSHA_DEPOSIT_CURRENCIES.includes(currency)) {
+    if (BANK_DEPOSIT_MAINTENANCE[currency]) {
+      return {
+        available: false,
+        kind: "maintenance",
+        reason: BANK_DEPOSIT_MAINTENANCE_REASON[currency]!,
+      };
+    }
     return { available: true, provider: "busha" };
   }
 

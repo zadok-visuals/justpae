@@ -55,16 +55,30 @@ export default async function AdminPage() {
     // archive nobody reads.
     admin
       .from("deposits")
-      .select("id, user_id, amount, currency, decline_reason, created_at")
+      .select("id, user_id, amount, currency, provider_reference, decline_reason, created_at")
       .eq("status", "failed")
       .order("created_at", { ascending: false })
       .range(0, 9),
   ]);
 
+  const failedDeposits = failed ?? [];
+
+  // GROUP 7. A second query, not an embedded `profiles(email)` select — the
+  // hand-maintained Database type in src/lib/types/database.ts declares no
+  // Relationships for any table (see its Profile entry), so PostgREST's own
+  // deposits→profiles FK (0001) isn't something the typed client knows how
+  // to follow. Same call this codebase already makes in
+  // notifications.listNotifications for the same reason.
+  const failedDepositUserIds = [...new Set(failedDeposits.map((d) => d.user_id))];
+  const { data: failedDepositOwners } =
+    failedDepositUserIds.length > 0
+      ? await admin.from("profiles").select("id, email").in("id", failedDepositUserIds)
+      : { data: [] };
+  const emailByUserId = new Map((failedDepositOwners ?? []).map((p) => [p.id, p.email]));
+
   endRouteTiming();
 
   if (error) console.error("[admin] dashboard stats failed", error);
-  const failedDeposits = failed ?? [];
   // Zeroes rather than a crash, and the banner below says so — a dashboard
   // that renders zeroes while claiming they are real is the one failure mode
   // worse than not rendering.
@@ -194,7 +208,21 @@ export default async function AdminPage() {
                   <p className="break-words text-sm text-muted-foreground">
                     {deposit.decline_reason?.trim() || "No reason was recorded."}
                   </p>
-                  <p className="font-mono text-xs text-muted-foreground">{deposit.user_id}</p>
+                  {/* GROUP 7. This used to print deposit.user_id alone — a
+                      uuid nobody can act on, and nothing here distinguished
+                      one row from the next at a glance beyond amount and
+                      time. The provider reference is what support and the
+                      provider's own dashboard both key a deposit by; the
+                      email is who to actually contact about it. */}
+                  <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-xs text-muted-foreground">
+                    <span>{deposit.provider_reference ?? deposit.id}</span>
+                    {emailByUserId.get(deposit.user_id) && (
+                      <>
+                        <span aria-hidden="true">&middot;</span>
+                        <span className="font-sans">{emailByUserId.get(deposit.user_id)}</span>
+                      </>
+                    )}
+                  </p>
                 </Card>
               </li>
             ))}

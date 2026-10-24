@@ -74,10 +74,32 @@ export const FLIGHTS_ENABLED = flag(process.env.NEXT_PUBLIC_FEATURE_FLIGHTS);
  */
 export const USD_WALLET_ENABLED = flag(process.env.NEXT_PUBLIC_FEATURE_USD_WALLET);
 
+/**
+ * GROUP 7 — kill switches, not feature flags, and the one pair in this file
+ * that reads backwards from every other export above.
+ *
+ * NGN and KES bank deposit (via Busha) are LIVE today, confirmed working —
+ * unlike everything else here, which ships off until a provider is
+ * confirmed. A flag following this file's usual "off by default" convention
+ * would mean deploying it with NEXT_PUBLIC_MAINTENANCE_NGN_BANK_DEPOSIT
+ * unset in Vercel — which is exactly the state production is in right now —
+ * takes NGN deposits down the moment this ships. So these default to FALSE
+ * MEANING "not in maintenance": unset or any value other than "true"/"1"
+ * changes nothing, and ops sets it to "true" only to deliberately take one
+ * rail down (a provider outage, say) without touching the other or the rest
+ * of the NGN/KES wallet, which both stay fully usable either way — this
+ * gates the deposit rail specifically, not the wallet (see
+ * src/lib/services.ts for the wallet-level equivalent, GHS and USD).
+ */
+export const NGN_BANK_DEPOSIT_MAINTENANCE = flag(process.env.NEXT_PUBLIC_MAINTENANCE_NGN_BANK_DEPOSIT);
+export const KES_BANK_DEPOSIT_MAINTENANCE = flag(process.env.NEXT_PUBLIC_MAINTENANCE_KES_BANK_DEPOSIT);
+
 export const FLAGS = {
   usdWallet: USD_WALLET_ENABLED,
   ghsWallet: GHS_WALLET_ENABLED,
   usdCollection: USD_COLLECTION_ENABLED,
   bills: BILLS_ENABLED,
   flights: FLIGHTS_ENABLED,
+  ngnBankDepositMaintenance: NGN_BANK_DEPOSIT_MAINTENANCE,
+  kesBankDepositMaintenance: KES_BANK_DEPOSIT_MAINTENANCE,
 } as const;

@@ -9,6 +9,7 @@ import type { Currency, TransactionStatus } from "@/lib/types/database";
 import * as busha from "@/lib/busha/client";
 import * as klasha from "@/lib/klasha/client";
 import { depositAvailability } from "@/lib/deposits/availability";
+import { transferCurrencyMatches } from "@/lib/deposits/transferCurrency";
 import { toCustomerError } from "@/lib/provider-error";
 import { fiatMinimumDeposit } from "@/lib/busha/limits";
 import { formatAmount } from "@/lib/currencies";
@@ -264,6 +265,23 @@ export async function initiateDeposit(
         action: "deposit",
         formattedMinimum: minimum != null ? formatAmount(currency, minimum) : undefined,
       }),
+    };
+  }
+
+  // GROUP 7. The deposit row is about to be recorded under `currency` — the
+  // FORM's currency, not the provider's — and quoteId is the only thing
+  // tying this call back to a specific quote. See
+  // src/lib/deposits/transferCurrency.ts for why that gap matters and what
+  // it would cost to record the wrong one.
+  if (!transferCurrencyMatches(currency, transfer.target_currency)) {
+    console.error("[deposits.initiateDeposit] provider transfer currency does not match the requested deposit", {
+      userId: user.id,
+      requestedCurrency: currency,
+      transferCurrency: transfer.target_currency,
+      transferId: transfer.id,
+    });
+    return {
+      error: "Something changed while we were setting that up. Please start the deposit again before sending any money.",
     };
   }
 

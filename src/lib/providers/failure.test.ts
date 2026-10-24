@@ -88,6 +88,18 @@ test("an unsupported network wins over the generic 'invalid'", () => {
   assert.equal(classifyProviderFailure(404, "no such pair"), "unsupported");
 });
 
+test("GROUP 7 — restricted_feature is unsupported, not a generic refusal", () => {
+  // Busha's own error.name for this account's agreement not covering a
+  // corridor — observed live. toCustomerError appends this code to the
+  // classified text (see provider-error.test.ts); asserted here on the code
+  // alone, which is also what the prose message alone would NOT match on.
+  assert.equal(classifyProviderFailure(403, "restricted_feature"), "unsupported");
+  assert.equal(
+    classifyProviderFailure(403, "This feature is restricted for your account"),
+    "unsupported",
+  );
+});
+
 test("the bare refusal this account actually returns is classified as a refusal", () => {
   // "Request validation failed" with nothing else is the real Group 2 symptom.
   // It cannot be made more specific than "refused" — and saying "refused" is
