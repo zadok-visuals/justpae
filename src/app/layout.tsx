@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { siteUrl } from "@/lib/site";
 import { NavigationTracker } from "@/components/layout/NavigationTracker";
 import { THEME_COOKIE } from "@/lib/theme";
+import { THEME_COLORS, THEME_COLOR_META_MARKER } from "@/lib/themeClient";
 import "./globals.css";
 
 /**
@@ -104,7 +105,19 @@ export const viewport: Viewport = {
  * to show the toggle's current selection) costs nothing extra — that is the
  * one place a true server-side read remains, and the one place it needed to.
  */
-const THEME_INIT_SCRIPT = `(function(){try{var m=document.cookie.match(/(?:^|; )${THEME_COOKIE}=([^;]*)/);var v=m&&decodeURIComponent(m[1]);if(v==="light"||v==="dark"){document.documentElement.setAttribute("data-theme",v);}}catch(e){}})();`;
+const THEME_INIT_SCRIPT = `(function(){try{
+var m=document.cookie.match(/(?:^|; )${THEME_COOKIE}=([^;]*)/);
+var v=m?decodeURIComponent(m[1]):"";
+var e=document.documentElement;
+if(v==="light"||v==="dark"){e.setAttribute("data-theme",v);}else{e.removeAttribute("data-theme");}
+var r=(v==="light"||v==="dark")?v:((window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light");
+e.style.colorScheme=r;
+var t=document.createElement("meta");
+t.name="theme-color";
+t.setAttribute(${JSON.stringify(THEME_COLOR_META_MARKER)},"");
+t.content=r==="dark"?${JSON.stringify(THEME_COLORS.dark)}:${JSON.stringify(THEME_COLORS.light)};
+document.head.insertBefore(t,document.head.firstChild);
+}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

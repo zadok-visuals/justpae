@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/Primitives";
+import { Switch } from "@/components/ui/Switch";
 import { setEmailAnnouncementPreference } from "@/lib/actions/emailPreferences";
 
 /**
@@ -37,23 +38,12 @@ export function EmailPreferenceToggle({ initialEnabled }: { initialEnabled: bool
             News and announcements. Account and security emails always send.
           </span>
         </span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={enabled}
+        <Switch
+          checked={enabled}
+          onChange={toggle}
           disabled={isPending}
-          onClick={toggle}
-          className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-            enabled ? "bg-primary" : "bg-secondary"
-          }`}
-        >
-          <span
-            aria-hidden="true"
-            className={`absolute top-0.5 size-6 rounded-full bg-white transition-transform ${
-              enabled ? "translate-x-5" : "translate-x-0.5"
-            }`}
-          />
-        </button>
+          label="Product update emails"
+        />
       </label>
     </Card>
   );

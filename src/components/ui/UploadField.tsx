@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Label, FieldError } from "@/components/ui/Field";
 import { Lightbox } from "@/components/ui/Lightbox";
-import { uploadToStorage } from "@/lib/storage/clientUpload";
+import { prepareUpload, uploadToStorage } from "@/lib/storage/clientUpload";
 
 /**
  * A file field that uploads IMMEDIATELY on selection, straight to private
@@ -39,7 +39,6 @@ export function UploadField({
   label,
   hint,
   accept,
-  capture,
   bucket,
   userId,
   prefix,
@@ -50,7 +49,6 @@ export function UploadField({
   label: string;
   hint?: string;
   accept?: string;
-  capture?: "user" | "environment";
   bucket: string;
   userId: string;
   /** Names the document in the storage path, e.g. "government-id". */
@@ -101,10 +99,17 @@ export function UploadField({
     // file's path attached to a document the user has visibly swapped out.
     setPath("");
     onUploadedChange?.(null);
-    setPreviewUrl(file.type.startsWith("image/") ? URL.createObjectURL(file) : null);
+    setPreviewUrl(null);
 
     try {
-      const uploaded = await uploadToStorage({ bucket, userId, prefix, file });
+      // Prepared first, so the preview shows the JPEG that will be uploaded
+      // rather than the original — a HEIC from the iPhone photo library is
+      // converted here, and only a file no browser could decode is left
+      // without a preview.
+      const { file: ready, previewable } = await prepareUpload(file);
+      if (previewable) setPreviewUrl(URL.createObjectURL(ready));
+
+      const uploaded = await uploadToStorage({ bucket, userId, prefix, file: ready, prepared: true });
       setPath(uploaded);
       setStatus("done");
       onUploadedChange?.(uploaded);
@@ -144,7 +149,7 @@ export function UploadField({
             aria-hidden="true"
             className="flex size-14 shrink-0 items-center justify-center rounded-md bg-background text-muted-foreground"
           >
-            {status === "uploading" ? "…" : "+"}
+            {status === "uploading" ? "…" : uploaded ? "✓" : "+"}
           </span>
         )}
 
@@ -172,9 +177,9 @@ export function UploadField({
           ref={inputRef}
           type="file"
           accept={accept}
-          // Opens the camera straight away on a phone. The caller picks the
-          // lens: "environment" for a photo OF a document, "user" for a selfie.
-          capture={capture}
+          // No `capture`: it forces the camera open and hides Photo Library
+          // and Choose File, which is the wrong default for a document most
+          // people already have a photo or a PDF of.
           onChange={handleChange}
           className="sr-only"
         />

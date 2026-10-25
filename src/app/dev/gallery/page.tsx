@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/Primitives";
 import { CopyField } from "@/components/ui/CopyButton";
 import { Button } from "@/components/ui/Button";
+import { SwitchDemo } from "./SwitchDemo";
 import { BottomTabBar, Sidebar, TopBar, MobileTopBar } from "@/components/layout/DashboardChrome";
 import { PageTitleProvider, PageTitlePublisher } from "@/components/layout/PageTitleContext";
 import { ConvertForm } from "@/components/convert/ConvertForm";
@@ -425,6 +426,10 @@ export default function DevGallery() {
                 <Button loading>Submitting</Button>
                 <Button disabled>Disabled</Button>
               </div>
+            </Section>
+
+            <Section title="Switch">
+              <SwitchDemo />
             </Section>
 
             <Section title="Token, skeletons, empty state">

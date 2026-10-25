@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { SubmitButton } from "@/components/ui/Button";
 import { FieldError, TextField, TextAreaField } from "@/components/ui/Field";
+import { Switch } from "@/components/ui/Switch";
 import { sendNotification } from "@/lib/actions/notifications";
 
 /**
@@ -22,6 +23,7 @@ import { sendNotification } from "@/lib/actions/notifications";
 export function NotificationComposer() {
   const [state, formAction] = useActionState(sendNotification, {});
   const [audience, setAudience] = useState<"broadcast" | "user">("broadcast");
+  const [alsoEmail, setAlsoEmail] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -125,20 +127,20 @@ export function NotificationComposer() {
         defaultValue={state.values?.href ?? ""}
       />
 
-      <label className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
-        <input
-          type="checkbox"
-          name="sendEmail"
-          defaultChecked={false}
-          className="size-5 accent-[var(--color-gold)]"
-        />
+      <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
         <span className="text-sm text-foreground">
           Also send by email
           <span className="block text-xs font-normal text-muted-foreground">
             Only to people who haven&apos;t turned off announcement email.
           </span>
         </span>
-      </label>
+        <Switch
+          checked={alsoEmail}
+          onChange={setAlsoEmail}
+          name="sendEmail"
+          label="Also send by email"
+        />
+      </div>
 
       <SubmitButton pendingLabel="Sending…">Send notification</SubmitButton>
       <FieldError>{state.error}</FieldError>

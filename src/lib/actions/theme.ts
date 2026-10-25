@@ -1,7 +1,6 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { revalidatePath } from "next/cache";
 import { isThemePreference, THEME_COOKIE, type ThemePreference } from "@/lib/theme";
 
 /**
@@ -22,8 +21,8 @@ export async function setThemePreference(preference: ThemePreference): Promise<T
     sameSite: "lax",
   });
 
-  // The whole tree re-renders under the new data-theme attribute, not just
-  // Profile — a theme choice is global, not a page-local setting.
-  revalidatePath("/", "layout");
+  // No revalidate: ThemeToggle applies the choice to the document itself, so
+  // re-rendering the whole tree would only be a round trip that changes
+  // nothing. The cookie is what the next full load reads.
   return { ok: true };
 }

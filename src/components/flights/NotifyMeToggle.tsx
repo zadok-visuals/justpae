@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Switch } from "@/components/ui/Switch";
 import { setFeatureInterest } from "@/lib/actions/featureInterest";
 
 /**
@@ -59,26 +60,7 @@ export function NotifyMeToggle({
           </span>
         </span>
 
-        <button
-          type="button"
-          role="switch"
-          aria-checked={interested}
-          aria-label={label}
-          disabled={pending}
-          onClick={toggle}
-          // h-11 keeps the whole control at a 44px tap target even though the
-          // track itself is 28px tall.
-          className={`relative inline-flex h-11 w-14 shrink-0 items-center rounded-full px-1 transition-colors disabled:opacity-60 ${
-            interested ? "bg-primary" : "bg-secondary border border-border"
-          }`}
-        >
-          <span
-            aria-hidden="true"
-            className={`size-5 rounded-full bg-background transition-transform ${
-              interested ? "translate-x-7" : "translate-x-0"
-            }`}
-          />
-        </button>
+        <Switch checked={interested} onChange={toggle} disabled={pending} label={label} />
       </div>
 
       {error && (

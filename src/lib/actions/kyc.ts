@@ -12,6 +12,14 @@ import {
 } from "@/lib/countries";
 import { verifyOwnedUpload } from "@/lib/storage/verifyUpload";
 import { KYC_BUCKET } from "@/lib/kyc/constants";
+import {
+  KYC_ALREADY_APPROVED,
+  KYC_ALREADY_IN_REVIEW,
+  KYC_GENERIC_ERROR,
+  describeSupabaseError,
+  kycUploadMissingMessage,
+  toKycError,
+} from "@/lib/kyc/errors";
 import { adminNotificationRecipients, sendKycSubmittedEmail } from "@/lib/email";
 
 export interface KycActionState {
@@ -80,23 +88,21 @@ export async function saveOnboardingBasics(
     // Written so a reviewer opening this user's documents already sees a phone
     // number beside the rest. Business has no tier split — every business
     // document, this one included, uses the single "business" tier.
-    const { error: docError } = await supabase.from("kyc_documents").upsert(
+    await writeKycDocuments(user.id, [
       {
-        user_id: user.id,
         tier: kycType === "business" ? "business" : "individual_tier_1",
         document_type: "phone_number",
         value: phone,
       },
-      { onConflict: "user_id,document_type" },
-    );
-    if (docError) throw docError;
+    ]);
   } catch (err) {
-    console.error("[kyc.saveOnboardingBasics] failed", err);
+    console.error("[kyc.saveOnboardingBasics] failed", describeSupabaseError(err));
+    // The guard in save_onboarding_basics raises P0001, which arrives as a
+    // PostgrestError rather than an Error — toKycError is what reads it.
+    const message = toKycError(err);
     return {
       error:
-        err instanceof Error && /account type cannot be changed/i.test(err.message)
-          ? err.message
-          : "We couldn't save that. Please try again.",
+        message === KYC_GENERIC_ERROR ? "We couldn't save that. Please try again." : message,
     };
   }
 
@@ -131,9 +137,7 @@ async function requireOwnedUpload(
 ): Promise<string> {
   if (!path) throw new Error(`${documentLabel} is required.`);
   const ok = await verifyOwnedUpload(supabase, KYC_BUCKET, userId, path);
-  if (!ok) {
-    throw new Error(`We couldn't find your ${documentLabel.toLowerCase()}. Please upload it again.`);
-  }
+  if (!ok) throw new Error(kycUploadMissingMessage(documentLabel));
   return path;
 }
 
@@ -143,6 +147,33 @@ type DocumentRow = {
   value?: string;
   file_ref?: string;
 };
+
+/**
+ * THE KYC SUBMIT FAILURE, and why this is a service-role write.
+ *
+ * 0011 revoked table-wide UPDATE on kyc_documents and re-granted it per
+ * column — `(tier, document_type, file_ref, value)`, with `user_id` left out.
+ * PostgREST's upsert emits `ON CONFLICT (...) DO UPDATE SET` for EVERY column
+ * in the payload, `user_id` included, and Postgres checks column UPDATE
+ * privileges whether or not a conflict actually fires. So every `.upsert()` on
+ * this table from a user session was rejected with 42501 before it touched a
+ * row — and a PostgrestError is not an Error, so the catch below reported
+ * "Something went wrong. Please try again." instead of the reason.
+ *
+ * The write therefore goes through the service role with the user id taken
+ * from supabase.auth.getUser(), the same shape submit_kyc_profile already
+ * uses. `status` is pinned to 'pending' here because the forcing trigger only
+ * fires for end-user requests — the server chooses the value, never the
+ * browser, and 'pending' is the only value this path may ever write.
+ */
+async function writeKycDocuments(userId: string, documents: DocumentRow[]): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin.from("kyc_documents").upsert(
+    documents.map((doc) => ({ ...doc, user_id: userId, status: "pending" as const })),
+    { onConflict: "user_id,document_type" },
+  );
+  if (error) throw error;
+}
 
 export async function submitIndividualKyc(
   _prevState: KycActionState,
@@ -156,9 +187,14 @@ export async function submitIndividualKyc(
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("country, phone, kyc_type")
+    .select("country, phone, kyc_type, kyc_status")
     .eq("id", user.id)
     .maybeSingle();
+
+  // Said before the uploads are re-verified, so a user whose check is already
+  // running is told that rather than being walked through a failure.
+  if (profile?.kyc_status === "approved") return { error: KYC_ALREADY_APPROVED };
+  if (profile?.kyc_status === "pending") return { error: KYC_ALREADY_IN_REVIEW };
 
   // Stage one has to have happened: the phone number is collected there and
   // this form no longer asks for it. Reached only by a stale link or a crafted
@@ -252,16 +288,7 @@ export async function submitIndividualKyc(
     // rejected original and the correction with no indication which is which.
     // Status is reset to pending on every row touched, because resubmitting
     // always means "look at this again".
-    // `status` is deliberately NOT in this payload. The column is revoked from
-    // `authenticated` (0011) and a trigger forces it to 'pending' on any write
-    // from a user session — because the old payload setting it explicitly was
-    // the same door a user could walk through with status: 'approved'. The
-    // forced value is the one this flow wanted anyway.
-    const { error: docsError } = await supabase.from("kyc_documents").upsert(
-      documents.map((doc) => ({ ...doc, user_id: user.id })),
-      { onConflict: "user_id,document_type" },
-    );
-    if (docsError) throw docsError;
+    await writeKycDocuments(user.id, documents);
 
     // Through the service role, with the user id from the verified session.
     // kyc_status, kyc_type and kyc_rejection_reason are no longer writable from
@@ -297,10 +324,8 @@ export async function submitIndividualKyc(
       });
     }
   } catch (err) {
-    console.error("[kyc.submitIndividualKyc] failed", err);
-    return {
-      error: err instanceof Error ? err.message : "Something went wrong. Please try again.",
-    };
+    console.error("[kyc.submitIndividualKyc] failed", describeSupabaseError(err));
+    return { error: toKycError(err) };
   }
 
   revalidatePath("/onboarding/kyc/status");
@@ -316,6 +341,14 @@ export async function submitBusinessKyc(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("kyc_status")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (profile?.kyc_status === "approved") return { error: KYC_ALREADY_APPROVED };
+  if (profile?.kyc_status === "pending") return { error: KYC_ALREADY_IN_REVIEW };
 
   const businessName = String(formData.get("businessName") ?? "").trim();
   const tin = String(formData.get("tin") ?? "").trim();
@@ -371,13 +404,7 @@ export async function submitBusinessKyc(
       });
     }
 
-    // See submitIndividualKyc: no `status` in the payload, and the profile
-    // write goes through the service role.
-    const { error: docsError } = await supabase.from("kyc_documents").upsert(
-      documents.map((doc) => ({ ...doc, user_id: user.id })),
-      { onConflict: "user_id,document_type" },
-    );
-    if (docsError) throw docsError;
+    await writeKycDocuments(user.id, documents);
 
     const admin = createAdminClient();
     const { error: profileError } = await admin.rpc("submit_kyc_profile", {
@@ -400,10 +427,8 @@ export async function submitBusinessKyc(
       });
     }
   } catch (err) {
-    console.error("[kyc.submitBusinessKyc] failed", err);
-    return {
-      error: err instanceof Error ? err.message : "Something went wrong. Please try again.",
-    };
+    console.error("[kyc.submitBusinessKyc] failed", describeSupabaseError(err));
+    return { error: toKycError(err) };
   }
 
   revalidatePath("/onboarding/kyc/status");

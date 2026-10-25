@@ -266,10 +266,7 @@ export function IndividualKycForm({
             name="governmentId"
             label="A photo of your ID"
             hint="Required"
-            // Rear camera on a phone: this is a photo OF a document, not of
-            // the user. capture="user" would open the selfie camera.
             accept="image/*,application/pdf"
-            capture="environment"
             bucket={KYC_BUCKET}
             userId={userId}
             prefix="government-id"
@@ -291,7 +288,6 @@ export function IndividualKycForm({
             label="Proof of address"
             hint="Optional — raises your limits"
             accept="image/*,application/pdf"
-            capture="environment"
             bucket={KYC_BUCKET}
             userId={userId}
             prefix="proof-of-address"
@@ -424,7 +420,6 @@ export function BusinessKycForm({
             label="Business registration certificate"
             hint="Required"
             accept="image/*,application/pdf"
-            capture="environment"
             bucket={KYC_BUCKET}
             userId={userId}
             prefix="registration-certificate"
@@ -446,7 +441,6 @@ export function BusinessKycForm({
             label="A director's ID"
             hint="Required"
             accept="image/*,application/pdf"
-            capture="environment"
             bucket={KYC_BUCKET}
             userId={userId}
             prefix="director-id"
@@ -468,7 +462,6 @@ export function BusinessKycForm({
             label="Proof of business address"
             hint="Optional"
             accept="image/*,application/pdf"
-            capture="environment"
             bucket={KYC_BUCKET}
             userId={userId}
             prefix="proof-of-business-address"

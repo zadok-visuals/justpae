@@ -1,17 +1,19 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/Primitives";
 import { setThemePreference } from "@/lib/actions/theme";
+import { applyTheme, watchSystemTheme } from "@/lib/themeClient";
 import type { ThemePreference } from "@/lib/theme";
 
 /**
- * GROUP 9. Three options, not a single on/off switch, because "system"
- * genuinely is a third, different choice — not a midpoint between the other
- * two. Picking an option re-renders the page under the server-read cookie
- * (setThemePreference revalidates the whole layout), so the theme actually
- * changes rather than just this card's own label.
+ * Three options, not a single on/off switch, because "system" genuinely is a
+ * third, different choice — not a midpoint between the other two.
+ *
+ * The choice is applied to the document on the click and the cookie is saved
+ * behind it. It used to be the other way round, and the page kept its old
+ * colours until the next full load.
  */
 const OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: "light", label: "Light" },
@@ -23,14 +25,23 @@ export function ThemeToggle({ initialPreference }: { initialPreference: ThemePre
   const [preference, setPreference] = useState(initialPreference);
   const [isPending, startTransition] = useTransition();
 
+  // Only live while "system" is selected: that is the one choice whose
+  // resolved colour can change without anyone touching this control.
+  useEffect(() => {
+    if (preference !== "system") return;
+    return watchSystemTheme(() => applyTheme("system"));
+  }, [preference]);
+
   function choose(next: ThemePreference) {
     if (next === preference) return;
     const previous = preference;
-    setPreference(next); // optimistic, same reasoning as EmailPreferenceToggle
+    setPreference(next);
+    applyTheme(next);
     startTransition(async () => {
       const result = await setThemePreference(next);
       if (result.error) {
         setPreference(previous);
+        applyTheme(previous);
         toast.error(result.error);
       }
     });
