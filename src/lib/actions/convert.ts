@@ -838,8 +838,10 @@ export async function checkConversionStatus(
 function toConversionStatus(
   status: TransactionStatus,
 ): NonNullable<ConversionStatusState["status"]> {
-  if (status === "expired") {
-    console.error("[convert] a conversion row is expired, which should be impossible", {
+  // 'awaiting_review' (0036) is manual-deposit-only and, like 'expired', can
+  // never belong to a conversion row.
+  if (status === "expired" || status === "awaiting_review") {
+    console.error(`[convert] a conversion row is ${status}, which should be impossible`, {
       status,
     });
     return "failed";

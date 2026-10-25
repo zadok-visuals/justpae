@@ -348,7 +348,9 @@ function DepositInstructions({
   usePolling(
     async () => {
       const result = await checkDepositStatus(depositId);
-      if (result.status) setStatus(result.status);
+      // 'awaiting_review' belongs to the manual bank-transfer rail (0036),
+      // which has its own screen. A provider deposit cannot reach it.
+      if (result.status && result.status !== "awaiting_review") setStatus(result.status);
       if (result.status === "completed") {
         toast.success("Deposit received");
         // THE STALE BALANCE FIX. checkDepositStatus calls revalidatePath on the

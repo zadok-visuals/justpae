@@ -435,7 +435,10 @@ export interface DepositStatusState {
    */
   // 'expired' is a DEPOSIT status (migration 0029) and belongs here — it is
   // the one in this union a deposit reaches that a conversion never does.
-  status?: "pending" | "processing" | "completed" | "failed" | "expired";
+  // 'awaiting_review' (0036) is a real deposit state on the manual
+  // bank-transfer rail, and deliberately not final — an admin still has to
+  // act, so the screen keeps polling until they do.
+  status?: "pending" | "processing" | "awaiting_review" | "completed" | "failed" | "expired";
   error?: string;
 }
 
