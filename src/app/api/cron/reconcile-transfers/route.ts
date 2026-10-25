@@ -8,6 +8,8 @@ import {
   notifyWithdrawalCompleted,
   notifyWithdrawalFailed,
 } from "@/lib/notify/events";
+import { korapaySettlePayoutDeps } from "@/lib/korapay/payoutDeps";
+import { settleKorapayPayout, type SettlePayoutOutcome } from "@/lib/korapay/payout";
 
 /**
  * Safety net for `transactions` rows waiting on a provider transfer — the
@@ -46,6 +48,43 @@ export async function GET(request: Request) {
     holdsReleased = released ?? 0;
     if (holdsReleased > 0) {
       console.warn("[reconcile-transfers] released abandoned conversion holds", { holdsReleased });
+    }
+  }
+
+  /**
+   * GROUP 3d — Korapay payouts, before the Busha loop and independent of it.
+   *
+   * THIS IS THE PRIMARY PATH IN THE SANDBOX, not a backstop: no webhook URL
+   * is configured there, so without this a sandbox payout never settles at
+   * all. Both triggers go through settleKorapayPayout, so the state change
+   * comes from a fresh provider query either way.
+   */
+  const korapayOutcomes: { transactionId: string; outcome: SettlePayoutOutcome }[] = [];
+  {
+    const { data: korapayRows } = await admin
+      .from("transactions")
+      .select("id, provider_reference")
+      .eq("type", "withdrawal")
+      .eq("provider", "korapay")
+      .in("status", ["pending", "processing"])
+      .eq("needs_manual_review", false)
+      .not("provider_reference", "is", null)
+      .order("created_at", { ascending: true });
+
+    const deps = korapaySettlePayoutDeps(admin, "korapay reconcile");
+    for (const row of korapayRows ?? []) {
+      if (!row.provider_reference) continue;
+      try {
+        korapayOutcomes.push({
+          transactionId: row.id,
+          outcome: await settleKorapayPayout(deps, row.provider_reference),
+        });
+      } catch (err) {
+        console.error("[reconcile-transfers] korapay payout check failed", {
+          transactionId: row.id,
+          error: err instanceof Error ? err.message : err,
+        });
+      }
     }
   }
 
@@ -150,5 +189,10 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ checked: results.length, holdsReleased, results });
+  return NextResponse.json({
+    checked: results.length,
+    holdsReleased,
+    korapay: korapayOutcomes,
+    results,
+  });
 }

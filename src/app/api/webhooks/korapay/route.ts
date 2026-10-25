@@ -4,6 +4,8 @@ import { recordWebhookDelivery, markWebhookProcessed } from "@/lib/webhooks/reco
 import { verifyKorapaySignature } from "@/lib/korapay/signature";
 import { korapaySettleDeps } from "@/lib/korapay/deps";
 import { settleKorapayCharge } from "@/lib/korapay/settle";
+import { korapaySettlePayoutDeps } from "@/lib/korapay/payoutDeps";
+import { settleKorapayPayout } from "@/lib/korapay/payout";
 
 /**
  * Korapay's webhook receiver.
@@ -104,6 +106,18 @@ export async function POST(request: Request) {
   if (event === "charge.success") {
     const outcome = await settleKorapayCharge(
       korapaySettleDeps(admin, `korapay webhook ${record.id ?? ""}`),
+      reference,
+    );
+    await markWebhookProcessed(admin, record.id);
+    return NextResponse.json({ received: true, outcome });
+  }
+
+  // GROUP 3d — payouts, through the same verified route and the same
+  // re-query rule. Both events go to one function: a transfer.failed whose
+  // fresh query says success must not refund a wallet that was paid.
+  if (event === "transfer.success" || event === "transfer.failed") {
+    const outcome = await settleKorapayPayout(
+      korapaySettlePayoutDeps(admin, `korapay webhook ${record.id ?? ""}`),
       reference,
     );
     await markWebhookProcessed(admin, record.id);

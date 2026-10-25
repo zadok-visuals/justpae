@@ -236,6 +236,9 @@ export type Transaction = {
   extra_verification_confirmed_by: string | null;
   automated_payout_attempt_failed_reason: string | null;
   automated_payout_retry_count: number;
+  /** 0041 — when admins were first told this one is waiting on the payout
+   *  balance. Set once, so the retry cron does not email every run. */
+  payout_balance_alert_sent_at: string | null;
   /**
    * Set when the provider's own transfer object disagreed with this row — a
    * different source amount, a different currency pair, or a target amount
@@ -1168,6 +1171,31 @@ export type Database = {
       fail_withdrawal_payout: { Args: { p_transaction_id: string; p_reason?: string | null }; Returns: undefined };
       flag_withdrawal_for_verification: { Args: { p_transaction_id: string }; Returns: undefined };
       record_automated_payout_failure: { Args: { p_transaction_id: string; p_reason: string }; Returns: undefined };
+
+      /**
+       * Migration 0041. claim_payout_attempt returns true to exactly one
+       * caller, and only that caller may call a payout API — the no-double-
+       * payment rule, settled inside Postgres rather than by a read.
+       * release_payout_claim is its undo, allowed only once the provider has
+       * confirmed the payout does not exist. record_payout_balance_hold
+       * returns true the first time, which is when admins are emailed.
+       */
+      claim_payout_attempt: {
+        Args: {
+          p_transaction_id: string;
+          p_provider: TransactionProvider;
+          p_provider_reference: string;
+        };
+        Returns: boolean;
+      };
+      release_payout_claim: {
+        Args: { p_transaction_id: string; p_provider_reference: string; p_reason: string };
+        Returns: boolean;
+      };
+      record_payout_balance_hold: {
+        Args: { p_transaction_id: string; p_reason: string };
+        Returns: boolean;
+      };
       rolling_withdrawal_total: { Args: { p_user_id: string; p_hours: number }; Returns: RollingWithdrawalTotalRow[] };
 
       set_withdrawal_recipient: {

@@ -119,6 +119,9 @@ function mockQuote(body: Body): unknown {
  */
 const transfers = new Map<string, Record<string, unknown>>();
 
+/** The same, for Korapay payouts, so querying one answers like the real API. */
+const disbursements = new Map<string, Record<string, string>>();
+
 /**
  * Lets a test advance a deposit without waiting on a provider. Called from the
  * E2E-only route handler, which is itself behind the same guard.
@@ -244,6 +247,17 @@ export function mockBushaRequest(
 
   if (method === "GET" && path.startsWith("/v1/banks")) return MOCK_BANKS;
 
+  // Generous on purpose: the balance gate must never be the reason an e2e
+  // payout is held back.
+  if (method === "GET" && path.startsWith("/v1/balances")) {
+    return ["NGN", "KES", "USD", "USDT"].map((currency) => ({
+      currency,
+      type: currency === "USDT" ? "crypto" : "fiat",
+      available: { amount: "1000000" },
+      pending: { amount: "0" },
+    }));
+  }
+
   return MOCK_MISS;
 }
 
@@ -288,18 +302,31 @@ export function mockKorapayRequest(
     return { account_number: String(payload.account ?? ""), account_name: "Mock Test User" };
   }
 
+  // The live slugs, verbatim. A mock operator list that does not match the
+  // real one tests a payout nobody can actually send.
   if (method === "GET" && path.startsWith("/misc/mobile-money")) {
-    return [{ name: "M-Pesa", slug: "safaricom", country: "KE" }];
+    return [
+      { name: "SAFARICOM", slug: "safaricom-ke", country: "KE" },
+      { name: "AIRTEL", slug: "airtel-ke", country: "KE" },
+    ];
   }
 
   if (method === "POST" && path === "/transactions/disburse") {
     const destination = (payload.destination ?? {}) as Body;
-    return {
-      reference: String(payload.reference ?? mockId("kpo")),
+    const reference = String(payload.reference ?? mockId("kpo"));
+    const sent = {
+      reference,
       amount: String(destination.amount ?? "0"),
       currency: String(destination.currency ?? "NGN"),
       status: "processing",
     };
+    disbursements.set(reference, sent);
+    return sent;
+  }
+
+  if (method === "GET" && path.startsWith("/transactions/")) {
+    const reference = decodeURIComponent(path.slice("/transactions/".length));
+    return disbursements.get(reference) ?? MOCK_MISS;
   }
 
   return MOCK_MISS;

@@ -37,7 +37,12 @@ export async function GET(request: Request) {
     .eq("status", "pending")
     .eq("provider", "manual")
     .not("automated_payout_attempt_failed_reason", "is", null)
-    .lt("automated_payout_retry_count", AUTOMATED_PAYOUT_MAX_RETRY_ATTEMPTS);
+    .lt("automated_payout_retry_count", AUTOMATED_PAYOUT_MAX_RETRY_ATTEMPTS)
+    // GROUP 3c — OLDEST FIRST. Withdrawals held for an empty payout balance
+    // come back here unchanged (a balance hold does not burn a retry), so
+    // when a top-up only covers some of them, the queue has to drain in the
+    // order people joined it rather than in whatever order Postgres returns.
+    .order("created_at", { ascending: true });
 
   for (const tx of candidates ?? []) {
     // attemptAutomatedPayout never throws — a failure here records itself and

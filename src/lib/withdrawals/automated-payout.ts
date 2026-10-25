@@ -1,12 +1,23 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Currency } from "@/lib/types/database";
 import { getPayoutChannel, createBushaRecipient, createPayoutTransfer } from "@/lib/busha/payout";
+import { getAvailableBalance as bushaAvailableBalance } from "@/lib/busha/client";
 import { MINIMUM_WITHDRAWAL_USDT_THRESHOLD } from "@/lib/busha/limits";
 import { evaluateWithdrawalRouting } from "@/lib/withdrawals/threshold";
 import {
   RECIPIENT_CHANGE_HOLD_HOURS,
   recipientChangeHoldActive,
 } from "@/lib/withdrawals/rules";
+import { resolvePayoutRoute } from "@/lib/withdrawals/route";
+import { getPayoutRouteSetting } from "@/lib/settings";
+import {
+  payoutBalanceHoldReason,
+  payoutBalanceTooLow,
+  runKorapayPayout,
+} from "@/lib/korapay/payout";
+import { korapayPayoutDeps } from "@/lib/korapay/payoutDeps";
+import { adminNotificationRecipients, sendAdminPayoutBalanceEmail } from "@/lib/email";
+import { formatAmount } from "@/lib/currencies";
 import { notifyWithdrawalCompleted } from "@/lib/notify/events";
 
 /**
@@ -50,6 +61,65 @@ async function clearAutomatedPayoutFailure(admin: AdminClient, transactionId: st
     .from("transactions")
     .update({ automated_payout_attempt_failed_reason: null, automated_payout_retry_count: 0 })
     .eq("id", transactionId);
+}
+
+/**
+ * GROUP 3c. The provider's balance, read BEFORE the provider is called.
+ *
+ * Returns true when the withdrawal was held. A held row is NOT a failed
+ * attempt: record_payout_balance_hold leaves the retry counter alone, so the
+ * retry cron keeps coming back and sends it the moment the balance is there.
+ *
+ * Korapay's own branch does this inside runKorapayPayout, where it is under
+ * test. This is the Busha half, which has no such module.
+ */
+async function heldForBushaBalance(
+  admin: AdminClient,
+  transactionId: string,
+  currency: Currency,
+  amount: number,
+): Promise<boolean> {
+  let available: number | null = null;
+  try {
+    available = await bushaAvailableBalance(currency);
+  } catch (err) {
+    // Unknown is not empty. A balance endpoint outage must not freeze every
+    // payout — the payout call itself would refuse cleanly anyway.
+    console.error("[attemptAutomatedPayout] could not read the Busha balance", {
+      currency,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return false;
+  }
+
+  if (!payoutBalanceTooLow(available, amount)) return false;
+
+  const reason = payoutBalanceHoldReason(currency);
+  const { data: first } = await admin.rpc("record_payout_balance_hold", {
+    p_transaction_id: transactionId,
+    p_reason: reason,
+  });
+
+  if (first === true) {
+    const to = adminNotificationRecipients();
+    if (to.length > 0) {
+      await sendAdminPayoutBalanceEmail({
+        to,
+        reason,
+        currency,
+        amount: formatAmount(currency, amount),
+        transactionId,
+      });
+    }
+  }
+
+  console.error("[attemptAutomatedPayout] payout balance is short, not calling the provider", {
+    transactionId,
+    currency,
+    available,
+    amount,
+  });
+  return true;
 }
 
 export async function attemptAutomatedPayout(
@@ -132,6 +202,43 @@ export async function attemptAutomatedPayout(
       await clearAutomatedPayoutFailure(admin, transactionId);
       return;
     }
+
+    // GROUP 3a. Which provider sends it. Re-derived here rather than carried
+    // from an earlier read: the flag and the admin setting both have to agree,
+    // and either can have changed since the withdrawal was created.
+    const route =
+      currency === "NGN" || currency === "KES"
+        ? resolvePayoutRoute(currency, await getPayoutRouteSetting(currency))
+        : "busha";
+
+    if (route === "korapay") {
+      const { data: profile } = await admin
+        .from("profiles")
+        .select("email")
+        .eq("id", userId)
+        .maybeSingle();
+
+      // The reference IS the withdrawal id. That is what makes "did this
+      // happen" a lookup rather than a guess after a timeout, and what makes
+      // a repeat call refusable by the provider rather than payable twice.
+      const outcome = await runKorapayPayout(
+        korapayPayoutDeps(admin, "korapay payout", { id: transactionId, currency, amount }),
+        {
+          reference: transactionId,
+          currency,
+          amount,
+          recipient,
+          customerName: recipient.account_holder_name,
+          customerEmail: profile?.email ?? undefined,
+        },
+      );
+      if (outcome === "paid" || outcome === "pending") {
+        await clearAutomatedPayoutFailure(admin, transactionId);
+      }
+      return;
+    }
+
+    if (await heldForBushaBalance(admin, transactionId, currency, amount)) return;
 
     const channel = getPayoutChannel(currency)!;
 

@@ -624,3 +624,52 @@ export async function sendManualDepositRejectedEmail(params: {
     ],
   });
 }
+
+// ── Treasury alerts (migrations 0041 and 0042) ──────────────────────────────
+// Ops-only, and still provider-agnostic in their wording. The admin SCREEN
+// names both providers, because an operator choosing between two vendors
+// needs their names; an email does not — "the deposit balance" and "the
+// payout balance" say which figure moved, and nothing travels further than
+// an inbox by mistake.
+
+/** A withdrawal is waiting because the payout balance cannot cover it. */
+export async function sendAdminPayoutBalanceEmail(params: {
+  to: string[];
+  reason: string;
+  currency: string;
+  amount: string;
+  transactionId: string;
+}): Promise<boolean> {
+  return sendEmail({
+    to: params.to,
+    subject: `Payout held — ${params.reason}`,
+    preheader: `${params.amount} is waiting on the ${params.currency} payout balance.`,
+    heading: "A withdrawal is waiting on the payout balance",
+    bodyParagraphs: [
+      `<strong>${escapeHtml(params.amount)}</strong> could not be sent: ${escapeHtml(params.reason)}.`,
+      "The provider was not called and the customer's money is still held. Top the balance up and the retry sends it, oldest first.",
+    ],
+    button: { label: "Open the treasury", href: `${appUrl()}/admin/treasury` },
+  });
+}
+
+/** A sweep moved money from the deposit balance to the payout balance. */
+export async function sendAdminSweepEmail(params: {
+  to: string[];
+  amount: string;
+  automatic: boolean;
+  depositBalance: string;
+  payoutBalance: string;
+}): Promise<boolean> {
+  return sendEmail({
+    to: params.to,
+    subject: `Treasury sweep — ${params.amount} to the payout balance`,
+    preheader: `${params.amount} moved to the payout funding account.`,
+    heading: params.automatic ? "The daily sweep ran" : "A sweep was run by hand",
+    bodyParagraphs: [
+      `<strong>${escapeHtml(params.amount)}</strong> was sent from the deposit balance to the payout funding account.`,
+      `The deposit balance now holds <strong>${escapeHtml(params.depositBalance)}</strong>; the payout balance holds <strong>${escapeHtml(params.payoutBalance)}</strong>, which updates when the transfer lands.`,
+    ],
+    button: { label: "Open the treasury", href: `${appUrl()}/admin/treasury` },
+  });
+}

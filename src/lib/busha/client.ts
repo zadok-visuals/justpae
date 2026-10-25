@@ -313,3 +313,29 @@ export async function getBanks(): Promise<BushaBank[]> {
   });
   return banks.map((b) => ({ name: b.name, code: b.code }));
 }
+
+export type BushaBalance = {
+  currency: string;
+  type: string;
+  available?: { amount?: string };
+  pending?: { amount?: string };
+};
+
+/**
+ * GET /v1/balances. Established live against this account, not read off the
+ * docs — /v1/accounts, /v1/wallets and /v1/balance are all 404, and this one
+ * answers 200 with a per-currency array. The amounts are STRINGS.
+ */
+export function getBalances(): Promise<BushaBalance[]> {
+  return request<BushaBalance[]>("/v1/balances", { method: "GET" });
+}
+
+/** The available balance for one currency, or null when it is not listed. */
+export async function getAvailableBalance(currency: string): Promise<number | null> {
+  const balances = await getBalances();
+  const entry = (balances ?? []).find(
+    (b) => (b.currency ?? "").toUpperCase() === currency.toUpperCase(),
+  );
+  const value = Number(entry?.available?.amount);
+  return Number.isFinite(value) ? value : null;
+}
