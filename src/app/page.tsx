@@ -3,12 +3,8 @@ import type { Metadata } from "next";
 import { Wordmark, Mark } from "@/components/layout/Mark";
 import { CURRENCIES } from "@/lib/currencies";
 import { BILL_CATEGORIES } from "@/lib/providers/bills";
-import {
-  BILLS_ENABLED,
-  GHS_WALLET_ENABLED,
-  USD_COLLECTION_ENABLED,
-} from "@/lib/flags";
-import { depositAvailability } from "@/lib/deposits/availability";
+import { BILLS_ENABLED, USD_COLLECTION_ENABLED } from "@/lib/flags";
+import { isWalletLocked } from "@/lib/services";
 import { MaintenanceBadge } from "@/components/ui/MaintenanceBadge";
 import { Analytics } from "@/components/analytics/Analytics";
 import { PublicSupportButton } from "@/components/support/PublicSupportButton";
@@ -63,19 +59,13 @@ import { PublicSupportButton } from "@/components/support/PublicSupportButton";
  * here means the page starts advertising each one on the day its provider
  * lands, with no copy change and no risk of having forgotten.
  *
- * GHS deposit is handled DIFFERENTLY, and Group 4f changed it. The earlier
- * reasoning was that it needed no gate at all, because the page advertises
- * the GHS wallet rather than a way to fund it, and a cedi balance is
- * reachable by conversion regardless of the flag. Both halves of that are
- * true and together they still mis-sell: a reader in Accra sees "GHS · Ghana
- * Cedi" in the wallet rail, opens an account, submits a government ID, and
- * only then discovers that the obvious way to put money in is down.
- *
- * Hiding the wallet would be worse — it would say the product does not do
- * cedis, which is false and permanent. So the wallet stays and carries the
- * Maintenance badge, with one sentence under the rail saying what still
- * works. The same treatment Bills and Flights got inside the app (see
- * src/lib/flags.ts), applied to the page where somebody is still deciding.
+ * THE TWO LOCKED WALLETS, USD and GHS, are handled DIFFERENTLY. Hiding them
+ * would be worse than showing them — it would say the product does not do
+ * dollars or cedis, which is false and permanent. So both stay in the wallet
+ * rail, last, carrying the Maintenance badge, read from isWalletLocked rather
+ * than from a deposit rail: a reader sees the state before they hand over a
+ * government ID, not after. The same treatment Bills and Flights got inside
+ * the app, applied to the page where somebody is still deciding.
  */
 
 const TITLE = "justpae — hold, convert and send money across borders";
@@ -85,7 +75,9 @@ const TITLE = "justpae — hold, convert and send money across borders";
 // would be the one piece of copy still over-promising after the sections were
 // correctly gated.
 const DESCRIPTION = [
-  "Hold dollars, naira, cedis, shillings and USDT in one account.",
+  // GROUP 2e — no dollars and no cedis. Both wallets are locked today, and
+  // this string is the first thing a search result shows.
+  "Hold naira, shillings, USDT and more in one account.",
   "Convert at a rate you see before you confirm,",
   BILLS_ENABLED ? "pay bills," : "",
   "and withdraw to a bank, mobile money or a wallet.",
@@ -161,7 +153,7 @@ export default function LandingPage() {
             </h1>
 
             <p className="mt-5 text-lg leading-relaxed text-muted-foreground">
-              One account that holds dollars alongside your local currency. Convert between them at
+              One account that holds your local currency alongside USDT. Convert between them at
               a rate you see before you confirm
               {BILLS_ENABLED ? ", pay your bills," : ","} and send money out to a bank, mobile
               money or a crypto wallet.
@@ -199,8 +191,14 @@ export default function LandingPage() {
             </p>
             <ul className="mt-4 flex flex-wrap gap-2">
               {CURRENCIES.map((currency) => {
-                const deposit = depositAvailability(currency.code);
-                const underMaintenance = !deposit.available && deposit.kind === "maintenance";
+                // GROUP 2e — the WALLET's own state, not its deposit rail's.
+                // depositAvailability put the badge on GHS and not on USD,
+                // because dollars have no deposit rail to be "under
+                // maintenance" — they arrive by /receive, which is itself off.
+                // So the rail said cedis were down and dollars were fine,
+                // when neither wallet can be used today. isWalletLocked is
+                // the question this section is actually asking.
+                const underMaintenance = isWalletLocked(currency.code);
                 return (
                   <li
                     key={currency.code}
@@ -215,36 +213,25 @@ export default function LandingPage() {
                     <span className="text-sm text-muted-foreground">{currency.label}</span>
                     {/* GROUP 4f — the badge reaches the page a visitor decides
                         on, which is the only place it can still change their
-                        mind cheaply.
+                        mind cheaply. Somebody reads "GHS · Ghana Cedi", opens
+                        an account, hands over a government ID, and THEN meets
+                        the maintenance screen; saying it here costs a signup
+                        we would have lost anyway.
 
-                        This rail advertises a cedi wallet, and cedi deposits
-                        are down. The flag note in this file's header argued GHS
-                        needed no gate "because the page advertises the wallet,
-                        not a way to fund it" — true as far as it goes, and
-                        beside the point: somebody in Accra reads "GHS · Ghana
-                        Cedi", opens an account, hands over a government ID, and
-                        THEN meets the maintenance screen. Saying it here costs
-                        us a signup we would have lost anyway and keeps the one
-                        thing a money product cannot buy back.
-
-                        Derived from depositAvailability rather than from the
-                        flag directly, so the badge disappears on the day the
-                        rail comes back with no copy change here. */}
+                        Derived from the wallet flags rather than hard-coded,
+                        so a badge disappears on the day its wallet comes back
+                        with no copy change here. */}
                     {underMaintenance && <MaintenanceBadge />}
                   </li>
                 );
               })}
             </ul>
+            {/* One line, not three. The two it replaced promised a dollar
+                wallet to everyone and a Ghanaian local one, both of which are
+                sitting behind the Maintenance pill directly above. */}
             <p className="mt-3 text-sm text-muted-foreground">
-              Everyone gets a dollar wallet. Your local one is added for Nigeria, Ghana and Kenya.
+              Your local wallet is added for Nigeria and Kenya. More currencies are coming.
             </p>
-            {!GHS_WALLET_ENABLED && (
-              <p className="mt-2 text-sm text-muted-foreground">
-                Cedi deposits are under maintenance while we finish setup with our Ghana
-                collection partner — a cedi wallet still holds, converts and withdraws in the
-                meantime.
-              </p>
-            )}
           </div>
         </section>
 
@@ -260,7 +247,7 @@ export default function LandingPage() {
             </h2>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
-              <Feature title="Hold dollars and your local currency">
+              <Feature title="Hold your local currency and USDT">
                 Keep a balance in each, side by side, and move between them when the rate suits you
                 — not when a transfer forces you to.
               </Feature>

@@ -8,7 +8,6 @@ import {
   EducationIcon,
   ElectricityIcon,
   FlightsIcon,
-  MoreIcon,
   ReceiveIcon,
   SendIcon,
   WaterIcon,
@@ -29,7 +28,6 @@ const ICONS: Record<string, (props: { className?: string }) => React.ReactElemen
   pay_to_china: SendIcon,
   receive: ReceiveIcon,
   flights: FlightsIcon,
-  more: MoreIcon,
 };
 
 export function ServiceIcon({ serviceKey, className = "size-5" }: { serviceKey: string; className?: string }) {

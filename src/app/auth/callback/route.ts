@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * OAuth callback — the PKCE code exchange, used by Google sign-in.
+ * OAuth callback — the PKCE code exchange.
+ *
+ * GROUP 2c removed the app's only caller (Google sign-in). The route stays:
+ * it is the redirect URL registered in the Supabase project, which this task
+ * deliberately does not change, so a code arriving here must still be
+ * exchanged rather than dropped on the floor.
  *
  * Email links do NOT come through here; they go to /auth/confirm, which
  * explains why.

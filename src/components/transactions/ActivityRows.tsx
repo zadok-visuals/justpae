@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { StatusPill } from "@/components/ui/Primitives";
 import { ActivityDetail } from "@/components/transactions/ActivityDetail";
-import { formatAmount, formatSignedAmount } from "@/lib/currencies";
+import { formatAmount } from "@/lib/currencies";
+import { activityAmount, isUnsettled } from "@/lib/ui/activityAmount";
 import type { UnifiedActivity } from "@/lib/transactions";
 import {
   ReceiveIcon,
@@ -47,6 +48,8 @@ function toneFor(row: UnifiedActivity): string {
   if (row.status === "failed" || row.status === "refunded") {
     return "bg-icon-coral-soft text-icon-coral";
   }
+  // Expired is neutral, not green: the window closed and no money arrived.
+  if (isUnsettled(row.status)) return "bg-accent text-muted-foreground";
   if (row.direction === "in") return "bg-icon-green-soft text-icon-green";
   if (row.type === "conversion") return "bg-icon-violet-soft text-icon-violet";
   return "bg-accent text-foreground";
@@ -123,6 +126,15 @@ export function ActivityRows({
             <ul className="overflow-hidden rounded-xl border border-border bg-card">
               {group.rows.map((row) => {
                 const Icon = iconFor(row);
+                const amount = activityAmount(row.currency, row.amount, row.direction, row.status);
+                // A row where nothing moved always shows its pill, even on the
+                // short list that would otherwise trade it for a conversion's
+                // second figure — "Expired" is the whole story of that row.
+                const showPill =
+                  grouped ||
+                  isUnsettled(row.status) ||
+                  !row.targetCurrency ||
+                  row.targetAmount == null;
                 return (
                   <li key={`${row.source}-${row.id}`} className="border-b border-border last:border-0">
                     <button
@@ -146,26 +158,32 @@ export function ActivityRows({
                       </span>
 
                       <span className="flex shrink-0 flex-col items-end gap-1">
+                        {/* Green plus only for money that actually arrived —
+                            see src/lib/ui/activityAmount.ts. A failed or
+                            expired row drops to secondary text, so the pill
+                            beside it is the loudest thing in the row. */}
                         <span
-                          className={`text-sm font-semibold tabular-nums ${
-                            row.direction === "in" ? "text-success" : "text-foreground"
+                          className={`text-sm tabular-nums ${
+                            amount.tone === "credit"
+                              ? "font-semibold text-success"
+                              : isUnsettled(row.status)
+                                ? "font-medium text-muted-foreground"
+                                : "font-semibold text-foreground"
                           }`}
                         >
-                          {formatSignedAmount(row.currency, row.amount, row.direction)}
+                          {amount.text}
                         </span>
-                        {/* The short list trades the status pill for what the
-                            money turned into — a conversion row whose second
-                            figure is missing says only half of what happened.
-                            The full activity page keeps the pill, where
-                            filtering by status is the point. */}
-                        {grouped ? (
+                        {/* The short list otherwise trades the status pill for
+                            what the money turned into — a conversion row whose
+                            second figure is missing says only half of what
+                            happened. The full activity page keeps the pill,
+                            where filtering by status is the point. */}
+                        {showPill ? (
                           <StatusPill status={row.status} />
-                        ) : row.targetCurrency && row.targetAmount != null ? (
-                          <span className="text-xs tabular-nums text-muted-foreground">
-                            {formatAmount(row.targetCurrency, row.targetAmount)}
-                          </span>
                         ) : (
-                          <StatusPill status={row.status} />
+                          <span className="text-xs tabular-nums text-muted-foreground">
+                            {formatAmount(row.targetCurrency!, row.targetAmount!)}
+                          </span>
                         )}
                       </span>
                     </button>

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { TextField, PasswordField, SelectField } from "@/components/ui/Field";
 import { SubmitButton } from "@/components/ui/Button";
 import { PasswordStrengthMeter } from "@/components/auth/PasswordStrengthMeter";
-import { signUp, signInWithGoogle } from "@/lib/actions/auth";
+import { signUp } from "@/lib/actions/auth";
 import { COUNTRIES, LOCAL_WALLET_COUNTRIES } from "@/lib/countries";
 import { PASSWORD_REQUIREMENT_HINT } from "@/lib/passwordStrength";
 
@@ -18,7 +18,7 @@ export function SignupForm() {
       <div>
         <h1 className="font-display text-2xl font-semibold text-foreground">Create your account</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Dollars, naira, cedis, shillings and USDT in one place.
+          Naira, shillings, USDT and more in one place.
         </p>
       </div>
 
@@ -106,18 +106,6 @@ export function SignupForm() {
         <SubmitButton pendingLabel="Creating your account…">Create account</SubmitButton>
       </form>
 
-      <div className="flex items-center gap-3">
-        <span className="h-px flex-1 bg-border" />
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">or</span>
-        <span className="h-px flex-1 bg-border" />
-      </div>
-
-      <form action={signInWithGoogle}>
-        <SubmitButton variant="secondary" pendingLabel="Opening Google…">
-          Continue with Google
-        </SubmitButton>
-      </form>
-
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
         <Link
@@ -128,11 +116,9 @@ export function SignupForm() {
         </Link>
       </p>
 
-      {/* Below BOTH buttons, because Google sign-in creates an account too and
-          a consent line attached only to the email form would miss half of
-          the people agreeing to it. Stated rather than hidden behind a
-          checkbox nobody reads — and the links are real links, so the terms
-          can actually be read before agreeing to them. */}
+      {/* Stated rather than hidden behind a checkbox nobody reads — and the
+          links are real links, so the terms can actually be read before
+          agreeing to them. */}
       <p className="text-center text-xs text-muted-foreground">
         By creating an account you agree to our{" "}
         <Link href="/terms" className="font-medium text-primary underline">

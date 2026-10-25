@@ -204,25 +204,10 @@ export async function logIn(
   redirect("/home");
 }
 
-/**
- * Google sign-in. Carried over because the pre-rebuild app offered it and
- * removing a working sign-in method strands anyone already using it.
- *
- * This one legitimately uses the PKCE `code` flow through /auth/callback: the
- * OAuth round trip happens in the SAME browser that started it, so the code
- * verifier is still there. Email links are the case where that assumption
- * breaks — see /auth/confirm.
- */
-export async function signInWithGoogle() {
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: { redirectTo: `${appUrl()}/auth/callback?next=/home` },
-  });
-
-  if (error || !data.url) redirect("/login?error=oauth");
-  redirect(data.url);
-}
+// GROUP 2c removed signInWithGoogle. Sign-in is email and password only: one
+// way in, so there is no "which button did I use last time" to get wrong, and
+// no third party between a customer and their money. The Supabase provider
+// configuration is untouched — only this app's entry point to it is gone.
 
 export async function logOut() {
   const supabase = await createClient();

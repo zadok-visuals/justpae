@@ -10,8 +10,12 @@ import {
 test("Home shows exactly the six the brief names, in that order", () => {
   assert.deepEqual(
     homeQuickServices().map((s) => s.label),
-    ["Airtime", "Data", "Electricity", "Cable TV", "Flights", "Education"],
+    ["Flights", "Airtime", "Data", "Electricity", "Cable TV", "Education"],
   );
+});
+
+test("Home's quick services are exactly six — there is no seventh 'More'", () => {
+  assert.equal(homeQuickServices().length, 6);
 });
 
 test("every service has a tone the stylesheet actually defines", () => {

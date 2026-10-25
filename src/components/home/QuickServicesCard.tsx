@@ -5,9 +5,12 @@ import { ServiceIcon } from "@/components/home/ServiceIcons";
 import { homeQuickServices } from "@/lib/home/serviceCatalogue";
 
 /**
- * One card holding the services people come back for. Six plus "More",
- * four per row on a phone and six on a desktop — a fixed grid, never a rail,
- * so nothing is reachable only by a swipe nobody knows to make.
+ * One card holding the services people come back for. Six, in a fixed grid
+ * rather than a rail, so nothing is reachable only by a swipe nobody knows to
+ * make.
+ *
+ * There is no "More" circle: it and the header's "See all" both went to
+ * /services, and the seventh tile is what forced a ragged 4+3 grid.
  */
 export function QuickServicesCard() {
   const services = homeQuickServices();
@@ -25,10 +28,9 @@ export function QuickServicesCard() {
         </Link>
       </div>
 
-      {/* FOUR PER ROW AT EVERY WIDTH. Seven circles is two rows either way,
-          and from lg up this card lives in the 22rem reference column, where
-          six across would crush each label to two characters. */}
-      <ul className="grid grid-cols-4 gap-1">
+      {/* Six divides evenly both ways: two rows of three on a phone, one row
+          of six from lg up. No orphan on a half-empty last row. */}
+      <ul className="grid grid-cols-3 gap-1 lg:grid-cols-6">
         {services.map((service) => (
           <li key={service.key}>
             <ServiceCircle
@@ -40,15 +42,6 @@ export function QuickServicesCard() {
             />
           </li>
         ))}
-        <li>
-          <ServiceCircle
-            label="More"
-            href="/services"
-            tone="blue"
-            live
-            icon={<ServiceIcon serviceKey="more" />}
-          />
-        </li>
       </ul>
     </section>
   );

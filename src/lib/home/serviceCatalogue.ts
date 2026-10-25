@@ -58,10 +58,10 @@ export function serviceCatalogue(): ServiceEntry[] {
 
 /**
  * The six on Home's "Quick services" card, in the order the brief names them.
- * "More" is added by the card itself, since it is a link to /services rather
- * than a service.
+ * There is no seventh "More" circle: the card header's "See all" already goes
+ * to /services, and two controls to the same page is one too many.
  */
-const HOME_KEYS = ["airtime", "data", "electricity", "cable_tv", "flights", "education"];
+const HOME_KEYS = ["flights", "airtime", "data", "electricity", "cable_tv", "education"];
 
 export function homeQuickServices(): ServiceEntry[] {
   const byKey = new Map(serviceCatalogue().map((s) => [s.key, s]));
