@@ -12,7 +12,9 @@ import { CopyField } from "@/components/ui/CopyButton";
 import { ConfirmDialog, useConfirm } from "@/components/ui/ConfirmDialog";
 import { payBill, validateBillCustomer } from "@/lib/actions/bills";
 import { useDebouncedQuote } from "@/lib/hooks/useDebouncedQuote";
-import { formatAmount, currencyMeta } from "@/lib/currencies";
+import { CurrencyPicker } from "@/components/ui/CurrencyPicker";
+import { fundingPickerOptions } from "@/lib/ui/currencyPicker";
+import { formatAmount } from "@/lib/currencies";
 import type { Biller } from "@/lib/providers/bills";
 import type { BillCategory, Currency, Wallet } from "@/lib/types/database";
 
@@ -280,17 +282,13 @@ function BillFormFields({
       </Card>
 
       <Card className="space-y-3">
-        <SelectField
+        <CurrencyPicker
           label="Pay from"
+          title="Pay from"
           value={currency}
-          onChange={(e) => setCurrency(e.target.value as Currency)}
-        >
-          {wallets.map((w) => (
-            <option key={w.currency} value={w.currency}>
-              {currencyMeta(w.currency).flag} {w.currency} · {formatAmount(w.currency, w.balance)}
-            </option>
-          ))}
-        </SelectField>
+          options={fundingPickerOptions(wallets)}
+          onChange={setCurrency}
+        />
 
         {biller?.fixedAmounts ? (
           <fieldset>

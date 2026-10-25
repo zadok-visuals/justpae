@@ -1,5 +1,7 @@
 import { LEDGER_KINDS, LEDGER_STATUSES, ledgerKindLabel } from "@/lib/admin/ledger";
-import { CURRENCIES } from "@/lib/currencies";
+import { CURRENCY_CODES } from "@/lib/currencies";
+import { CurrencyPicker } from "@/components/ui/CurrencyPicker";
+import { adminCurrencyOptions } from "@/lib/ui/currencyPicker";
 
 /**
  * The filter bar over the admin ledger.
@@ -70,15 +72,20 @@ export function LedgerFilters({
         </Select>
       </Field>
 
-      <Field label="Currency" htmlFor="currency">
-        <Select id="currency" name="currency" value={currency} anyLabel="Any currency">
-          {CURRENCIES.map((c) => (
-            <option key={c.code} value={c.code}>
-              {c.code}
-            </option>
-          ))}
-        </Select>
-      </Field>
+      {/* GROUP 1a — the same picker the customer flows use, posting its code
+          through a hidden input so this stays a plain GET form. Nothing is
+          disabled here: an operator filters by a currency precisely when
+          something about it has gone wrong. */}
+      <div>
+        <CurrencyPicker
+          label="Currency"
+          title="Filter by currency"
+          name="currency"
+          value={currency}
+          anyLabel="Any currency"
+          options={adminCurrencyOptions(CURRENCY_CODES)}
+        />
+      </div>
 
       <Field label="From" htmlFor="from">
         <input

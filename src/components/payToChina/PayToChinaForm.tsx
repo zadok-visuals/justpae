@@ -7,7 +7,7 @@ import { AmountInput, formatAmountInput, parseAmount } from "@/components/ui/Amo
 import { PinField } from "@/components/ui/PinField";
 import { SubmitButton } from "@/components/ui/Button";
 import { Banner, Card, DetailRow, SectionHeader } from "@/components/ui/Primitives";
-import { SelectField, TextField } from "@/components/ui/Field";
+import { TextField } from "@/components/ui/Field";
 import { UploadField } from "@/components/ui/UploadField";
 import { ConfirmDialog, useConfirm, type ConfirmRow } from "@/components/ui/ConfirmDialog";
 import {
@@ -16,7 +16,9 @@ import {
   type PayToChinaEstimate,
 } from "@/lib/actions/payToChina";
 import { useDebouncedQuote } from "@/lib/hooks/useDebouncedQuote";
-import { currencyMeta, formatAmount } from "@/lib/currencies";
+import { CurrencyPicker } from "@/components/ui/CurrencyPicker";
+import { fundingPickerOptions } from "@/lib/ui/currencyPicker";
+import { formatAmount } from "@/lib/currencies";
 import type {
   Currency,
   PayoutMethod,
@@ -102,6 +104,13 @@ function PayToChinaFields({
   // balance after the PIN has been typed.
   const funded = useMemo(
     () => wallets.filter((w) => w.balance > 0 && w.currency !== "USD"),
+    [wallets],
+  );
+
+  // Every wallet except the dollar one, which cannot fund anything yet. The
+  // empty ones are listed and muted by fundingPickerOptions.
+  const fundingOptions = useMemo(
+    () => fundingPickerOptions(wallets.filter((w) => w.currency !== "USD")),
     [wallets],
   );
 
@@ -294,17 +303,16 @@ function PayToChinaFields({
 
         {/* ── 1. What you're paying with ─────────────────────────────── */}
         <Card className="space-y-3">
-          <SelectField
+          {/* GROUP 1a — the shared picker. Every wallet is listed; an empty
+              one is muted rather than hidden, so a missing currency is never
+              read as the product having dropped it. */}
+          <CurrencyPicker
             label="Pay from"
+            title="Pay from"
             value={sourceCurrency}
-            onChange={(e) => setSourceCurrency(e.target.value as Currency)}
-          >
-            {funded.map((w) => (
-              <option key={w.currency} value={w.currency}>
-                {currencyMeta(w.currency).flag} {w.currency} · {formatAmount(w.currency, w.balance)}
-              </option>
-            ))}
-          </SelectField>
+            options={fundingOptions}
+            onChange={setSourceCurrency}
+          />
 
           <AmountInput
             name="amount"

@@ -7,16 +7,17 @@ import { AmountInput, parseAmount } from "@/components/ui/AmountInput";
 import { Button, SubmitButton } from "@/components/ui/Button";
 import { Banner, Card, DetailRow } from "@/components/ui/Primitives";
 import { CopyField } from "@/components/ui/CopyButton";
-import { SelectField } from "@/components/ui/Field";
+import { CurrencyPicker } from "@/components/ui/CurrencyPicker";
+import { depositPickerOptions } from "@/lib/ui/currencyPicker";
 import { StepIndicator } from "@/components/ui/StepIndicator";
 import { getDepositQuote, initiateDeposit, checkDepositStatus } from "@/lib/actions/deposits";
 import type { DepositAvailability } from "@/lib/deposits/availability";
 import { fiatMinimumDeposit } from "@/lib/busha/limits";
 import { usePolling, isFinalStatus } from "@/lib/hooks/usePolling";
 import { useCountdown, formatCountdown } from "@/lib/hooks/useCountdown";
-import { currencyMeta, formatAmount } from "@/lib/currencies";
+import { formatAmount } from "@/lib/currencies";
 import type { Currency, Wallet } from "@/lib/types/database";
-import { unavailableSuffix, type UnavailableKind } from "@/lib/ui/unavailability";
+import { type UnavailableKind } from "@/lib/ui/unavailability";
 import { LegalReminder } from "@/components/ui/LegalReminder";
 import { DepositAddressQr, networkLabel } from "@/components/deposit/DepositAddressQr";
 import { MoneyFormLayout, WhatHappensNext } from "@/components/money/MoneyFormLayout";
@@ -86,10 +87,20 @@ export function DepositForm({
 }) {
   const router = useRouter();
 
-  const depositable = wallets.filter((w) => availability[w.currency]?.available);
-  const [currency, setCurrency] = useState<Currency>(
-    initialCurrency ?? depositable[0]?.currency ?? wallets[0]?.currency ?? "NGN",
-  );
+  // GROUP 1d: yuan is gone from this flow entirely — it is bought, not
+  // deposited — so the opening currency comes from the same list the picker
+  // shows rather than from a wallet that is not in it.
+  const pickerOptions = depositPickerOptions(wallets);
+  const depositable = pickerOptions.filter((o) => !o.disabled);
+  const [currency, setCurrency] = useState<Currency>(() => {
+    // `?currency=CNY` is reachable from the yuan account page, and yuan is
+    // no longer in this list — opening on a currency the picker cannot show
+    // would leave the trigger naming a row that is not there.
+    const requested = pickerOptions.some((o) => o.currency === initialCurrency)
+      ? initialCurrency
+      : undefined;
+    return requested ?? depositable[0]?.currency ?? pickerOptions[0]?.currency ?? "NGN";
+  });
   const [amountText, setAmountText] = useState("");
 
   const [quoteState, quoteAction] = useActionState(getDepositQuote, {});
@@ -115,25 +126,18 @@ export function DepositForm({
   // step.
   const picker = (
     <Card className="space-y-3">
-      <SelectField
+      {/* GROUP 1a. Was a native select whose disabled options rendered three
+          different ways across iOS, Android and desktop — see
+          CurrencyPicker. The reason a row is shut is still the one
+          depositAvailability gives; it is a grey pill now instead of a
+          suffix the platform might have truncated away. */}
+      <CurrencyPicker
         label="Deposit into"
+        title="Deposit into"
         value={currency}
-        onChange={(e) => setCurrency(e.target.value as Currency)}
-      >
-        {wallets.map((wallet) => {
-          const info = availability[wallet.currency];
-          return (
-            <option key={wallet.currency} value={wallet.currency} disabled={!info?.available}>
-              {currencyMeta(wallet.currency).flag} {wallet.currency}
-              {/* GROUP 4f. Was a bare " · unavailable" for all three of the
-                  reasons a currency lands here, which told a cedi holder
-                  nothing and told a dollar holder something wrong. The kind
-                  comes from depositAvailability, which has always known. */}
-              {info == null || info.available ? "" : unavailableSuffix(info.kind)}
-            </option>
-          );
-        })}
-      </SelectField>
+        options={pickerOptions}
+        onChange={setCurrency}
+      />
 
       {current && !current.available && (
         // The title names the STATE, not a generic absence. "aren't available

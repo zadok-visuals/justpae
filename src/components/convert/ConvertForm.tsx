@@ -23,7 +23,6 @@ import {
 } from "@/lib/actions/convert";
 import { getMinimumConversionAmount } from "@/lib/busha/limits";
 import {
-  currencyMeta,
   formatAmount,
   formatNumber,
   formatRate,
@@ -31,7 +30,9 @@ import {
   USD_CONVERSION_UNAVAILABLE,
 } from "@/lib/currencies";
 import type { Currency, Wallet } from "@/lib/types/database";
-import { unavailableSuffix } from "@/lib/ui/unavailability";
+import { CurrencyPicker } from "@/components/ui/CurrencyPicker";
+import { convertPickerOptions } from "@/lib/ui/currencyPicker";
+import { UNAVAILABLE_LABEL } from "@/lib/ui/unavailability";
 import { MoneyFormLayout, WhatHappensNext } from "@/components/money/MoneyFormLayout";
 
 /**
@@ -616,6 +617,14 @@ function QuoteSummary({
   );
 }
 
+/**
+ * GROUP 1a — the shared picker, given the live route table.
+ *
+ * The route has carried its own specific reason all along: resolveRoute
+ * distinguishes a pair the provider stopped quoting (down, coming back) from
+ * USD, which has no leg on this account at all. That word is the pill now.
+ * Yuan STAYS in this list — /convert is the only place it can be bought.
+ */
 function WalletSelect({
   label,
   value,
@@ -631,42 +640,24 @@ function WalletSelect({
   onChange: (next: Currency) => void;
   showBalance?: boolean;
 }) {
+  const blockedKinds: Partial<Record<Currency, string>> = {};
+  for (const wallet of wallets) {
+    const route = routes?.get(wallet.currency);
+    if (route && !route.available) {
+      blockedKinds[wallet.currency] = route.unavailableKind
+        ? UNAVAILABLE_LABEL[route.unavailableKind]
+        : UNAVAILABLE_LABEL.unsupported;
+    }
+  }
+
   return (
-    <div>
-      <span className="mb-1.5 block text-sm font-medium text-foreground">{label}</span>
-      <div className="jp-field flex h-12 items-center gap-2 rounded-lg border border-input bg-secondary px-3">
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value as Currency)}
-          aria-label={label}
-          className="min-w-0 flex-1 appearance-none border-0 bg-transparent py-0 text-foreground"
-        >
-          {wallets.map((wallet) => {
-            const route = routes?.get(wallet.currency);
-            // Disabled with the reason in the label, so the select itself
-            // explains why an option can't be picked.
-            const blocked = route != null && !route.available;
-            return (
-              <option key={wallet.currency} value={wallet.currency} disabled={blocked}>
-                {currencyMeta(wallet.currency).flag} {wallet.currency}
-                {showBalance ? ` · ${formatAmount(wallet.currency, wallet.balance)}` : ""}
-                {/* GROUP 4f. The route has carried its own specific reason all
-                    along — resolveRoute distinguishes a pair the provider
-                    stopped quoting (down, coming back) from USD, which has no
-                    leg on this account at all. This used to flatten both into
-                    "unavailable". */}
-                {blocked && route.unavailableKind
-                  ? unavailableSuffix(route.unavailableKind)
-                  : ""}
-              </option>
-            );
-          })}
-        </select>
-        <span aria-hidden="true" className="shrink-0 text-muted-foreground">
-          ▾
-        </span>
-      </div>
-    </div>
+    <CurrencyPicker
+      label={label}
+      title={label === "From" ? "Convert from" : "Convert to"}
+      value={value}
+      options={convertPickerOptions(wallets, { blockedKinds, showBalance })}
+      onChange={onChange}
+    />
   );
 }
 

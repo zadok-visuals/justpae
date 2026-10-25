@@ -6,15 +6,14 @@ import { toast } from "sonner";
 import { AmountInput, formatAmountInput, parseAmount } from "@/components/ui/AmountInput";
 import { PinField } from "@/components/ui/PinField";
 import { SubmitButton } from "@/components/ui/Button";
-import { SelectField } from "@/components/ui/Field";
+import { CurrencyPicker } from "@/components/ui/CurrencyPicker";
+import { withdrawPickerOptions } from "@/lib/ui/currencyPicker";
 import { Banner, Card, DetailRow } from "@/components/ui/Primitives";
 import { ConfirmDialog, useConfirm } from "@/components/ui/ConfirmDialog";
 import { requestWithdrawal, previewWithdrawalRouting } from "@/lib/actions/withdrawals";
 import { MINIMUM_WITHDRAWAL_USDT_THRESHOLD } from "@/lib/busha/limits";
 import { useDebouncedQuote } from "@/lib/hooks/useDebouncedQuote";
-import { currencyMeta, formatAmount } from "@/lib/currencies";
-import { withdrawAvailability } from "@/lib/accounts/actions";
-import { unavailableSuffix, type UnavailableKind } from "@/lib/ui/unavailability";
+import { formatAmount } from "@/lib/currencies";
 import { LegalReminder } from "@/components/ui/LegalReminder";
 import { MoneyFormLayout, WhatHappensNext } from "@/components/money/MoneyFormLayout";
 import type { Currency, Wallet, WithdrawalRecipient } from "@/lib/types/database";
@@ -91,28 +90,6 @@ interface ConfirmedWithdrawal {
   automated: boolean;
 }
 
-/**
- * GROUP 4f — why one wallet cannot be picked in the withdraw select, or null
- * when it can.
- *
- * Order matters: a standing refusal outranks a missing destination. Telling
- * someone to go and save a yuan payout account would send them to /profile to
- * do something the database will refuse afterwards anyway.
- */
-function withdrawOptionKind(
-  currency: Currency,
-  recipients: WithdrawalRecipient[],
-): UnavailableKind | null {
-  if (withdrawAvailability(currency).mode === "never") {
-    // GROUP 2b. USD is a locked wallet now, not a standing refusal like CNY
-    // (migration 0026 forbids a CNY withdrawal outright, for good) — same
-    // "never" mode, different word on the option.
-    return currency === "USD" ? "maintenance" : "unsupported";
-  }
-  if (!recipients.some((r) => r.currency === currency)) return "setup";
-  return null;
-}
-
 /** One line naming where the money lands, for the confirmation dialog. */
 function describeDestination(
   recipient: WithdrawalRecipient | undefined,
@@ -149,13 +126,21 @@ function WithdrawFormFields({
 }) {
   // Withdrawable currencies are the ones with a saved recipient. Offering a
   // currency with no payout destination just moves the failure to submit.
-  const withdrawable = wallets.filter((w) =>
-    recipients.some((r) => r.currency === w.currency),
+  const pickerOptions = withdrawPickerOptions(
+    wallets,
+    recipients.map((r) => r.currency),
   );
+  const withdrawable = pickerOptions.filter((o) => !o.disabled && !o.href);
 
-  const [currency, setCurrency] = useState<Currency>(
-    initialCurrency ?? withdrawable[0]?.currency ?? wallets[0]?.currency ?? "NGN",
-  );
+  const [currency, setCurrency] = useState<Currency>(() => {
+    // Yuan is not in this list — see withdrawPickerOptions — so a
+    // `?currency=CNY` arriving from the yuan account page must not open on
+    // a row the picker cannot show.
+    const requested = pickerOptions.some((o) => o.currency === initialCurrency)
+      ? initialCurrency
+      : undefined;
+    return requested ?? withdrawable[0]?.currency ?? pickerOptions[0]?.currency ?? "NGN";
+  });
   const [amountText, setAmountText] = useState("");
   const [pin, setPin] = useState("");
 
@@ -352,38 +337,18 @@ function WithdrawFormFields({
       )}
 
       <Card className="space-y-3">
-        <SelectField
+        {/* GROUP 1d. A currency with no saved destination is no longer a
+            greyed-out "Setup" row the user can only read: it is pickable,
+            says "Add payout account", and picking it opens the form. Yuan is
+            gone from the list entirely — migration 0026 refuses a CNY
+            withdrawal in the database, so there is nothing to explain. */}
+        <CurrencyPicker
           label="Withdraw from"
+          title="Withdraw from"
           value={currency}
-          onChange={(e) => setCurrency(e.target.value as Currency)}
-        >
-          {/* GROUP 4f. Every wallet, not only the withdrawable ones.
-
-              This picker used to list ONLY currencies with a saved payout
-              destination, which is the "· unavailable" problem in its most
-              extreme form: the option simply was not there. A cedi holder with
-              no saved Ghanaian bank account opened /withdraw and saw no GHS at
-              all, with no way to tell whether the product refuses cedis, has
-              lost their wallet, or is waiting on something they could fix in
-              thirty seconds on /profile.
-
-              Two genuinely different states, and neither is "Maintenance":
-                Setup        nothing is wrong — the user has not saved a payout
-                             destination for that currency yet.
-                Unsupported  a standing refusal. CNY is blocked by a database
-                             trigger (migration 0026) and USD has no payout
-                             rail, and no amount of waiting changes either. */}
-          {wallets.map((w) => {
-            const kind = withdrawOptionKind(w.currency, recipients);
-            return (
-              <option key={w.currency} value={w.currency} disabled={kind !== null}>
-                {currencyMeta(w.currency).flag} {w.currency} ·{" "}
-                {formatAmount(w.currency, w.balance)}
-                {kind ? unavailableSuffix(kind) : ""}
-              </option>
-            );
-          })}
-        </SelectField>
+          options={pickerOptions}
+          onChange={setCurrency}
+        />
 
         <AmountInput
           name="amount"

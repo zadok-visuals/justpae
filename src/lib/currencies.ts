@@ -11,10 +11,11 @@ import type { Currency } from "@/lib/types/database";
  * THE ORDER OF THE ARRAY IS THE DISPLAY ORDER, everywhere. Wallet cards, the
  * accounts list, every picker.
  *
- * GROUP 2b. USD moved to the very end: NGN, CNY, USDT, KES, GHS, USD. It
- * joins GHS as a wallet under maintenance (see src/lib/services.ts), and an
- * unusable option belongs at the bottom of a list, not in the middle or the
- * front of one.
+ * GROUP 1b set it to NGN, KES, USDT, CNY, GHS, USD: the two local fiat
+ * wallets first, then the currency everything is priced through, then yuan
+ * (which only some flows allow at all), then the two that are switched off.
+ * src/lib/ui/currencyPicker.ts holds the same order and additionally demotes
+ * whatever is unavailable to the bottom for the user looking at it.
  */
 export interface CurrencyMeta {
   code: Currency;
@@ -47,16 +48,16 @@ export interface CurrencyMeta {
 
 export const CURRENCIES: CurrencyMeta[] = [
   { code: "NGN", label: "Nigerian Naira", flag: "🇳🇬", decimals: 2, kind: "fiat", country: "NG" },
+  { code: "KES", label: "Kenyan Shilling", flag: "🇰🇪", decimals: 2, kind: "fiat", country: "KE" },
+  // A coin, not "₮": USDT has no country flag, and the symbol it used to
+  // borrow is exactly what this product no longer prints anywhere.
+  { code: "USDT", label: "Tether USD", flag: "🪙", decimals: 2, kind: "crypto" },
   // Deliberately NO `country`. A `country` here means "signing up from there
   // provisions this wallet and bills can be paid in it" (see
   // LOCAL_WALLET_COUNTRIES, derived from this field) — and neither is true of
   // CNY. Every user gets a CNY wallet regardless of where they are, because
   // Pay to China is offered to all of them.
   { code: "CNY", label: "Chinese Yuan", flag: "🇨🇳", decimals: 2, kind: "synthetic" },
-  // A coin, not "₮": USDT has no country flag, and the symbol it used to
-  // borrow is exactly what this product no longer prints anywhere.
-  { code: "USDT", label: "Tether USD", flag: "🪙", decimals: 2, kind: "crypto" },
-  { code: "KES", label: "Kenyan Shilling", flag: "🇰🇪", decimals: 2, kind: "fiat", country: "KE" },
   // GHS and USD are both under maintenance (src/lib/services.ts) — unusable
   // options belong at the bottom of every list, not the middle or the front.
   { code: "GHS", label: "Ghanaian Cedi", flag: "🇬🇭", decimals: 2, kind: "fiat", country: "GH" },

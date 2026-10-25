@@ -11,7 +11,8 @@ import {
   requestRecipientChange,
 } from "@/lib/actions/withdrawals";
 import { RECIPIENT_CHANGE_HOLD_HOURS, recipientFieldError } from "@/lib/withdrawals/rules";
-import { currencyMeta } from "@/lib/currencies";
+import { CurrencyPicker } from "@/components/ui/CurrencyPicker";
+import { payoutAccountPickerOptions } from "@/lib/ui/currencyPicker";
 import type { Currency, WithdrawalRecipient } from "@/lib/types/database";
 import type { BushaBank } from "@/lib/busha/client";
 
@@ -52,18 +53,18 @@ export function RecipientCard({
         </p>
       </div>
 
-      <SelectField
+      {/* GROUP 1a — the shared picker. "Saved" is a state, so it is a grey
+          pill rather than a " · saved" suffix the platform might truncate. */}
+      <CurrencyPicker
         label="Currency"
+        title="Payout currency"
         value={currency}
-        onChange={(e) => setCurrency(e.target.value as Currency)}
-      >
-        {currencies.map((code) => (
-          <option key={code} value={code}>
-            {currencyMeta(code).flag} {code}
-            {recipients.some((r) => r.currency === code) ? " · saved" : ""}
-          </option>
-        ))}
-      </SelectField>
+        options={payoutAccountPickerOptions(
+          currencies,
+          recipients.map((r) => r.currency),
+        )}
+        onChange={setCurrency}
+      />
 
       {existing ? (
         <ExistingRecipient key={currency} currency={currency} recipient={existing} banks={banks} />

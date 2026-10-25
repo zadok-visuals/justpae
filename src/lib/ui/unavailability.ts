@@ -88,6 +88,17 @@ export const UNAVAILABLE_LABEL: Record<UnavailableKind, string> = {
 /** The word itself, for the many places that only ever mean this one. */
 export const MAINTENANCE_LABEL = UNAVAILABLE_LABEL.maintenance;
 
+/**
+ * GROUP 1c — the word for a wallet that has not opened yet.
+ *
+ * USD is the only one. "Maintenance" promises a return from an outage that
+ * never started, and "Receive" points at a screen that is itself switched
+ * off, so the customer pickers and wallet cards say "Soon" instead. The
+ * service circles on Home already used this word; it lives here now so the
+ * two cannot drift.
+ */
+export const SOON_LABEL = "Soon";
+
 /** `" · Maintenance"`, ready to append inside an `<option>`'s text. */
 export function unavailableSuffix(kind: UnavailableKind): string {
   return ` · ${UNAVAILABLE_LABEL[kind]}`;

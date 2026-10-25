@@ -122,6 +122,75 @@ test.describe("a verified account", () => {
     }
   });
 
+  /**
+   * GROUP 1 — the shared picker, on the three flows whose contents differ.
+   *
+   * The assertions are about CONTENT rather than looks: which currencies are
+   * in the list at all, and what word a shut one carries. A screenshot test
+   * here would fail on every copy edit and catch none of that.
+   */
+  test.describe("the shared currency picker", () => {
+    async function openPicker(page: import("@playwright/test").Page, label: RegExp) {
+      const trigger = page.getByRole("button", { name: label }).first();
+      await trigger.click();
+      return page.getByRole("dialog");
+    }
+
+    test("it is our own sheet, not the platform's select", async ({ page }) => {
+      await page.goto("/deposit?currency=NGN");
+      // A native select would render the same options with none of the
+      // flags, balances or pills, differently on each platform.
+      await expect(page.locator("main select")).toHaveCount(0);
+      const sheet = await openPicker(page, /deposit into/i);
+      await expect(sheet).toBeVisible();
+      await expect(sheet).toContainText("Nigerian Naira");
+    });
+
+    test("deposit has no yuan, and dollars say Soon", async ({ page }) => {
+      await page.goto("/deposit?currency=NGN");
+      const sheet = await openPicker(page, /deposit into/i);
+      await expect(sheet).not.toContainText("CNY");
+      await expect(sheet).toContainText("Soon");
+      await expect(sheet, "USD must not be called Receive here").not.toContainText(/receive/i);
+    });
+
+    test("withdraw has no yuan, and offers the payout form for a missing one", async ({
+      page,
+    }) => {
+      await page.goto("/withdraw");
+      const trigger = page.getByRole("button", { name: /withdraw from/i });
+      if (!(await trigger.count())) return; // KYC or payout gate, covered elsewhere
+      const sheet = await openPicker(page, /withdraw from/i);
+      await expect(sheet).not.toContainText("CNY");
+      await expect(sheet, "'Setup' was the dead word this replaced").not.toContainText(/setup/i);
+    });
+
+    test("convert keeps yuan, because it is the only place to buy it", async ({ page }) => {
+      await page.goto("/convert");
+      const sheet = await openPicker(page, /^from/i);
+      await expect(sheet).toContainText("CNY");
+      await expect(sheet).toContainText("Chinese Yuan");
+    });
+
+    test("the switched-off currencies sit at the bottom of the list", async ({ page }) => {
+      await page.goto("/convert");
+      const sheet = await openPicker(page, /^from/i);
+      // The full names, because "USD" is a substring of "USDT" and a code
+      // search would find the wrong row.
+      const names = await sheet.locator("li button span.font-semibold").allInnerTexts();
+      const order = names.map((n) => n.trim());
+      for (const [a, b] of [
+        ["NGN", "KES"],
+        ["KES", "USDT"],
+        ["USDT", "CNY"],
+        ["CNY", "GHS"],
+        ["GHS", "USD"],
+      ] as const) {
+        expect(order.indexOf(a), `${a} must come before ${b}`).toBeLessThan(order.indexOf(b));
+      }
+    });
+  });
+
   test("a cedi wallet is marked Maintenance rather than left blank", async ({ page }) => {
     // Skipped if the GHS rail is ever switched on — at which point there is
     // nothing to badge and this assertion should be rewritten, not deleted.

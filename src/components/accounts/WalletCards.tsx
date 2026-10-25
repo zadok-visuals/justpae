@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { Amount } from "@/components/ui/Amount";
 import { CURRENCIES, currencyMeta, formatAmount } from "@/lib/currencies";
-import { isWalletLocked } from "@/lib/services";
-import { MaintenanceBadge } from "@/components/ui/MaintenanceBadge";
+import { walletLockLabel } from "@/lib/ui/currencyPicker";
+import { Pill } from "@/components/ui/Primitives";
 import type { Currency, Wallet } from "@/lib/types/database";
 
 /**
@@ -25,7 +25,10 @@ import type { Currency, Wallet } from "@/lib/types/database";
  */
 function WalletCard({ wallet }: { wallet: Wallet }) {
   const meta = currencyMeta(wallet.currency);
-  const locked = isWalletLocked(wallet.currency);
+  // GROUP 1c. "Soon" for the dollar wallet, which has never opened;
+  // "Maintenance" for cedis, whose rails exist and are down.
+  const lockLabel = walletLockLabel(wallet.currency);
+  const locked = lockLabel !== null;
 
   const content = (
     <>
@@ -40,7 +43,11 @@ function WalletCard({ wallet }: { wallet: Wallet }) {
           <span className="block truncate text-sm font-semibold text-foreground">{meta.label}</span>
           <span className="block text-xs text-muted-foreground">{wallet.currency}</span>
         </span>
-        {locked && <MaintenanceBadge className="shrink-0" />}
+        {lockLabel && (
+          <Pill tone="neutral" className="shrink-0">
+            {lockLabel}
+          </Pill>
+        )}
       </span>
 
       <span className="shrink-0 text-base text-foreground">
@@ -59,7 +66,7 @@ function WalletCard({ wallet }: { wallet: Wallet }) {
   if (locked) {
     return (
       <div
-        aria-label={`${meta.label} account, under maintenance, balance ${formatAmount(wallet.currency, wallet.balance)}`}
+        aria-label={`${meta.label} account, ${lockLabel}, balance ${formatAmount(wallet.currency, wallet.balance)}`}
         className={`${className} opacity-80`}
       >
         {content}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { ChevronRightIcon, EyeIcon, EyeOffIcon } from "@/components/layout/NavIcons";
 import { Amount } from "@/components/ui/Amount";
+import { CurrencySheet } from "@/components/ui/CurrencyPicker";
 import { setAmountsHidden, setDisplayCurrency } from "@/lib/actions/homePrefs";
 import type { DisplayCurrency } from "@/lib/home/totals";
 import type { Currency } from "@/lib/types/database";
@@ -60,14 +61,16 @@ export function TotalBalanceCard({
     local == null ? "usdt" : initialDisplay,
   );
   const [hidden, setHidden] = useState(initialHidden);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [, startTransition] = useTransition();
 
   const view = display === "local" && local ? local : usdt;
   const excluded = view.excluded;
 
-  function toggleDisplay() {
+  function chooseDisplay(code: string) {
+    setPickerOpen(false);
     if (!local) return;
-    const next: DisplayCurrency = display === "local" ? "usdt" : "local";
+    const next: DisplayCurrency = code === local.currency ? "local" : "usdt";
     setDisplay(next);
     startTransition(() => void setDisplayCurrency(next));
   }
@@ -86,12 +89,16 @@ export function TotalBalanceCard({
             <span className="text-[0.8125rem] leading-tight text-white/80">Total balance</span>
 
             {local && (
+              // GROUP 1a — the same sheet every other currency list uses.
+              // The TRIGGER stays a chip: a 48px grey field shell on the one
+              // solid blue panel in the product would be the loudest thing
+              // on it, and this control is secondary to the figure below.
               <button
                 type="button"
-                onClick={toggleDisplay}
-                aria-label={`Showing ${view.currency}. Switch to ${
-                  display === "local" ? "USDT" : localLabel
-                }`}
+                onClick={() => setPickerOpen(true)}
+                aria-haspopup="dialog"
+                aria-expanded={pickerOpen}
+                aria-label={`Showing ${view.currency}. Choose the display currency`}
                 className="inline-flex items-center gap-0.5 rounded-full bg-white/20 py-0.5 pl-2 pr-1 text-[0.6875rem] font-semibold text-white transition-colors hover:bg-white/30"
               >
                 {display === "local" ? localLabel : "USDT"}
@@ -145,6 +152,17 @@ export function TotalBalanceCard({
           + Deposit
         </Link>
       </div>
+
+      {local && (
+        <CurrencySheet
+          open={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          title="Show my total in"
+          value={view.currency}
+          options={[{ currency: local.currency }, { currency: usdt.currency }]}
+          onChoose={chooseDisplay}
+        />
+      )}
     </section>
   );
 }
