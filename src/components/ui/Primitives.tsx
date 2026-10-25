@@ -47,8 +47,10 @@ export function SectionHeader({
 type StatusTone = "pending" | "success" | "failed" | "neutral";
 
 const STATUS_TONES: Record<StatusTone, string> = {
-  pending: "bg-primary/15 text-primary",
-  success: "bg-success/15 text-naira-light",
+  // Pending is amber, not the brand blue: blue now means "this is the app
+  // talking to you", and a pending chip is a state, not a brand moment.
+  pending: "bg-warning/15 text-warning",
+  success: "bg-success/15 text-success",
   failed: "bg-destructive/15 text-destructive",
   neutral: "bg-accent text-muted-foreground",
 };
@@ -183,7 +185,7 @@ export function EmptyState({
       {action && (
         <Link
           href={action.href}
-          className="mt-1 inline-flex h-11 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground"
+          className="mt-1 inline-flex h-11 items-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground"
         >
           {action.label}
         </Link>
@@ -245,7 +247,7 @@ export function Banner({
 }) {
   const tones = {
     info: "border-border bg-secondary",
-    warning: "border-primary/40 bg-primary/10",
+    warning: "border-warning/40 bg-warning-soft",
     danger: "border-destructive/40 bg-destructive/10",
     success: "border-success/40 bg-success/10",
   } as const;

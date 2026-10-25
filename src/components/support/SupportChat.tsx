@@ -163,7 +163,7 @@ function SendButton({ disabled }: { disabled: boolean }) {
       type="submit"
       disabled={disabled || pending}
       aria-label="Send message"
-      className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-gold-light disabled:bg-primary/40 disabled:text-primary-foreground/60"
+      className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-pressed disabled:bg-primary/40 disabled:text-primary-foreground/60"
     >
       {pending ? <Spinner className="size-4" /> : <SendIcon className="size-5" />}
     </button>

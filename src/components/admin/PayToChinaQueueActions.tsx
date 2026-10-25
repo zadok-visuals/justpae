@@ -269,7 +269,7 @@ export function PayToChinaQueueActions({
       <button
         type="button"
         onClick={() => setRequestedMode("completing")}
-        className="min-h-11 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground"
+        className="min-h-11 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground"
       >
         Mark paid
       </button>

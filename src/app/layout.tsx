@@ -63,9 +63,9 @@ export const metadata: Metadata = {
  * signed in yet and has no Profile preference to read anyway. The
  * media-conditional array form lets the browser's own OS setting pick the
  * colour with no server involvement, same as the CSS below. An explicit
- * in-app choice therefore doesn't repaint this one meta tag — a status bar
- * tint one shade off from a deliberately-chosen in-app theme is a cosmetic
- * nit, not a flash, and not worth making the whole app dynamic to fix.
+ * in-app choice is handled client-side instead: the init script below and
+ * applyTheme() insert a media-less theme-color meta FIRST in <head>, which
+ * the UA prefers over these two.
  */
 export const viewport: Viewport = {
   width: "device-width",
@@ -83,7 +83,7 @@ export const viewport: Viewport = {
   /** Makes Android's keyboard shrink the layout viewport, as iOS already does. */
   interactiveWidget: "resizes-content",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f9f8f6" },
+    { media: "(prefers-color-scheme: light)", color: "#f6f7f9" },
     { media: "(prefers-color-scheme: dark)", color: "#0b0d10" },
   ],
 };

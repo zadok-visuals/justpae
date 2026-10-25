@@ -49,15 +49,15 @@ import { BACK_BUTTON_CLASS } from "@/lib/ui/escapeControl";
  * ──────────────────────────────────────────────────────────────────────────
  * 5c: IT HAS TO LOOK LIKE A BUTTON
  *
- * It was muted grey text in a product whose entire accent vocabulary is gold,
- * next to muted grey body copy, which is how a control ends up invisible. It
- * is now the brand gold, 44px tall, with all three states distinct:
+ * It was muted grey text next to muted grey body copy, which is how a control
+ * ends up invisible. It is now the brand blue, 44px tall, with all three
+ * states distinct:
  *
- *   hover    the gold brightens and a sidebar-tinted ground appears
+ *   hover    the blue deepens and a sidebar-tinted ground appears
  *   active   `scale-95`, so a touch is acknowledged before the navigation
  *            resolves — the one moment a user is deciding whether their tap
  *            registered
- *   focus    the global 2px gold outline (globals.css), left alone rather
+ *   focus    the global 2px primary outline (globals.css), left alone rather
  *            than overridden
  *
  * The arrow is `aria-hidden`: a screen reader announcing "left arrow Back"

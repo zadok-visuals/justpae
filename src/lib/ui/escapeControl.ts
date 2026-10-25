@@ -7,7 +7,7 @@
  * Back, "Later" in onboarding, "Back to app" in admin, "Back to justpae" on
  * the legal pages. Four controls, written four times, all of them muted grey
  * text — `text-muted-foreground`, the same colour as the body copy they sat
- * next to — in a product whose entire accent vocabulary is one gold. The
+ * next to — in a product whose accent vocabulary is one royal blue. The
  * result is a control that is technically present and visually absent, in the
  * corner people look at when they want to leave, which is the worst possible
  * place to make somebody hunt.
@@ -37,13 +37,13 @@
  * ──────────────────────────────────────────────────────────────────────────
  * THE THREE STATES, EXPLICITLY
  *
- *   hover   the gold brightens to gold-light and a sidebar-tinted ground
+ *   hover   the blue deepens and a sidebar-tinted ground
  *           appears, so the hit area becomes visible rather than merely the
  *           text changing shade
  *   active  scale-95 plus the same ground — the acknowledgement described
  *           above, on the frame of the tap rather than after the navigation
  *   focus   deliberately NOT specified here. globals.css already draws a 2px
- *           gold outline on `button:focus-visible, a:focus-visible`, and the
+ *           primary outline on `button:focus-visible, a:focus-visible`, and the
  *           rule that document sets out — ONE focus indicator, never two
  *           stacked — is worth more than a bespoke ring on this control.
  *
@@ -53,7 +53,7 @@
  */
 export const BACK_BUTTON_CLASS =
   "inline-flex min-h-11 items-center gap-1.5 rounded-lg -mx-2 px-2 text-sm font-medium " +
-  "text-primary transition-colors hover:bg-sidebar-accent hover:text-gold-light " +
+  "text-primary transition-colors hover:bg-sidebar-accent hover:text-primary-hover " +
   "active:scale-95 active:bg-sidebar-accent";
 
 /**
@@ -66,5 +66,5 @@ export const BACK_BUTTON_CLASS =
  */
 export const HEADER_ICON_BUTTON_CLASS =
   "relative flex size-11 items-center justify-center rounded-full text-primary " +
-  "transition-colors hover:bg-sidebar-accent hover:text-gold-light " +
+  "transition-colors hover:bg-sidebar-accent hover:text-primary-hover " +
   "active:scale-95 active:bg-sidebar-accent";

@@ -56,7 +56,7 @@ export function KycPromptModal({
         <Link
           href="/onboarding/kyc"
           onClick={later}
-          className="inline-flex min-h-12 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-gold-light"
+          className="inline-flex min-h-12 items-center justify-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover active:bg-primary-pressed"
         >
           {rejectionReason ? "Try again" : "Verify now"}
         </Link>

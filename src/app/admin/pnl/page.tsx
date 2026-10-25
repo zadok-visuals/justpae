@@ -148,7 +148,7 @@ export default async function AdminPnlPage() {
         <>
           <Card className="space-y-1">
             <p className="text-sm text-muted-foreground">Total margin</p>
-            <p className="font-display text-3xl font-semibold tabular-nums text-naira-light">
+            <p className="font-display text-3xl font-semibold tabular-nums text-success">
               {formatNumber(totals.totalUsdt)} USDT
             </p>
             <p className="text-xs text-muted-foreground">
@@ -242,7 +242,7 @@ export default async function AdminPnlPage() {
                             not valued
                           </span>
                         ) : (
-                          <span className="tabular-nums text-naira-light">
+                          <span className="tabular-nums text-success">
                             {formatNumber(order.pnlUsdt)}
                           </span>
                         )}
@@ -303,7 +303,7 @@ export default async function AdminPnlPage() {
                                 not valued
                               </span>
                             ) : (
-                              <span className="text-naira-light">{formatNumber(order.pnlUsdt)}</span>
+                              <span className="text-success">{formatNumber(order.pnlUsdt)}</span>
                             )}
                           </td>
                         </tr>

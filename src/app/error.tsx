@@ -57,7 +57,7 @@ export default function ErrorPage({
 
         <p className="text-xs text-muted-foreground">
           Still stuck?{" "}
-          <a href="mailto:support@justpae.com" className="font-medium text-gold hover:underline">
+          <a href="mailto:support@justpae.com" className="font-medium text-primary hover:underline">
             support@justpae.com
           </a>
           {error.digest && (

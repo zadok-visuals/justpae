@@ -60,7 +60,7 @@ function LegalLink({ href, children }: { href: string; children: React.ReactNode
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="rounded font-medium text-primary underline underline-offset-2 hover:text-gold-light"
+      className="rounded font-medium text-primary underline underline-offset-2 hover:text-primary-hover"
     >
       {children}
       <span className="sr-only"> (opens in a new tab)</span>

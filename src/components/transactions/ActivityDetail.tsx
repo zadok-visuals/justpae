@@ -250,7 +250,7 @@ function DetailBody({ detail }: { detail: Detail }) {
           </p>
           <Link
             href={`/deposit?currency=${detail.sourceCurrency}`}
-            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground"
           >
             Start a new deposit
           </Link>

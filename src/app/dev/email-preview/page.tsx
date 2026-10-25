@@ -18,10 +18,10 @@ import { renderEmail, renderEmailText, type EmailOptions } from "@/lib/email/lay
  * Gated the same way /dev/gallery is.
  */
 
-const CODE_PANEL = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="email-panel-bg" bgcolor="#f7f5f0" style="background-color:#f7f5f0;border:1px solid #e7e2d8;border-radius:10px;">
+const CODE_PANEL = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="email-panel-bg" bgcolor="#f6f7f9" style="background-color:#f6f7f9;border:1px solid #eaecf0;border-radius:10px;">
   <tr>
     <td align="center" style="padding:20px 0;">
-      <span class="email-panel-text" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:32px;font-weight:700;letter-spacing:6px;color:#1c1a17;">482913</span>
+      <span class="email-panel-text" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:32px;font-weight:700;letter-spacing:6px;color:#0b0d10;">482913</span>
     </td>
   </tr>
 </table>`;

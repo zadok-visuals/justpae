@@ -103,7 +103,7 @@ export function LedgerFilters({
       <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-3">
         <button
           type="submit"
-          className="inline-flex min-h-11 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground"
+          className="inline-flex min-h-11 items-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground"
         >
           Apply
         </button>

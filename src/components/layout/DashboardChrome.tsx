@@ -148,18 +148,21 @@ export function BottomTabBar() {
       // accessibility tree (the other's container is display:none), but two
       // landmarks sharing a name is confusing the moment that stops holding.
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur-md sm:hidden"
+      // Floating: 12px clear of both screen edges and sitting above the home
+      // indicator rather than painting behind it. The outer element keeps the
+      // safe-area padding so the bar itself can be a plain rounded box.
+      className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:hidden"
     >
-      <ul className="flex items-stretch pb-[env(safe-area-inset-bottom,0px)]">
+      <ul className="flex items-stretch rounded-2xl border border-border bg-card/95 shadow-float backdrop-blur-md">
         {TABS.map(({ href, label, Icon }) => {
           const active = isActive(pathname, href);
           return (
-            <li key={href} className="flex-1">
+            <li key={href} className="flex-1 p-1.5">
               <Link
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-[var(--jp-tabbar-height)] flex-col items-center justify-center gap-0.5 py-2 text-[0.6875rem] font-medium ${
-                  active ? "text-primary" : "text-muted-foreground"
+                className={`flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 text-[0.6875rem] font-medium transition-colors ${
+                  active ? "bg-primary-soft text-primary" : "text-muted-foreground"
                 }`}
               >
                 <Icon className="size-6" />

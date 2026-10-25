@@ -12,7 +12,7 @@ import type { ThemePreference } from "./theme.ts";
  */
 
 /** Kept in step with the --jp-background tokens in globals.css. */
-export const THEME_COLORS = { light: "#f9f8f6", dark: "#0b0d10" } as const;
+export const THEME_COLORS = { light: "#f6f7f9", dark: "#0b0d10" } as const;
 
 export const THEME_COLOR_META_MARKER = "data-jp-theme-color";
 

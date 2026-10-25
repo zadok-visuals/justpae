@@ -25,7 +25,7 @@ export default function NotFound() {
         <Wordmark className="justify-center" />
 
         <div className="space-y-2">
-          <p className="font-mono text-xs tracking-widest text-gold">404</p>
+          <p className="font-mono text-xs tracking-widest text-primary">404</p>
           <h1 className="font-display text-xl font-semibold text-foreground">
             That page isn&apos;t here
           </h1>
@@ -37,14 +37,14 @@ export default function NotFound() {
 
         <Link
           href="/"
-          className="inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-gold-light"
+          className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-hover active:bg-primary-pressed"
         >
           Go to justpae
         </Link>
 
         <p className="text-xs text-muted-foreground">
           Need a hand?{" "}
-          <a href="mailto:support@justpae.com" className="font-medium text-gold hover:underline">
+          <a href="mailto:support@justpae.com" className="font-medium text-primary hover:underline">
             support@justpae.com
           </a>
         </p>

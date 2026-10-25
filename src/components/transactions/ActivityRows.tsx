@@ -119,7 +119,7 @@ export function ActivityRows({
                       <span className="flex shrink-0 flex-col items-end gap-1">
                         <span
                           className={`text-sm font-semibold tabular-nums ${
-                            row.direction === "in" ? "text-naira-light" : "text-foreground"
+                            row.direction === "in" ? "text-success" : "text-foreground"
                           }`}
                         >
                           {formatSignedAmount(row.currency, row.amount, row.direction)}

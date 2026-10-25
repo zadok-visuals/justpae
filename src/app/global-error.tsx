@@ -9,9 +9,10 @@ import { useEffect } from "react";
  * EVERYTHING HERE IS INLINE-STYLED ON PURPOSE. global-error.tsx replaces the
  * root layout entirely — it renders its own <html> and <body> — so globals.css
  * and the font links from that layout are not guaranteed to be present. A
- * Tailwind class or a `var(--color-gold)` here would silently render as nothing
- * on exactly the screen that must not be broken. The justpae palette is
- * therefore written out as literals: ink #0b0d10, gold #d9a14a, paper #f4efe7.
+ * Tailwind class or a `var(--color-primary)` here would silently render as
+ * nothing on exactly the screen that must not be broken. The justpae palette
+ * is therefore written out as literals: ink #0b0d10, blue #5b7cff, mark gold
+ * #f7b928, paper #f3f5f7.
  *
  * This is also why it is deliberately plain. It has one job — say the service
  * is still there, and offer one button.
@@ -38,7 +39,7 @@ export default function GlobalError({
           justifyContent: "center",
           padding: "48px 16px",
           backgroundColor: "#0b0d10",
-          color: "#f4efe7",
+          color: "#f3f5f7",
           fontFamily:
             "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
         }}
@@ -58,11 +59,11 @@ export default function GlobalError({
             <rect width="32" height="32" rx="9" fill="#15181c" />
             <path
               d="M20 8.5v10.25c0 2.9-2.3 5.25-5.15 5.25-2.2 0-4.1-1.4-4.85-3.4"
-              stroke="#d9a14a"
+              stroke="#f7b928"
               strokeWidth="2.6"
               strokeLinecap="round"
             />
-            <path d="M14.5 13.25h9" stroke="#3c9a74" strokeWidth="2.2" strokeLinecap="round" />
+            <path d="M14.5 13.25h9" stroke="#32d583" strokeWidth="2.2" strokeLinecap="round" />
           </svg>
 
           <h1 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 600 }}>
@@ -79,10 +80,10 @@ export default function GlobalError({
               padding: "12px 28px",
               fontSize: 15,
               fontWeight: 600,
-              color: "#1a1205",
-              backgroundColor: "#d9a14a",
+              color: "#0b0d10",
+              backgroundColor: "#5b7cff",
               border: "none",
-              borderRadius: 8,
+              borderRadius: 999,
               cursor: "pointer",
             }}
           >
@@ -91,7 +92,7 @@ export default function GlobalError({
 
           <p style={{ margin: "24px 0 0", fontSize: 12, color: "#7d848d" }}>
             Still stuck?{" "}
-            <a href="mailto:support@justpae.com" style={{ color: "#d9a14a" }}>
+            <a href="mailto:support@justpae.com" style={{ color: "#5b7cff" }}>
               support@justpae.com
             </a>
             {error.digest && (

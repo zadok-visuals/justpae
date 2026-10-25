@@ -88,7 +88,7 @@ export function PublicSupportButton() {
 
           <a
             href="mailto:support@justpae.com"
-            className="mt-3 flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground"
+            className="mt-3 flex min-h-11 items-center justify-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground"
           >
             support@justpae.com
           </a>
@@ -109,7 +109,7 @@ export function PublicSupportButton() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={open ? "Close support options" : "Contact support"}
-        className="flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-gold-light"
+        className="flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary-hover active:bg-primary-pressed"
       >
         {open ? (
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="size-6">

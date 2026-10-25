@@ -110,7 +110,7 @@ function SignInLinks({ compact = false }: { compact?: boolean }) {
       </Link>
       <Link
         href="/signup"
-        className="inline-flex min-h-11 items-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-gold-light"
+        className="inline-flex min-h-11 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-hover active:bg-primary-pressed"
       >
         {compact ? "Open an account" : "Create an account"}
       </Link>
@@ -171,7 +171,7 @@ export default function LandingPage() {
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Link
                 href="/signup"
-                className="inline-flex min-h-14 items-center justify-center rounded-lg bg-primary px-6 text-base font-semibold text-primary-foreground hover:bg-gold-light"
+                className="inline-flex min-h-12 items-center justify-center rounded-full bg-primary px-6 text-base font-semibold text-primary-foreground hover:bg-primary-hover active:bg-primary-pressed"
               >
                 Open an account
               </Link>

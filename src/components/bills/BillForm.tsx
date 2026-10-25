@@ -349,7 +349,7 @@ function BillFormFields({
           type="checkbox"
           checked={saveBeneficiary}
           onChange={(e) => setSaveBeneficiary(e.target.checked)}
-          className="size-5 accent-[var(--color-gold)]"
+          className="size-5 accent-[var(--color-primary)]"
         />
         <span className="text-sm text-foreground">Save this for next time</span>
       </label>

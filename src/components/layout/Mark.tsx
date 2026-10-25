@@ -1,10 +1,11 @@
 /**
  * The justpae mark and wordmark.
  *
- * Drawn here rather than loaded as an image so it inherits the gold token and
- * scales without a second asset at 2x. The form is a "j" descender crossing a
- * horizontal rail — a currency-glyph gesture, not a letterform borrowed from
- * anywhere else.
+ * Drawn here rather than loaded as an image so it scales without a second
+ * asset at 2x. Its colours are pinned rather than themed: the chip behind it
+ * is fixed dark, so the mark must read the same in both themes. The form is a
+ * "j" descender crossing a horizontal rail — a currency-glyph gesture, not a
+ * letterform borrowed from anywhere else.
  */
 export function Mark({ className = "size-8" }: { className?: string }) {
   return (
@@ -12,12 +13,12 @@ export function Mark({ className = "size-8" }: { className?: string }) {
       <rect width="32" height="32" rx="9" fill="var(--color-ink-light)" />
       <path
         d="M20 8.5v10.25c0 2.9-2.3 5.25-5.15 5.25-2.2 0-4.1-1.4-4.85-3.4"
-        stroke="var(--color-gold)"
+        stroke="#f7b928"
         strokeWidth="2.6"
         strokeLinecap="round"
       />
-      <path d="M14.5 13.25h9" stroke="var(--color-naira)" strokeWidth="2.2" strokeLinecap="round" />
-      <circle cx="20" cy="8.5" r="0.2" fill="var(--color-gold)" />
+      <path d="M14.5 13.25h9" stroke="#32d583" strokeWidth="2.2" strokeLinecap="round" />
+      <circle cx="20" cy="8.5" r="0.2" fill="#f7b928" />
     </svg>
   );
 }

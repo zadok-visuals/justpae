@@ -21,17 +21,16 @@ import type { Currency, Wallet } from "@/lib/types/database";
  * by colour, before the label is read.
  */
 
+// Drawn from the service-icon palette, so a wallet card and a service circle
+// for the same idea are the same colour. USDT stays neutral: it is the one
+// balance that is not a national currency.
 const WASHES: Record<Currency, string> = {
-  USD: "from-naira/25 to-card",
-  NGN: "from-gold/25 to-card",
-  CNY: "from-gold-dark/25 to-card",
-  // GROUP 9. Was from-ink-raised, a fixed near-black — ink-raised stays fixed
-  // on purpose (see globals.css), but a near-black-to-white gradient is what
-  // that produces in light mode. from-muted is themed, giving USDT the same
-  // neutral, non-brand-colour identity in both themes instead of a broken one.
+  USD: "from-icon-blue/20 to-card",
+  NGN: "from-icon-green/20 to-card",
+  CNY: "from-icon-coral/20 to-card",
   USDT: "from-muted to-card",
-  KES: "from-naira-light/20 to-card",
-  GHS: "from-gold-dark/30 to-card",
+  KES: "from-icon-teal/20 to-card",
+  GHS: "from-icon-gold/20 to-card",
 };
 
 /**

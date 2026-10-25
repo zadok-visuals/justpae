@@ -57,17 +57,17 @@ export interface EmailOptions {
 }
 
 const LIGHT = {
-  outerBg: "#f6f3ee",
+  outerBg: "#f6f7f9",
   cardBg: "#ffffff",
-  cardBorder: "#e7e2d8",
+  cardBorder: "#eaecf0",
   headerBg: "#0b0d10",
-  heading: "#1c1a17",
+  heading: "#0b0d10",
   body: "#3a3d42",
-  muted: "#6b6f76",
-  panelBg: "#f7f5f0",
-  panelBorder: "#e7e2d8",
-  panelText: "#1c1a17",
-  footerText: "#8a8f96",
+  muted: "#667085",
+  panelBg: "#f6f7f9",
+  panelBorder: "#eaecf0",
+  panelText: "#0b0d10",
+  footerText: "#667085",
 };
 
 // justpae's own dark theme, reused as the email's dark-mode palette — for the
@@ -79,17 +79,19 @@ const DARK = {
   cardBg: "#15181c",
   cardBorder: "#2a2f36",
   headerBg: "#0b0d10",
-  heading: "#f4efe7",
+  heading: "#f3f5f7",
   body: "#c7cad0",
   muted: "#9aa0a8",
   panelBg: "#1b1f24",
   panelBorder: "#2a2f36",
-  panelText: "#f4efe7",
+  panelText: "#f3f5f7",
   footerText: "#7d848d",
 };
 
-const GOLD = "#d9a14a";
-const GOLD_TEXT = "#1a1205";
+// Royal blue, with white on it: 5.85:1, and the same button a customer sees
+// in the app.
+const BRAND = "#2f54eb";
+const BRAND_TEXT = "#ffffff";
 
 // Single-quoted family names, not double: every one of these sits inside a
 // double-quoted HTML style="..." attribute, and a bare " here would close
@@ -134,16 +136,16 @@ function paragraphs(items: string[], color: string, className: string): string {
  *  conditionals reliably either. */
 function bulletproofButton(button: EmailButton): string {
   return `<!--[if mso]>
-<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${button.href}" style="height:48px;v-text-anchor:middle;width:240px;" arcsize="17%" strokecolor="${GOLD}" fillcolor="${GOLD}">
+<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${button.href}" style="height:48px;v-text-anchor:middle;width:240px;" arcsize="50%" strokecolor="${BRAND}" fillcolor="${BRAND}">
 <w:anchorlock/>
-<center style="color:${GOLD_TEXT};font-family:sans-serif;font-size:16px;font-weight:600;">${button.label}</center>
+<center style="color:${BRAND_TEXT};font-family:sans-serif;font-size:16px;font-weight:600;">${button.label}</center>
 </v:roundrect>
 <![endif]-->
 <!--[if !mso]><!-- -->
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="mso-hide:all;">
   <tr>
-    <td align="center" bgcolor="${GOLD}" style="border-radius:8px;background-color:${GOLD};">
-      <a href="${button.href}" target="_blank" style="display:inline-block;height:48px;line-height:48px;padding:0 32px;font-family:${FONT};font-size:16px;font-weight:600;color:${GOLD_TEXT};text-decoration:none;border-radius:8px;">${button.label}</a>
+    <td align="center" bgcolor="${BRAND}" style="border-radius:24px;background-color:${BRAND};">
+      <a href="${button.href}" target="_blank" style="display:inline-block;height:48px;line-height:48px;padding:0 32px;font-family:${FONT};font-size:16px;font-weight:600;color:${BRAND_TEXT};text-decoration:none;border-radius:24px;">${button.label}</a>
     </td>
   </tr>
 </table>

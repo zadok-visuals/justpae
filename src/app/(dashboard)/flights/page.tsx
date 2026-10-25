@@ -104,7 +104,7 @@ export default async function FlightsPage() {
             <button
               type="button"
               disabled
-              className="inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+              className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"
             >
               Search flights
             </button>

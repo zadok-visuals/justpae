@@ -23,7 +23,9 @@ export const contentType = "image/png";
 export const alt = "justpae — hold, convert and send money across borders";
 
 const INK = "#0b0d10";
-const GOLD = "#d9a14a";
+const BRAND = "#5b7cff";
+const MARK_GOLD = "#f7b928";
+const MARK_GREEN = "#32d583";
 const MUTED = "#9aa4b2";
 
 export default function OpengraphImage() {
@@ -45,12 +47,12 @@ export default function OpengraphImage() {
             <rect width="64" height="64" rx="14" fill="#15181c" />
             <path
               d="M40 17v20.5c0 5.8-4.6 10.5-10.3 10.5-4.4 0-8.2-2.8-9.7-6.8"
-              stroke={GOLD}
+              stroke={MARK_GOLD}
               strokeWidth="6.5"
               strokeLinecap="round"
               fill="none"
             />
-            <path d="M29 26.5h18" stroke={GOLD} strokeWidth="5.5" strokeLinecap="round" fill="none" />
+            <path d="M29 26.5h18" stroke={MARK_GREEN} strokeWidth="5.5" strokeLinecap="round" fill="none" />
           </svg>
           <span style={{ color: "#f3f5f7", fontSize: 54, fontWeight: 600, letterSpacing: -1 }}>
             justpae
@@ -60,7 +62,7 @@ export default function OpengraphImage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <span style={{ color: "#f3f5f7", fontSize: 68, fontWeight: 700, lineHeight: 1.1 }}>
             Money that moves between{" "}
-            <span style={{ color: GOLD }}>the currencies you actually use.</span>
+            <span style={{ color: BRAND }}>the currencies you actually use.</span>
           </span>
           <span style={{ color: MUTED, fontSize: 30, lineHeight: 1.4 }}>
             Hold dollars, naira, cedis, shillings and USDT in one account. Convert at live rates.
@@ -70,7 +72,7 @@ export default function OpengraphImage() {
         {/* No invented numbers here either — the landing page refuses to claim a
             user count or a volume, and a social card is not the place to start. */}
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ width: 56, height: 4, background: GOLD, borderRadius: 2 }} />
+          <div style={{ width: 56, height: 4, background: BRAND, borderRadius: 2 }} />
           <span style={{ color: MUTED, fontSize: 24 }}>justpae.com</span>
         </div>
       </div>

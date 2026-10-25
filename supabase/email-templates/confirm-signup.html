@@ -35,24 +35,24 @@
   @media (prefers-color-scheme: dark) {
     .email-outer-bg { background-color: #0b0d10 !important; }
     .email-card-bg { background-color: #15181c !important; border-color: #2a2f36 !important; }
-    .email-heading { color: #f4efe7 !important; }
+    .email-heading { color: #f3f5f7 !important; }
     .email-body { color: #c7cad0 !important; }
     .email-muted { color: #9aa0a8 !important; }
     .email-panel-bg { background-color: #1b1f24 !important; border-color: #2a2f36 !important; }
-    .email-panel-text { color: #f4efe7 !important; }
+    .email-panel-text { color: #f3f5f7 !important; }
     .email-footer-text { color: #7d848d !important; }
   }
 </style>
 </head>
-<body style="margin:0;padding:0;background-color:#f6f3ee;">
+<body style="margin:0;padding:0;background-color:#f6f7f9;">
 <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;opacity:0;">Your verification code is inside — it expires in about an hour.&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>
 
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f6f3ee" class="email-outer-bg" style="background-color:#f6f3ee;margin:0;padding:32px 0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f6f7f9" class="email-outer-bg" style="background-color:#f6f7f9;margin:0;padding:32px 0;">
   <tr>
     <td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
         <tr>
-          <td class="email-card-bg" bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #e7e2d8;border-radius:12px;overflow:hidden;">
+          <td class="email-card-bg" bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #eaecf0;border-radius:12px;overflow:hidden;">
 
             <!-- Header band: justpae's ink colour, wordmark hosted as a PNG
                  so it renders identically everywhere, incl. clients that
@@ -73,17 +73,17 @@
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
                 <td style="padding:28px 28px 0 28px;">
-                  <h1 class="email-heading" style="margin:0;font-family:Georgia,Cambria,'Times New Roman',Times,serif;font-size:26px;font-weight:600;color:#1c1a17;">Confirm your email</h1>
+                  <h1 class="email-heading" style="margin:0;font-family:Georgia,Cambria,'Times New Roman',Times,serif;font-size:26px;font-weight:600;color:#0b0d10;">Confirm your email</h1>
                   <p class="email-body" style="margin:12px 0 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#3a3d42;">Use the code below to confirm your email and finish setting up your justpae account.</p>
 <p class="email-body" style="margin:12px 0 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#3a3d42;">It expires in about an hour.</p>
                 </td>
               </tr>
               <tr>
                 <td style="padding:20px 28px 0 28px;">
-                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="email-panel-bg" bgcolor="#f7f5f0" style="background-color:#f7f5f0;border:1px solid #e7e2d8;border-radius:10px;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="email-panel-bg" bgcolor="#f6f7f9" style="background-color:#f6f7f9;border:1px solid #eaecf0;border-radius:10px;">
   <tr>
     <td align="center" style="padding:20px 0;">
-      <span class="email-panel-text" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:32px;font-weight:700;letter-spacing:6px;color:#1c1a17;">{{ .Token }}</span>
+      <span class="email-panel-text" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:32px;font-weight:700;letter-spacing:6px;color:#0b0d10;">{{ .Token }}</span>
     </td>
   </tr>
 </table>
@@ -92,16 +92,16 @@
               <tr>
                 <td align="center" style="padding:28px 28px 0 28px;">
                   <!--[if mso]>
-<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}&next=/home" style="height:48px;v-text-anchor:middle;width:240px;" arcsize="17%" strokecolor="#d9a14a" fillcolor="#d9a14a">
+<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}&next=/home" style="height:48px;v-text-anchor:middle;width:240px;" arcsize="50%" strokecolor="#2f54eb" fillcolor="#2f54eb">
 <w:anchorlock/>
-<center style="color:#1a1205;font-family:sans-serif;font-size:16px;font-weight:600;">Confirm my email</center>
+<center style="color:#ffffff;font-family:sans-serif;font-size:16px;font-weight:600;">Confirm my email</center>
 </v:roundrect>
 <![endif]-->
 <!--[if !mso]><!-- -->
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="mso-hide:all;">
   <tr>
-    <td align="center" bgcolor="#d9a14a" style="border-radius:8px;background-color:#d9a14a;">
-      <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}&next=/home" target="_blank" style="display:inline-block;height:48px;line-height:48px;padding:0 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;font-weight:600;color:#1a1205;text-decoration:none;border-radius:8px;">Confirm my email</a>
+    <td align="center" bgcolor="#2f54eb" style="border-radius:24px;background-color:#2f54eb;">
+      <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}&next=/home" target="_blank" style="display:inline-block;height:48px;line-height:48px;padding:0 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:24px;">Confirm my email</a>
     </td>
   </tr>
 </table>
@@ -110,20 +110,20 @@
               </tr>
               <tr>
                 <td style="padding:20px 28px 0 28px;">
-                  <p class="email-muted" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#6b6f76;">Rather tap than type? If the button doesn't work, copy this address into your browser:</p>
-                  <p class="email-muted" style="margin:8px 0 0 0;font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:12px;line-height:1.5;color:#6b6f76;word-break:break-all;">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}&next=/home</p>
-                  <p class="email-muted" style="margin:18px 0 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#6b6f76;">If you didn't request this, you can ignore this email — no account is created until the code or link is used.</p>
+                  <p class="email-muted" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#667085;">Rather tap than type? If the button doesn't work, copy this address into your browser:</p>
+                  <p class="email-muted" style="margin:8px 0 0 0;font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:12px;line-height:1.5;color:#667085;word-break:break-all;">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}&next=/home</p>
+                  <p class="email-muted" style="margin:18px 0 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#667085;">If you didn't request this, you can ignore this email — no account is created until the code or link is used.</p>
                 </td>
               </tr>
               <tr>
                 <td style="padding:28px 28px 28px 28px;">
-                  <p class="email-footer-text" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;color:#8a8f96;">
+                  <p class="email-footer-text" style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;color:#667085;">
                     justpae &middot; Zadok Royal Limited<br>
-                    <a href="https://justpae.com/support" class="email-footer-text" style="color:#8a8f96;">Support</a>
+                    <a href="https://justpae.com/support" class="email-footer-text" style="color:#667085;">Support</a>
                     &nbsp;&middot;&nbsp;
-                    <a href="https://justpae.com/terms" class="email-footer-text" style="color:#8a8f96;">Terms</a>
+                    <a href="https://justpae.com/terms" class="email-footer-text" style="color:#667085;">Terms</a>
                     &nbsp;&middot;&nbsp;
-                    <a href="https://justpae.com/privacy" class="email-footer-text" style="color:#8a8f96;">Privacy</a>
+                    <a href="https://justpae.com/privacy" class="email-footer-text" style="color:#667085;">Privacy</a>
                   </p>
                 </td>
               </tr>

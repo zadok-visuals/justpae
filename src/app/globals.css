@@ -3,195 +3,262 @@
 /* ============================================================================
    justpae design tokens
    ----------------------------------------------------------------------------
-   GROUP 9. Light is now the primary theme; dark is a real, finished, optional
-   second theme rather than a deprecated remnant. Every --jp-* surface token
-   below is declared twice: the LIGHT values live on :root (the default), the
-   DARK values live under :root[data-theme="dark"] AND, separately, under
-   @media (prefers-color-scheme: dark) guarded by :not([data-theme="light"]).
+   ROYAL BLUE IS THE BRAND. Gold is an accent and nothing else: the verified
+   badge, rewards, a premium touch, the gold service circle. It is never a
+   button, a link, a focus ring or body text. --jp-gold-strong exists because
+   the accent gold itself is 1.85:1 on white — anything gold that has to be
+   READ uses the deep step.
 
-   Both dark blocks carry the identical values ON PURPOSE, not by accident —
-   this is the standard cookie-plus-media-query contract for a flash-free
-   theme that still respects "System":
-     • data-theme="light"  → :root's light values, and the dark media query
-       is excluded by the :not([data-theme="light"]) guard even if the OS is
-       in dark mode — an explicit choice always wins over the OS.
-     • data-theme="dark"   → the dark attribute block wins outright.
-     • no data-theme (="system") → nothing above excludes the media query, so
-       the OS's own light/dark setting decides.
-   Because "explicit dark" and "system, OS says dark" are two different
-   selectors that can't be merged into one rule without JS, the dark palette
-   is necessarily written out twice below. If you change one, change both —
-   that is the one thing to remember about this file from here on.
+   Every --jp-* token is declared twice: the LIGHT values on :root (the
+   default), the DARK values under :root[data-theme="dark"] AND, separately,
+   under @media (prefers-color-scheme: dark) guarded by
+   :not([data-theme="light"]). The two dark blocks carry identical values on
+   purpose — that is the cookie-plus-media-query contract behind "System":
+     • data-theme="light"  → :root's light values win even on a dark OS.
+     • data-theme="dark"   → the attribute block wins outright.
+     • no attribute        → the media query decides.
+   If you change one dark block, change both.
 
-   The RAW BRAND RAMP (gold/naira) is also themed, via its own --jp-gold and
-   --jp-naira runtime custom properties, because Tailwind's compiled
-   utilities for things like `hover:bg-gold-light` need a live variable to
-   repaint on a theme change rather than a value baked in at build time.
-   --jp-primary/--jp-ring/--jp-sidebar-primary alias --jp-gold directly (they
-   were the exact same HSL triple, retyped, in the pre-Group-9 file) and
-   --jp-success aliases --jp-naira for the same reason — one number instead
-   of two that only looked unrelated.
+   CONTRAST. Every pair below was measured. The text-bearing colours are the
+   deep steps (success 152 82% 28%, destructive 4 74% 48%, warning 34 94% 32%,
+   gold-strong 41.8 100% 36.3%) because the bright brand values fail AA as
+   small text on white. The bright values live on as fills and icons, where
+   the bar is 3:1.
 
-   --color-ink/--color-ink-light/--color-ink-raised stay FIXED in both
-   themes on purpose: they're the modal/sheet backdrop scrim (bg-ink/70) and
-   the logo mark's own chip, both of which are meant to stay dark regardless
-   of which theme the surrounding page is in — a dimming overlay that went
-   pale in light mode would stop dimming anything.
+   --color-ink/--color-ink-light/--color-ink-raised stay FIXED in both themes:
+   they are the modal scrim and the logo mark's chip, both meant to stay dark
+   whichever theme surrounds them.
    ============================================================================ */
 
 :root {
   color-scheme: light;
 
   /* ── Semantic surfaces — LIGHT (primary) ──────────────────────────────── */
-  --jp-background: 40 20% 97%; /* #F9F8F6 — warm paper ground */
-  --jp-foreground: 216 18% 12%; /* near-black ink text */
-  --jp-card: 0 0% 100%; /* white — elevated above the paper ground */
-  --jp-card-foreground: 216 18% 12%;
+  --jp-background: 220 20% 97.1%; /* #F6F7F9 */
+  --jp-foreground: 216 19% 5.3%; /* #0B0D10 */
+  --jp-card: 0 0% 100%;
+  --jp-card-foreground: 216 19% 5.3%;
   --jp-popover: 0 0% 100%;
-  --jp-popover-foreground: 216 18% 12%;
-  --jp-primary: var(--jp-gold);
-  --jp-primary-foreground: 0 0% 100%;
-  --jp-secondary: 40 16% 93%;
-  --jp-secondary-foreground: 216 18% 12%;
-  --jp-muted: 40 15% 93%;
-  --jp-muted-foreground: 220 9% 38%; /* AA: ~5.3:1 on --jp-background */
-  --jp-accent: 40 18% 90%;
-  --jp-accent-foreground: 216 18% 12%;
-  --jp-success: var(--jp-naira);
+  --jp-popover-foreground: 216 19% 5.3%;
+
+  --jp-primary: 228.2 82.5% 55.3%; /* #2F54EB — royal blue */
+  --jp-primary-foreground: 0 0% 100%; /* 5.85:1 */
+  --jp-primary-hover: 228.3 71.9% 48.8%; /* #2346D6 */
+  --jp-primary-pressed: 228.4 72.8% 41.8%; /* #1D3BB8 */
+  --jp-primary-soft: 225.9 100% 96.7%; /* #EEF2FF */
+
+  --jp-secondary: 220 20% 95%;
+  --jp-secondary-foreground: 216 19% 5.3%;
+  --jp-muted: 220 20% 95%;
+  --jp-muted-foreground: 220.6 13.2% 46.1%; /* #667085 — 4.97:1 on card */
+  --jp-accent: 220 17% 93%;
+  --jp-accent-foreground: 216 19% 5.3%;
+
+  --jp-success: 152 82% 28%; /* 4.87:1 on card — carries text */
   --jp-success-foreground: 0 0% 100%;
-  --jp-destructive: 10.4 51.6% 42%; /* darkened from the dark-theme 56.3% L for AA text contrast */
+  --jp-success-soft: 148.2 54.8% 93.9%; /* #E7F8EF */
+  --jp-destructive: 4 74% 48%; /* 4.99:1 on card */
   --jp-destructive-foreground: 0 0% 100%;
-  --jp-border: 220 14% 88%;
-  --jp-input: 220 14% 88%;
-  --jp-ring: var(--jp-gold);
+  --jp-destructive-soft: 6.3 100% 96.3%; /* #FFEEEC */
+  --jp-warning: 34 94% 32%; /* 5.27:1 on card */
+  --jp-warning-soft: 42 100% 93%;
+
+  --jp-border: 220 17% 93%; /* #EAECF0 */
+  --jp-input: 220 17% 93%;
+  --jp-ring: var(--jp-primary);
 
   /* ── Sidebar (desktop chrome) — LIGHT ──────────────────────────────────── */
   --jp-sidebar: 0 0% 100%;
-  --jp-sidebar-foreground: 216 18% 12%;
-  --jp-sidebar-primary: var(--jp-gold);
+  --jp-sidebar-foreground: 216 19% 5.3%;
+  --jp-sidebar-primary: var(--jp-primary);
   --jp-sidebar-primary-foreground: 0 0% 100%;
-  --jp-sidebar-accent: 40 18% 90%;
-  --jp-sidebar-accent-foreground: 216 18% 12%;
-  --jp-sidebar-border: 220 14% 88%;
-  --jp-sidebar-ring: var(--jp-gold);
+  --jp-sidebar-accent: 220 17% 93%;
+  --jp-sidebar-accent-foreground: 216 19% 5.3%;
+  --jp-sidebar-border: 220 17% 93%;
+  --jp-sidebar-ring: var(--jp-primary);
 
-  /* ── Raw brand ramp — LIGHT ────────────────────────────────────────────
-     Darkened from the dark-theme hue: brand gold at dark-theme lightness
-     (57.1%) is below 3:1 against a white/near-white page used as plain text
-     or a focus ring (text-primary, LegalReminder's links, every focus
-     outline) — fine against ink, not fine against paper. 34% keeps the same
-     hue and reads as "the same gold, indoors" rather than a different
-     colour, and clears 4.5:1 as text on --jp-background. */
-  --jp-gold: 36.5 65.3% 34%; /* #8F631E */
-  --jp-gold-light: 36.5 65.3% 42%; /* #B17A25 — hover state */
-  --jp-gold-dark: 36.5 65.3% 26%; /* #6E4C17 — wallet-card washes */
-  --jp-naira: 155.7 43.9% 28%; /* #255F48 — darkened from 42% L for the same reason */
-  --jp-naira-light: 155.7 43.9% 33%; /* #2F795B */
+  /* ── Accent gold — LIGHT ───────────────────────────────────────────────
+     Small highlights only. --jp-gold is the fill, --jp-gold-strong is the
+     only one that may carry text or an icon. */
+  --jp-gold: 43.8 99.2% 48.2%; /* #F5B301 */
+  --jp-gold-soft: 45 100% 92.9%; /* #FFF6DB */
+  --jp-gold-strong: 41.8 100% 36.3%; /* #B98100 */
 
-  /* ── Base radius (was --radius: 0.75rem) ──────────────────────────────── */
+  /* ── Service icon circles — LIGHT (soft ground, solid icon) ────────────── */
+  --jp-icon-blue: 228.2 82.5% 55.3%;
+  --jp-icon-blue-soft: 225.9 100% 96.7%;
+  --jp-icon-green: 152 82% 28%;
+  --jp-icon-green-soft: 148.2 54.8% 93.9%;
+  --jp-icon-gold: 41.8 100% 36.3%;
+  --jp-icon-gold-soft: 45 100% 92.9%;
+  --jp-icon-violet: 252.2 91.9% 66.3%;
+  --jp-icon-violet-soft: 253.3 100% 96.5%;
+  --jp-icon-coral: 3.9 86% 58%;
+  --jp-icon-coral-soft: 6.3 100% 96.3%;
+  --jp-icon-teal: 180 88% 28%;
+  --jp-icon-teal-soft: 180 56.3% 93.7%;
+
+  /* ── Elevation — LIGHT ─────────────────────────────────────────────────
+     One shadow for a raised card, one for a floating surface (the bottom tab
+     bar, popovers). Themed, because a dark theme needs a deeper, less blue
+     shadow to read at all. */
+  --jp-shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 4px 16px rgb(16 24 40 / 0.06);
+  --jp-shadow-float: 0 2px 6px rgb(16 24 40 / 0.06), 0 12px 32px rgb(16 24 40 / 0.1);
+  --jp-shadow-button: 0 1px 2px rgb(16 24 40 / 0.08), 0 2px 8px hsl(228 82% 55% / 0.22);
+
+  /* ── Base radius ──────────────────────────────────────────────────────── */
   --jp-radius: 0.75rem;
 
-  /* GROUP 8. The bottom tab bar's own content height (excluding the safe
-   * area it adds on top of this) — one number, read by both the bar
-   * itself (DashboardChrome.tsx) and the scrolling content that has to
-   * clear it ((dashboard)/layout.tsx, dev/gallery). Two Tailwind arbitrary
-   * values that happened to both say "3.5rem" were the same number by
-   * coincidence, not by reference — nothing stopped one from changing
-   * without the other. */
-  --jp-tabbar-height: 3.5rem;
+  /* The floating bottom tab bar's full footprint — a 56px row plus the 12px
+   * gutters above and below it — excluding the safe area. One number, read
+   * by the scrolling content that has to clear it. */
+  --jp-tabbar-height: 5rem;
 }
 
-/* ── Semantic surfaces — DARK, explicit choice ──────────────────────────────
-   Unchanged from the pre-Group-9 values: dark remains the exact theme it
-   always was, now opted into rather than forced. See the file header for why
-   this block and the @media one below necessarily repeat each other. */
+/* ── Semantic surfaces — DARK, explicit choice ─────────────────────────────
+   See the file header for why this block and the @media one below repeat
+   each other. */
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --jp-background: 216 18% 5%; /* #0B0D10 — ink ground */
-  --jp-foreground: 36.9 37.1% 93.1%; /* paper-warm off-white */
-  --jp-card: 214.3 14.3% 9.6%; /* #15181C — elevated card */
-  --jp-card-foreground: 36.9 37.1% 93.1%;
-  --jp-popover: 213.3 14.3% 12.4%;
-  --jp-popover-foreground: 36.9 37.1% 93.1%;
-  --jp-primary: var(--jp-gold);
-  --jp-primary-foreground: 34.7 51.4% 7.3%;
-  --jp-secondary: 213.3 14.3% 12.4%;
-  --jp-secondary-foreground: 36.9 37.1% 93.1%;
-  --jp-muted: 213 13% 14%;
-  --jp-muted-foreground: 31.8 7.8% 57.1%;
-  --jp-accent: 213 13% 15%;
-  --jp-accent-foreground: 36.9 37.1% 93.1%;
-  --jp-success: var(--jp-naira);
-  --jp-success-foreground: 36.9 37.1% 93.1%;
-  --jp-destructive: 10.4 51.6% 56.3%;
-  --jp-destructive-foreground: 36.9 37.1% 93.1%;
-  --jp-border: 213 13% 18%;
-  --jp-input: 213 13% 18%;
-  --jp-ring: var(--jp-gold);
+  --jp-background: 216 18.5% 5.3%; /* #0B0D10 */
+  --jp-foreground: 210 20% 96.1%; /* #F3F5F7 */
+  --jp-card: 217.5 16.7% 9.4%; /* #14171C */
+  --jp-card-foreground: 210 20% 96.1%;
+  --jp-popover: 217.5 16.7% 12%;
+  --jp-popover-foreground: 210 20% 96.1%;
 
-  --jp-sidebar: 213.3 14.3% 12.4%;
-  --jp-sidebar-foreground: 36.9 37.1% 93.1%;
-  --jp-sidebar-primary: var(--jp-gold);
-  --jp-sidebar-primary-foreground: 34.7 51.4% 7.3%;
-  --jp-sidebar-accent: 213 13% 15%;
-  --jp-sidebar-accent-foreground: 36.9 37.1% 93.1%;
-  --jp-sidebar-border: 213 13% 18%;
-  --jp-sidebar-ring: var(--jp-gold);
+  --jp-primary: 227.9 100% 67.8%; /* #5B7CFF — 4.94:1 as text on card */
+  /* Ink, not white: white on #5B7CFF is 3.64:1, which fails AA for a 16px
+     button label. Ink is 5.35:1 and is what the dark theme already did. */
+  --jp-primary-foreground: 216 18.5% 5.3%;
+  --jp-primary-hover: 228 100% 74%;
+  --jp-primary-pressed: 228 90% 61%;
+  --jp-primary-soft: 226.7 35.3% 20%;
 
-  --jp-gold: 36.5 65.3% 57.1%; /* #D9A14A — currency gold */
-  --jp-gold-light: 39 83.1% 69.8%; /* #F2C572 */
-  --jp-gold-dark: 33.3 52.1% 47.5%; /* #B8803A */
-  --jp-naira: 155.7 43.9% 42%; /* #3C9A74 — naira green */
-  --jp-naira-light: 156 39.1% 54.9%; /* #5FB995 */
+  --jp-secondary: 217 16% 14%;
+  --jp-secondary-foreground: 210 20% 96.1%;
+  --jp-muted: 217 16% 14%;
+  --jp-muted-foreground: 217.8 15.1% 64.9%; /* #98A2B3 — 6.97:1 on card */
+  --jp-accent: 216.9 15.7% 16.3%;
+  --jp-accent-foreground: 210 20% 96.1%;
+
+  --jp-success: 149.8 66% 51.6%; /* #32D583 — 9.39:1 on card */
+  --jp-success-foreground: 216 18.5% 5.3%;
+  --jp-success-soft: 161.3 39% 16.1%;
+  --jp-destructive: 3.9 86% 58%; /* #F04438 — 4.78:1 on card */
+  --jp-destructive-foreground: 0 0% 100%;
+  --jp-destructive-soft: 354.3 20.4% 20.2%;
+  --jp-warning: 34 94% 56%;
+  --jp-warning-soft: 38 34% 18%;
+
+  --jp-border: 216.9 15.7% 16.3%; /* #232830 */
+  --jp-input: 216.9 15.7% 16.3%;
+  --jp-ring: var(--jp-primary);
+
+  --jp-sidebar: 217.5 16.7% 12%;
+  --jp-sidebar-foreground: 210 20% 96.1%;
+  --jp-sidebar-primary: var(--jp-primary);
+  --jp-sidebar-primary-foreground: 216 18.5% 5.3%;
+  --jp-sidebar-accent: 216.9 15.7% 16.3%;
+  --jp-sidebar-accent-foreground: 210 20% 96.1%;
+  --jp-sidebar-border: 216.9 15.7% 16.3%;
+  --jp-sidebar-ring: var(--jp-primary);
+
+  --jp-gold: 42 92.8% 56.3%; /* #F7B928 — 10.2:1 on card */
+  --jp-gold-soft: 42.6 34.1% 17.8%;
+  --jp-gold-strong: 42 92.8% 56.3%;
+
+  --jp-icon-blue: 227.9 100% 67.8%;
+  --jp-icon-blue-soft: 226.7 35.3% 20%;
+  --jp-icon-green: 149.8 66% 51.6%;
+  --jp-icon-green-soft: 161.3 39% 16.1%;
+  --jp-icon-gold: 42 92.8% 56.3%;
+  --jp-icon-gold-soft: 42.6 34.1% 17.8%;
+  --jp-icon-violet: 249 93.4% 76.3%;
+  --jp-icon-violet-soft: 240 21.4% 22%;
+  --jp-icon-coral: 5 100% 71.6%;
+  --jp-icon-coral-soft: 354.3 20.4% 20.2%;
+  --jp-icon-teal: 180 66% 50.4%;
+  --jp-icon-teal-soft: 186.7 41.9% 16.9%;
+
+  --jp-shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.35);
+  --jp-shadow-float: 0 2px 6px rgb(0 0 0 / 0.45), 0 12px 32px rgb(0 0 0 / 0.5);
+  --jp-shadow-button: 0 1px 2px rgb(0 0 0 / 0.5), 0 2px 8px hsl(228 100% 68% / 0.25);
 }
 
 /* ── Semantic surfaces — DARK, system fallback ───────────────────────────
-   Fires only when no data-theme attribute says otherwise (="system") and the
-   OS itself prefers dark. Must be kept identical to the block above — see
-   the file header. */
+   Fires only when no data-theme says otherwise and the OS prefers dark.
+   Must be kept identical to the block above. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
 
-    --jp-background: 216 18% 5%;
-    --jp-foreground: 36.9 37.1% 93.1%;
-    --jp-card: 214.3 14.3% 9.6%;
-    --jp-card-foreground: 36.9 37.1% 93.1%;
-    --jp-popover: 213.3 14.3% 12.4%;
-    --jp-popover-foreground: 36.9 37.1% 93.1%;
-    --jp-primary: var(--jp-gold);
-    --jp-primary-foreground: 34.7 51.4% 7.3%;
-    --jp-secondary: 213.3 14.3% 12.4%;
-    --jp-secondary-foreground: 36.9 37.1% 93.1%;
-    --jp-muted: 213 13% 14%;
-    --jp-muted-foreground: 31.8 7.8% 57.1%;
-    --jp-accent: 213 13% 15%;
-    --jp-accent-foreground: 36.9 37.1% 93.1%;
-    --jp-success: var(--jp-naira);
-    --jp-success-foreground: 36.9 37.1% 93.1%;
-    --jp-destructive: 10.4 51.6% 56.3%;
-    --jp-destructive-foreground: 36.9 37.1% 93.1%;
-    --jp-border: 213 13% 18%;
-    --jp-input: 213 13% 18%;
-    --jp-ring: var(--jp-gold);
+    --jp-background: 216 18.5% 5.3%;
+    --jp-foreground: 210 20% 96.1%;
+    --jp-card: 217.5 16.7% 9.4%;
+    --jp-card-foreground: 210 20% 96.1%;
+    --jp-popover: 217.5 16.7% 12%;
+    --jp-popover-foreground: 210 20% 96.1%;
 
-    --jp-sidebar: 213.3 14.3% 12.4%;
-    --jp-sidebar-foreground: 36.9 37.1% 93.1%;
-    --jp-sidebar-primary: var(--jp-gold);
-    --jp-sidebar-primary-foreground: 34.7 51.4% 7.3%;
-    --jp-sidebar-accent: 213 13% 15%;
-    --jp-sidebar-accent-foreground: 36.9 37.1% 93.1%;
-    --jp-sidebar-border: 213 13% 18%;
-    --jp-sidebar-ring: var(--jp-gold);
+    --jp-primary: 227.9 100% 67.8%;
+    --jp-primary-foreground: 216 18.5% 5.3%;
+    --jp-primary-hover: 228 100% 74%;
+    --jp-primary-pressed: 228 90% 61%;
+    --jp-primary-soft: 226.7 35.3% 20%;
 
-    --jp-gold: 36.5 65.3% 57.1%;
-    --jp-gold-light: 39 83.1% 69.8%;
-    --jp-gold-dark: 33.3 52.1% 47.5%;
-    --jp-naira: 155.7 43.9% 42%;
-    --jp-naira-light: 156 39.1% 54.9%;
+    --jp-secondary: 217 16% 14%;
+    --jp-secondary-foreground: 210 20% 96.1%;
+    --jp-muted: 217 16% 14%;
+    --jp-muted-foreground: 217.8 15.1% 64.9%;
+    --jp-accent: 216.9 15.7% 16.3%;
+    --jp-accent-foreground: 210 20% 96.1%;
+
+    --jp-success: 149.8 66% 51.6%;
+    --jp-success-foreground: 216 18.5% 5.3%;
+    --jp-success-soft: 161.3 39% 16.1%;
+    --jp-destructive: 3.9 86% 58%;
+    --jp-destructive-foreground: 0 0% 100%;
+    --jp-destructive-soft: 354.3 20.4% 20.2%;
+    --jp-warning: 34 94% 56%;
+    --jp-warning-soft: 38 34% 18%;
+
+    --jp-border: 216.9 15.7% 16.3%;
+    --jp-input: 216.9 15.7% 16.3%;
+    --jp-ring: var(--jp-primary);
+
+    --jp-sidebar: 217.5 16.7% 12%;
+    --jp-sidebar-foreground: 210 20% 96.1%;
+    --jp-sidebar-primary: var(--jp-primary);
+    --jp-sidebar-primary-foreground: 216 18.5% 5.3%;
+    --jp-sidebar-accent: 216.9 15.7% 16.3%;
+    --jp-sidebar-accent-foreground: 210 20% 96.1%;
+    --jp-sidebar-border: 216.9 15.7% 16.3%;
+    --jp-sidebar-ring: var(--jp-primary);
+
+    --jp-gold: 42 92.8% 56.3%;
+    --jp-gold-soft: 42.6 34.1% 17.8%;
+    --jp-gold-strong: 42 92.8% 56.3%;
+
+    --jp-icon-blue: 227.9 100% 67.8%;
+    --jp-icon-blue-soft: 226.7 35.3% 20%;
+    --jp-icon-green: 149.8 66% 51.6%;
+    --jp-icon-green-soft: 161.3 39% 16.1%;
+    --jp-icon-gold: 42 92.8% 56.3%;
+    --jp-icon-gold-soft: 42.6 34.1% 17.8%;
+    --jp-icon-violet: 249 93.4% 76.3%;
+    --jp-icon-violet-soft: 240 21.4% 22%;
+    --jp-icon-coral: 5 100% 71.6%;
+    --jp-icon-coral-soft: 354.3 20.4% 20.2%;
+    --jp-icon-teal: 180 66% 50.4%;
+    --jp-icon-teal-soft: 186.7 41.9% 16.9%;
+
+    --jp-shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.35);
+    --jp-shadow-float: 0 2px 6px rgb(0 0 0 / 0.45), 0 12px 32px rgb(0 0 0 / 0.5);
+    --jp-shadow-button: 0 1px 2px rgb(0 0 0 / 0.5), 0 2px 8px hsl(228 100% 68% / 0.25);
   }
 }
+
 
 @theme inline {
   /* Semantic colors */
@@ -203,6 +270,9 @@
   --color-popover-foreground: hsl(var(--jp-popover-foreground));
   --color-primary: hsl(var(--jp-primary));
   --color-primary-foreground: hsl(var(--jp-primary-foreground));
+  --color-primary-hover: hsl(var(--jp-primary-hover));
+  --color-primary-pressed: hsl(var(--jp-primary-pressed));
+  --color-primary-soft: hsl(var(--jp-primary-soft));
   --color-secondary: hsl(var(--jp-secondary));
   --color-secondary-foreground: hsl(var(--jp-secondary-foreground));
   --color-muted: hsl(var(--jp-muted));
@@ -211,8 +281,12 @@
   --color-accent-foreground: hsl(var(--jp-accent-foreground));
   --color-success: hsl(var(--jp-success));
   --color-success-foreground: hsl(var(--jp-success-foreground));
+  --color-success-soft: hsl(var(--jp-success-soft));
   --color-destructive: hsl(var(--jp-destructive));
   --color-destructive-foreground: hsl(var(--jp-destructive-foreground));
+  --color-destructive-soft: hsl(var(--jp-destructive-soft));
+  --color-warning: hsl(var(--jp-warning));
+  --color-warning-soft: hsl(var(--jp-warning-soft));
   --color-border: hsl(var(--jp-border));
   --color-input: hsl(var(--jp-input));
   --color-ring: hsl(var(--jp-ring));
@@ -225,25 +299,39 @@
   --color-sidebar-accent-foreground: hsl(var(--jp-sidebar-accent-foreground));
   --color-sidebar-border: hsl(var(--jp-sidebar-border));
 
-  /* Raw brand ramp, carried from tailwind.config.ts's `fintech.*` block. The
-     semantic tokens above are what components should normally reach for;
-     these exist for the places that genuinely need a specific brand step
-     (gradients, the wallet-card washes, the mark's own gold).
+  /* Raw brand ramp. The semantic tokens above are what components should
+     normally reach for; these exist for the places that need a specific
+     brand step (gradients, the wallet-card washes, the mark's own gold).
 
-     gold/gold-light/gold-dark/naira/naira-light are wrapped in hsl(var(...))
-     rather than given as literal hexes, so a Tailwind utility like
-     `hover:bg-gold-light` keeps repainting when the theme changes instead of
-     having dark-theme's hex baked into the compiled stylesheet. ink/
-     ink-light/ink-raised stay literal hexes on purpose — see the file
-     header for why those three are never themed. */
+     Wrapped in hsl(var(...)) rather than given as literal hexes, so a
+     utility like `bg-gold-soft` keeps repainting on a theme change instead
+     of baking one theme's hex into the compiled stylesheet. ink/ink-light/
+     ink-raised stay literal — see the file header. */
   --color-gold: hsl(var(--jp-gold));
-  --color-gold-light: hsl(var(--jp-gold-light));
-  --color-gold-dark: hsl(var(--jp-gold-dark));
+  --color-gold-soft: hsl(var(--jp-gold-soft));
+  --color-gold-strong: hsl(var(--jp-gold-strong));
+
+  /* Service icon circles: soft ground, solid icon. */
+  --color-icon-blue: hsl(var(--jp-icon-blue));
+  --color-icon-blue-soft: hsl(var(--jp-icon-blue-soft));
+  --color-icon-green: hsl(var(--jp-icon-green));
+  --color-icon-green-soft: hsl(var(--jp-icon-green-soft));
+  --color-icon-gold: hsl(var(--jp-icon-gold));
+  --color-icon-gold-soft: hsl(var(--jp-icon-gold-soft));
+  --color-icon-violet: hsl(var(--jp-icon-violet));
+  --color-icon-violet-soft: hsl(var(--jp-icon-violet-soft));
+  --color-icon-coral: hsl(var(--jp-icon-coral));
+  --color-icon-coral-soft: hsl(var(--jp-icon-coral-soft));
+  --color-icon-teal: hsl(var(--jp-icon-teal));
+  --color-icon-teal-soft: hsl(var(--jp-icon-teal-soft));
+
+  /* Elevation */
+  --shadow-card: var(--jp-shadow-card);
+  --shadow-float: var(--jp-shadow-float);
+  --shadow-button: var(--jp-shadow-button);
   --color-ink: #0b0d10;
   --color-ink-light: #15181c;
   --color-ink-raised: #1b1f24;
-  --color-naira: hsl(var(--jp-naira));
-  --color-naira-light: hsl(var(--jp-naira-light));
 
   /* Typography — Fraunces (display/balances), Manrope (UI),
      IBM Plex Mono (data/addresses/amounts). Loaded via next/font in
@@ -287,7 +375,7 @@
   /* ── ONE focus indicator, never two ───────────────────────────────────────
      The pre-rebuild app combined a border colour change with an offset ring,
      which drew two visibly separate boxes around a focused input. The rule
-     here is: the focused element's border goes gold and gains a soft 1px ring
+     here is: the focused element's border goes primary and gains a soft 1px ring
      in the SAME place as the border (box-shadow inset-free, zero offset), and
      the UA outline is suppressed. Nothing adds a second outline.           */
   input,

@@ -88,7 +88,10 @@ export const dynamic = "force-dynamic";
 
 const INK = "#0b0d10";
 const PANEL = "#15181c";
-const GOLD = "#d9a14a";
+const BRAND = "#5b7cff";
+const MARK_GOLD = "#f7b928";
+const MARK_GREEN = "#32d583";
+const PENDING = "#f7b928";
 const TEXT = "#f3f5f7";
 const MUTED = "#9aa4b2";
 const BORDER = "#242a31";
@@ -113,7 +116,7 @@ const TABLE_FOR: Record<ActivitySource, "transactions" | "deposits" | "bill_paym
 function statusColour(status: string): string {
   if (status === "completed") return SUCCESS;
   if (status === "failed" || status === "refunded") return DANGER;
-  return GOLD;
+  return PENDING;
 }
 
 function statusLabel(status: string): string {
@@ -211,14 +214,14 @@ export async function GET(
               <rect width="64" height="64" rx="14" fill={PANEL} />
               <path
                 d="M40 17v20.5c0 5.8-4.6 10.5-10.3 10.5-4.4 0-8.2-2.8-9.7-6.8"
-                stroke={GOLD}
+                stroke={MARK_GOLD}
                 strokeWidth="6.5"
                 strokeLinecap="round"
                 fill="none"
               />
               <path
                 d="M29 26.5h18"
-                stroke={GOLD}
+                stroke={MARK_GREEN}
                 strokeWidth="5.5"
                 strokeLinecap="round"
                 fill="none"
@@ -343,7 +346,7 @@ export async function GET(
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 40, height: 3, background: GOLD, borderRadius: 2 }} />
+            <div style={{ width: 40, height: 3, background: BRAND, borderRadius: 2 }} />
             <span style={{ color: MUTED, fontSize: 20 }}>www.justpae.com</span>
           </div>
           <span style={{ color: MUTED, fontSize: 18 }}>

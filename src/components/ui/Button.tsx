@@ -7,20 +7,24 @@ type Size = "sm" | "md" | "lg";
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    "bg-primary text-primary-foreground hover:bg-gold-light disabled:bg-primary/40 disabled:text-primary-foreground/60",
+    "bg-primary text-primary-foreground shadow-button hover:bg-primary-hover active:bg-primary-pressed " +
+    "disabled:bg-primary/40 disabled:text-primary-foreground/60 disabled:shadow-none",
+  // Card, not the muted grey it used to be: a secondary button sits ON the
+  // page ground, and a grey fill on a grey ground is a button-shaped hole.
   secondary:
-    "bg-secondary text-secondary-foreground border border-border hover:bg-accent disabled:opacity-50",
-  ghost: "text-foreground hover:bg-accent disabled:opacity-50",
+    "bg-card text-foreground border border-border hover:bg-accent active:bg-accent disabled:opacity-50",
+  ghost: "text-primary hover:bg-primary-soft active:bg-primary-soft disabled:opacity-50",
   danger:
-    "bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50",
+    "bg-destructive text-destructive-foreground hover:bg-destructive/90 active:bg-destructive/80 disabled:opacity-50",
 };
 
+// Pills. 44px minimum touch target on every size — anything smaller is a miss
+// on a phone however neat it looks on a desktop — and 48px for the default,
+// which is the one a form's main action uses.
 const SIZES: Record<Size, string> = {
-  // 44px minimum touch target on every size — anything smaller is a miss on a
-  // phone however neat it looks on a desktop.
-  sm: "h-11 px-3 text-sm rounded-md",
-  md: "h-12 px-4 text-sm rounded-lg",
-  lg: "h-14 px-5 text-base rounded-lg",
+  sm: "h-11 px-4 text-sm rounded-full",
+  md: "h-12 px-5 text-sm rounded-full",
+  lg: "h-12 px-6 text-base rounded-full",
 };
 
 export function Spinner({ className = "" }: { className?: string }) {
@@ -66,7 +70,7 @@ export function Button({
       {...props}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={`inline-flex items-center justify-center gap-2 font-medium disabled:cursor-not-allowed ${
+      className={`inline-flex items-center justify-center gap-2 font-semibold transition-colors disabled:cursor-not-allowed ${
         VARIANTS[variant]
       } ${SIZES[size]} ${fullWidth ? "w-full" : ""} ${className}`}
     >

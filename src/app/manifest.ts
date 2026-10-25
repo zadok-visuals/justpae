@@ -8,10 +8,9 @@ import type { MetadataRoute } from "next";
  * balances, and "/" redirects a signed-in session there anyway — so pointing
  * at "/" just adds a redirect to every cold start.
  *
- * display: standalone, with the theme and background both set to the ink the
- * app actually paints. background_color is what fills the splash screen before
- * the first paint; left unset it is white, which means a white flash into a
- * dark app on every launch.
+ * display: standalone. background_color is what fills the splash screen before
+ * the first paint, so it is the app's own light ground; theme_color is the
+ * brand blue the OS tints its chrome with.
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -20,8 +19,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Hold, convert and send money across borders.",
     start_url: "/home",
     display: "standalone",
-    background_color: "#0b0d10",
-    theme_color: "#0b0d10",
+    background_color: "#f6f7f9",
+    theme_color: "#2f54eb",
     icons: [
       {
         src: "/icon-192.png",
