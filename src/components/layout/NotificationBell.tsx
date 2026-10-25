@@ -96,7 +96,7 @@ export function NotificationBell({ initialUnreadCount }: { initialUnreadCount: n
         onClick={handleToggle}
         aria-expanded={open}
         aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
-        // GROUP 5c — see HEADER_ICON_BUTTON_CLASS. Gold, 44px, with a pressed
+        // GROUP 5c — see HEADER_ICON_BUTTON_CLASS. Blue, 44px, with a pressed
         // state: this one opens a dropdown rather than navigating, so the
         // acknowledgement on press is the only feedback before the panel
         // paints.
@@ -120,7 +120,7 @@ export function NotificationBell({ initialUnreadCount }: { initialUnreadCount: n
         <div
           role="dialog"
           aria-label="Notifications"
-          className="fixed inset-x-4 top-16 z-50 max-h-[70dvh] overflow-y-auto rounded-xl border border-border bg-card shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80"
+          className="fixed inset-x-4 top-16 z-50 max-h-[70dvh] overflow-y-auto rounded-xl border border-border bg-card sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80"
         >
           <div className="border-b border-border px-4 py-3">
             <h2 className="text-sm font-semibold text-foreground">Notifications</h2>

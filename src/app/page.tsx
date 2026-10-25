@@ -152,9 +152,8 @@ export default function LandingPage() {
         {/* ── Hero ──────────────────────────────────────────────────────── */}
         <section className="mx-auto max-w-5xl px-4 pb-12 pt-12 sm:px-6 sm:pb-16 sm:pt-20">
           <div className="max-w-2xl">
-            {/* The gold rail echoes the mark's own crossbar. Decoration that
-                comes from the logo rather than from a stock gradient. */}
-            <div className="mb-6 h-px w-16 bg-gradient-to-r from-gold to-transparent" />
+            {/* A flat rail in the brand blue — no gradient, no gold. */}
+            <div className="mb-6 h-px w-16 bg-primary" />
 
             <h1 className="font-display text-4xl font-semibold leading-[1.1] tracking-tight text-foreground sm:text-5xl">
               Money that moves between{" "}

@@ -57,17 +57,17 @@ export interface EmailOptions {
 }
 
 const LIGHT = {
-  outerBg: "#f6f7f9",
+  outerBg: "#ffffff",
   cardBg: "#ffffff",
-  cardBorder: "#eaecf0",
+  cardBorder: "#e6e8ec",
   headerBg: "#0b0d10",
-  heading: "#0b0d10",
-  body: "#3a3d42",
-  muted: "#667085",
-  panelBg: "#f6f7f9",
-  panelBorder: "#eaecf0",
-  panelText: "#0b0d10",
-  footerText: "#667085",
+  heading: "#0f1729",
+  body: "#0f1729",
+  muted: "#6b7a90",
+  panelBg: "#f5f6f8",
+  panelBorder: "#e6e8ec",
+  panelText: "#0f1729",
+  footerText: "#6b7a90",
 };
 
 // justpae's own dark theme, reused as the email's dark-mode palette — for the
@@ -76,16 +76,16 @@ const LIGHT = {
 // design, which is why that one is the one built to stand on its own).
 const DARK = {
   outerBg: "#0b0d10",
-  cardBg: "#15181c",
-  cardBorder: "#2a2f36",
+  cardBg: "#14171c",
+  cardBorder: "#232830",
   headerBg: "#0b0d10",
   heading: "#f3f5f7",
-  body: "#c7cad0",
-  muted: "#9aa0a8",
-  panelBg: "#1b1f24",
-  panelBorder: "#2a2f36",
+  body: "#f3f5f7",
+  muted: "#98a2b3",
+  panelBg: "#14171c",
+  panelBorder: "#232830",
   panelText: "#f3f5f7",
-  footerText: "#7d848d",
+  footerText: "#98a2b3",
 };
 
 // Royal blue, with white on it: 5.85:1, and the same button a customer sees

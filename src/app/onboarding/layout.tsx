@@ -26,7 +26,7 @@ export default async function OnboardingLayout({ children }: { children: React.R
         {/* GROUP 5c. This was muted grey text in the top-right corner of a
             form — which is where a user looks when they want out, and the one
             place in this layout where "is that a button?" must not be a
-            question. The brand gold, a 44px target, and hover/pressed/focus
+            question. The brand blue, a 44px target, and hover/pressed/focus
             states that match every other escape control in the product. It
             stays a real <Link>, because unlike Back it has one fixed
             destination and middle-clicking it should work. */}

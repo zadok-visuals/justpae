@@ -51,7 +51,7 @@ export function Switch({
           }`}
         >
           <span
-            className={`absolute left-0.5 top-0.5 size-6 rounded-full bg-white shadow-sm transition-transform ${
+            className={`absolute left-0.5 top-0.5 size-6 rounded-full bg-white transition-transform ${
               checked ? "translate-x-5" : "translate-x-0"
             }`}
           />

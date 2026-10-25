@@ -24,7 +24,7 @@ export default function ServicesPage() {
             <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               {group.category}
             </h2>
-            <ul className="grid grid-cols-4 gap-1 rounded-xl border border-border bg-card p-3 shadow-card sm:grid-cols-6">
+            <ul className="grid grid-cols-4 gap-1 rounded-xl border border-border bg-card p-3 sm:grid-cols-6">
               {group.services.map((service) => (
                 <li key={service.key}>
                   <ServiceCircle

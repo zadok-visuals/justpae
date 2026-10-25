@@ -79,7 +79,7 @@ export function PublicSupportButton() {
           // the window. bottom-full puts its bottom edge on the button's top
           // edge, which is where a panel opened from a bottom-corner button
           // belongs.
-          className="fixed inset-x-4 bottom-20 rounded-xl border border-border bg-card p-4 shadow-lg sm:absolute sm:inset-x-auto sm:bottom-full sm:right-0 sm:mb-2 sm:w-80"
+          className="fixed inset-x-4 bottom-20 rounded-xl border border-border bg-card p-4 sm:absolute sm:inset-x-auto sm:bottom-full sm:right-0 sm:mb-2 sm:w-80"
         >
           <p className="text-sm font-semibold text-foreground">Need a hand?</p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -109,7 +109,7 @@ export function PublicSupportButton() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={open ? "Close support options" : "Contact support"}
-        className="flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary-hover active:bg-primary-pressed"
+        className="flex size-14 items-center justify-center rounded-full bg-primary-fill text-primary-foreground hover:bg-primary-hover active:bg-primary-pressed"
       >
         {open ? (
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="size-6">

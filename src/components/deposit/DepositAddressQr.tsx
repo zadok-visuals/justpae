@@ -38,7 +38,7 @@ import { useEffect, useState } from "react";
  * ──────────────────────────────────────────────────────────────────────────
  * DARK MODULES ON A WHITE TILE, IN A DARK-THEMED APP
  *
- * This is the mistake worth naming. justpae is dark ink and gold, so the
+ * This is the mistake worth naming. justpae is dark ink and blue, so the
  * instinct is to generate the QR to match — light modules on the dark
  * background, no white box interrupting the design. Do not. Camera-based
  * scanners overwhelmingly expect dark-on-light, and an inverted code is read

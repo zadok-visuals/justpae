@@ -63,7 +63,7 @@ export function TotalBalanceCard({
   }
 
   return (
-    <section className="rounded-2xl border border-border bg-card px-4 py-5 text-center shadow-card">
+    <section className="rounded-2xl border border-border bg-card px-4 py-5 text-center">
       <div className="flex items-center justify-center gap-2">
         <span className="inline-flex items-center rounded-full bg-primary-soft px-3 py-1 text-xs font-medium text-primary">
           Total balance
@@ -87,7 +87,7 @@ export function TotalBalanceCard({
                 onClick={() => choose(value)}
                 className={`min-h-7 rounded-full px-2.5 text-xs font-medium transition-colors ${
                   display === value
-                    ? "bg-card text-foreground shadow-sm"
+                    ? "bg-card text-foreground border border-border"
                     : "text-muted-foreground"
                 }`}
               >

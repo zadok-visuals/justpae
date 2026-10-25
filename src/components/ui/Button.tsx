@@ -7,10 +7,10 @@ type Size = "sm" | "md" | "lg";
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    "bg-primary text-primary-foreground shadow-button hover:bg-primary-hover active:bg-primary-pressed " +
-    "disabled:bg-primary/40 disabled:text-primary-foreground/60 disabled:shadow-none",
-  // Card, not the muted grey it used to be: a secondary button sits ON the
-  // page ground, and a grey fill on a grey ground is a button-shaped hole.
+    "bg-primary-fill text-primary-foreground hover:bg-primary-hover active:bg-primary-pressed " +
+    "disabled:bg-primary-fill/40 disabled:text-primary-foreground/60",
+  // Light: the page ground with a border. Dark: the subtle surface, which
+  // IS --jp-card there, so one pair of classes covers both.
   secondary:
     "bg-card text-foreground border border-border hover:bg-accent active:bg-accent disabled:opacity-50",
   ghost: "text-primary hover:bg-primary-soft active:bg-primary-soft disabled:opacity-50",

@@ -30,9 +30,9 @@ import Link from "next/link";
  * side of it, and the pair is one habit rather than two decisions.
  *
  * ──────────────────────────────────────────────────────────────────────────
- * THE GOLD IS THE BRAND COLOUR AND ALSO THE AFFORDANCE
+ * THE BLUE IS THE BRAND COLOUR AND ALSO THE AFFORDANCE
  *
- * `text-primary` is justpae's gold. Underlined as well as coloured, because a
+ * `text-primary` is justpae's royal blue. Underlined as well as coloured, because a
  * colour-blind reader on a dark ink background needs the second signal, and
  * because a line of muted grey text with two slightly-less-muted words in it
  * does not read as containing links at all — which is how a legal notice ends

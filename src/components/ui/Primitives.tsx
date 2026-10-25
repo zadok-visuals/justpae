@@ -14,6 +14,7 @@ export function Card({
   as?: "div" | "section" | "article";
 }) {
   return (
+    // rounded-xl is 16px here: --radius-xl is --jp-radius + 4px.
     <As className={`rounded-xl border border-border bg-card p-4 ${className}`}>{children}</As>
   );
 }
@@ -27,7 +28,8 @@ export function SectionHeader({
 }) {
   return (
     <div className="mb-3 flex items-baseline justify-between gap-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+      {/* The section label: uppercase, 12px, Medium, 0.06em, secondary. */}
+      <h2 className="text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground">
         {title}
       </h2>
       {action && (
@@ -49,11 +51,11 @@ export function SectionHeader({
 type StatusTone = "pending" | "success" | "failed" | "neutral";
 
 const STATUS_TONES: Record<StatusTone, string> = {
-  // Pending is amber, not the brand blue: blue now means "this is the app
-  // talking to you", and a pending chip is a state, not a brand moment.
-  pending: "bg-warning/15 text-warning",
-  success: "bg-success/15 text-success",
-  failed: "bg-destructive/15 text-destructive",
+  // Orange, never yellow, and never the brand blue: blue means "this is the
+  // app talking to you", and a pending chip is a state, not a brand moment.
+  pending: "bg-warning-soft text-warning",
+  success: "bg-success-soft text-success",
+  failed: "bg-destructive-soft text-destructive",
   neutral: "bg-accent text-muted-foreground",
 };
 

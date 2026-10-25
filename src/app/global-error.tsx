@@ -11,8 +11,8 @@ import { useEffect } from "react";
  * and the font links from that layout are not guaranteed to be present. A
  * Tailwind class or a `var(--color-primary)` here would silently render as
  * nothing on exactly the screen that must not be broken. The justpae palette
- * is therefore written out as literals: ink #0b0d10, blue #5b7cff, mark gold
- * #f7b928, paper #f3f5f7.
+ * is therefore written out as literals: ink #0b0d10, brand blue #5b7cff,
+ * paper #f3f5f7.
  *
  * This is also why it is deliberately plain. It has one job — say the service
  * is still there, and offer one button.
@@ -59,7 +59,7 @@ export default function GlobalError({
             <rect width="32" height="32" rx="9" fill="#15181c" />
             <path
               d="M20 8.5v10.25c0 2.9-2.3 5.25-5.15 5.25-2.2 0-4.1-1.4-4.85-3.4"
-              stroke="#f7b928"
+              stroke="#5b7cff"
               strokeWidth="2.6"
               strokeLinecap="round"
             />

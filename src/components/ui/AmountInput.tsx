@@ -95,7 +95,7 @@ export function AmountInput({
       {/* min-h-14 instead of vertical padding: padding would be dead space
           the input can't stretch into, and this is the field people tap most
           often in the whole app. */}
-      <div className="jp-field flex min-h-14 items-center gap-2 rounded-lg border border-input bg-secondary px-3">
+      <div className="jp-field flex min-h-14 items-center gap-2 rounded-lg border border-transparent bg-secondary px-3">
         {/* The ISO code as the prefix, never a symbol. */}
         <span className="shrink-0 text-base font-medium text-muted-foreground">{meta.code}</span>
 

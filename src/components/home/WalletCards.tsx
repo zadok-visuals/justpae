@@ -22,16 +22,16 @@ import type { Currency, Wallet } from "@/lib/types/database";
  * by colour, before the label is read.
  */
 
-// Drawn from the service-icon palette, so a wallet card and a service circle
-// for the same idea are the same colour. USDT stays neutral: it is the one
-// balance that is not a national currency.
+// Drawn from the tile palette, so a wallet card and a service circle for the
+// same idea are the same colour. FLAT tints, not gradients. USDT stays
+// neutral: it is the one balance that is not a national currency.
 const WASHES: Record<Currency, string> = {
-  USD: "from-icon-blue/20 to-card",
-  NGN: "from-icon-green/20 to-card",
-  CNY: "from-icon-coral/20 to-card",
-  USDT: "from-muted to-card",
-  KES: "from-icon-teal/20 to-card",
-  GHS: "from-icon-gold/20 to-card",
+  USD: "bg-icon-blue-soft",
+  NGN: "bg-icon-green-soft",
+  CNY: "bg-icon-coral-soft",
+  USDT: "bg-muted",
+  KES: "bg-icon-teal-soft",
+  GHS: "bg-icon-sky-soft",
 };
 
 /**
@@ -72,7 +72,7 @@ function WalletCard({ wallet }: { wallet: Wallet }) {
   // 46% of the rail on a phone: two cards fully visible with a sliver of the
   // third showing, which is what tells anyone the row continues. A fixed
   // 15rem showed one and a half and read as a layout bug.
-  const className = `snap-item flex w-[46%] shrink-0 flex-col justify-between gap-4 rounded-xl border border-border bg-gradient-to-br p-3 shadow-card sm:w-auto sm:gap-5 sm:p-4 ${
+  const className = `snap-item flex w-[46%] shrink-0 flex-col justify-between gap-4 rounded-xl border border-border p-3 sm:w-auto sm:gap-5 sm:p-4 ${
     WASHES[wallet.currency]
   }`;
 

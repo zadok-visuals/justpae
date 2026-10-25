@@ -153,7 +153,7 @@ export function BottomTabBar() {
       // safe-area padding so the bar itself can be a plain rounded box.
       className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:hidden"
     >
-      <ul className="flex items-stretch rounded-2xl border border-border bg-card/95 shadow-float backdrop-blur-md">
+      <ul className="flex items-stretch rounded-2xl border border-border bg-card/95 shadow-nav backdrop-blur-md">
         {TABS.map(({ href, label, Icon }) => {
           const active = isActive(pathname, href);
           return (
@@ -243,7 +243,7 @@ function SupportLink({ unread }: { unread: number }) {
       aria-label={unread > 0 ? `Support, ${unread} unread` : "Support"}
       // GROUP 5c. The two corner icon buttons are what somebody reaches for
       // when something has gone wrong, and they were muted grey with a hover
-      // that only tinted the background. Gold, 44px, pressed state included.
+      // that only tinted the background. Blue, 44px, pressed state included.
       className={HEADER_ICON_BUTTON_CLASS}
     >
       <SupportIcon className="size-5" />

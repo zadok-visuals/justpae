@@ -70,7 +70,7 @@ export function ThemeToggle({ initialPreference }: { initialPreference: ThemePre
               onClick={() => choose(option.value)}
               className={`min-h-9 rounded-md text-sm font-medium transition-colors ${
                 selected
-                  ? "bg-card text-foreground shadow-sm"
+                  ? "bg-card text-foreground border border-border"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >

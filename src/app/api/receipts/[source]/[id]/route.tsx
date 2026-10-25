@@ -88,17 +88,19 @@ export const runtime = "nodejs";
 // completing, a withdrawal failing). Never cached.
 export const dynamic = "force-dynamic";
 
-const INK = "#0b0d10";
-const PANEL = "#15181c";
+// The dark theme's tokens, as literals — see the Satori note above. No gold:
+// the mark's descender is the brand blue and "pending" is orange.
+const INK = "#0b0d10"; /* background */
+const PANEL = "#14171c"; /* subtle surface */
 const BRAND = "#5b7cff";
-const MARK_GOLD = "#f7b928";
+const MARK_BLUE = "#5b7cff";
 const MARK_GREEN = "#32d583";
-const PENDING = "#f7b928";
+const PENDING = "#fb923c"; /* warning */
 const TEXT = "#f3f5f7";
-const MUTED = "#9aa4b2";
-const BORDER = "#242a31";
-const SUCCESS = "#4ade80";
-const DANGER = "#f87171";
+const MUTED = "#98a2b3"; /* secondary text */
+const BORDER = "#232830";
+const SUCCESS = "#32d583";
+const DANGER = "#f97066";
 
 const WIDTH = 1000;
 
@@ -214,7 +216,7 @@ export async function GET(
               <rect width="64" height="64" rx="14" fill={PANEL} />
               <path
                 d="M40 17v20.5c0 5.8-4.6 10.5-10.3 10.5-4.4 0-8.2-2.8-9.7-6.8"
-                stroke={MARK_GOLD}
+                stroke={MARK_BLUE}
                 strokeWidth="6.5"
                 strokeLinecap="round"
                 fill="none"

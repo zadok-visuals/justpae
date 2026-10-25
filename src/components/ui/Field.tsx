@@ -40,8 +40,10 @@ export function FieldError({ children }: { children?: string | null }) {
   );
 }
 
+// Subtle-surface fill with NO border at rest; the focus ring in globals.css
+// (.jp-field:focus-within) is the only outline this ever draws.
 const FIELD_SHELL =
-  "jp-field flex items-center gap-2 rounded-lg border border-input bg-secondary px-3";
+  "jp-field flex items-center gap-2 rounded-lg border border-transparent bg-secondary px-3";
 
 interface TextFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;

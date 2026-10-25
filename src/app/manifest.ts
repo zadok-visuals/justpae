@@ -19,7 +19,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Hold, convert and send money across borders.",
     start_url: "/home",
     display: "standalone",
-    background_color: "#f6f7f9",
+    background_color: "#ffffff",
     theme_color: "#2f54eb",
     icons: [
       {

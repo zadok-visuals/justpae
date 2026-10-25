@@ -13,7 +13,7 @@ export function QuickServicesCard() {
   const services = homeQuickServices();
 
   return (
-    <section className="rounded-xl border border-border bg-card p-3 shadow-card">
+    <section className="rounded-xl border border-border bg-card p-3">
       <div className="mb-1 flex items-center justify-between gap-3 px-1">
         <h2 className="text-sm font-semibold text-foreground">Quick services</h2>
         <Link

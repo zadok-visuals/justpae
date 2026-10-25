@@ -24,7 +24,7 @@ export const alt = "justpae — hold, convert and send money across borders";
 
 const INK = "#0b0d10";
 const BRAND = "#5b7cff";
-const MARK_GOLD = "#f7b928";
+const MARK_BLUE = "#5b7cff";
 const MARK_GREEN = "#32d583";
 const MUTED = "#9aa4b2";
 
@@ -47,7 +47,7 @@ export default function OpengraphImage() {
             <rect width="64" height="64" rx="14" fill="#15181c" />
             <path
               d="M40 17v20.5c0 5.8-4.6 10.5-10.3 10.5-4.4 0-8.2-2.8-9.7-6.8"
-              stroke={MARK_GOLD}
+              stroke={MARK_BLUE}
               strokeWidth="6.5"
               strokeLinecap="round"
               fill="none"

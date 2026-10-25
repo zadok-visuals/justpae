@@ -12,7 +12,7 @@ import { isServiceLive } from "../services.ts";
  * live in one place and missing from the other.
  */
 
-export type ServiceTone = "blue" | "green" | "gold" | "violet" | "coral" | "teal";
+export type ServiceTone = "blue" | "green" | "sky" | "violet" | "coral" | "teal";
 
 export type ServiceCategory = "Bills and utilities" | "Money" | "Travel";
 
@@ -30,7 +30,7 @@ export interface ServiceEntry {
 export const TONE_CLASS: Record<ServiceTone, string> = {
   blue: "bg-icon-blue-soft text-icon-blue",
   green: "bg-icon-green-soft text-icon-green",
-  gold: "bg-icon-gold-soft text-icon-gold",
+  sky: "bg-icon-sky-soft text-icon-sky",
   violet: "bg-icon-violet-soft text-icon-violet",
   coral: "bg-icon-coral-soft text-icon-coral",
   teal: "bg-icon-teal-soft text-icon-teal",
@@ -41,7 +41,7 @@ export function serviceCatalogue(): ServiceEntry[] {
   return [
     { key: "airtime", label: "Airtime", href: "/bills/airtime", tone: "blue", category: "Bills and utilities", live: bills },
     { key: "data", label: "Data", href: "/bills/data", tone: "violet", category: "Bills and utilities", live: bills },
-    { key: "electricity", label: "Electricity", href: "/bills/electricity", tone: "gold", category: "Bills and utilities", live: bills },
+    { key: "electricity", label: "Electricity", href: "/bills/electricity", tone: "sky", category: "Bills and utilities", live: bills },
     { key: "cable_tv", label: "Cable TV", href: "/bills/cable_tv", tone: "coral", category: "Bills and utilities", live: bills },
     { key: "water", label: "Water", href: "/bills/water", tone: "teal", category: "Bills and utilities", live: bills },
     { key: "education", label: "Education", href: "/bills/education", tone: "green", category: "Bills and utilities", live: bills },
@@ -52,7 +52,7 @@ export function serviceCatalogue(): ServiceEntry[] {
     { key: "pay_to_china", label: "Pay to China", href: "/pay-to-china", tone: "coral", category: "Money", live: true },
     { key: "receive", label: "Receive USD", href: "/receive", tone: "teal", category: "Money", live: isServiceLive("receiveUsd") },
 
-    { key: "flights", label: "Flights", href: "/flights", tone: "gold", category: "Travel", live: isServiceLive("flights") },
+    { key: "flights", label: "Flights", href: "/flights", tone: "sky", category: "Travel", live: isServiceLive("flights") },
   ];
 }
 
