@@ -12,7 +12,7 @@ import { BackButton } from "@/components/ui/BackButton";
  * and the two were tangled together: "a money form read at 1440px should not
  * stretch a label to one edge and its value to the other". True, and it is
  * why the FORM is still capped — a `<DetailRow>` with "Deposit fee" at x=0
- * and "−₦100" at x=1400 is not a row anyone can read as a pair.
+ * and "−NGN 100" at x=1400 is not a row anyone can read as a pair.
  *
  * But it then applied that cap to the whole PAGE, which is a different thing.
  * /home at 1440px put five wallet cards, four quick actions, a rate strip and

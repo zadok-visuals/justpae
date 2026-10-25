@@ -97,14 +97,13 @@ const BRAND_TEXT = "#ffffff";
 // double-quoted HTML style="..." attribute, and a bare " here would close
 // that attribute early and truncate everything after it — which is exactly
 // what happened the first time this used double quotes.
-const FONT = `-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif`;
+// Clash Grotesk first — it is the product's only family, and a mail client
+// that happens to have it installed should use it. Most will not, and no web
+// font can be linked here (see the file-level note), so a system sans stack
+// carries the rest. NO serif anywhere, including the heading, which used to
+// have a Georgia stack of its own.
+const FONT = `'Clash Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif`;
 const MONO = `'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace`;
-// The heading only. A web font (the app's own Fraunces) isn't an option here
-// — no linked stylesheet, see the file-level note — so this is a system
-// serif stack instead, close enough to carry the same editorial weight the
-// app's display type carries on screen, everywhere from macOS Mail through
-// to Outlook's Times New Roman fallback.
-const SERIF = `Georgia,Cambria,'Times New Roman',Times,serif`;
 
 /** Set once, from a Vercel env var, and omitted from the footer entirely
  *  when unset — see README.md in supabase/email-templates for why this
@@ -228,7 +227,7 @@ export function renderEmail(options: EmailOptions): string {
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
                 <td style="padding:28px 28px 0 28px;">
-                  <h1 class="email-heading" style="margin:0;font-family:${SERIF};font-size:26px;font-weight:600;color:${LIGHT.heading};">${heading}</h1>
+                  <h1 class="email-heading" style="margin:0;font-family:${FONT};font-size:26px;font-weight:600;color:${LIGHT.heading};">${heading}</h1>
                   ${paragraphs(bodyParagraphs, LIGHT.body, "email-body")}
                 </td>
               </tr>

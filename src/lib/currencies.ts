@@ -19,7 +19,12 @@ import type { Currency } from "@/lib/types/database";
 export interface CurrencyMeta {
   code: Currency;
   label: string;
-  symbol: string;
+  /**
+   * NO `symbol` FIELD, DELIBERATELY. Money is displayed as the ISO code
+   * everywhere in this product — "NGN 5,000.00", never "₦5,000.00". The field
+   * is gone rather than merely unused so a new screen cannot reintroduce a
+   * symbol by reaching for it.
+   */
   flag: string;
   /** Minor units a balance is displayed with. */
   decimals: number;
@@ -41,19 +46,21 @@ export interface CurrencyMeta {
 }
 
 export const CURRENCIES: CurrencyMeta[] = [
-  { code: "NGN", label: "Nigerian Naira", symbol: "₦", flag: "🇳🇬", decimals: 2, kind: "fiat", country: "NG" },
+  { code: "NGN", label: "Nigerian Naira", flag: "🇳🇬", decimals: 2, kind: "fiat", country: "NG" },
   // Deliberately NO `country`. A `country` here means "signing up from there
   // provisions this wallet and bills can be paid in it" (see
   // LOCAL_WALLET_COUNTRIES, derived from this field) — and neither is true of
   // CNY. Every user gets a CNY wallet regardless of where they are, because
   // Pay to China is offered to all of them.
-  { code: "CNY", label: "Chinese Yuan", symbol: "¥", flag: "🇨🇳", decimals: 2, kind: "synthetic" },
-  { code: "USDT", label: "Tether USD", symbol: "₮", flag: "₮", decimals: 2, kind: "crypto" },
-  { code: "KES", label: "Kenyan Shilling", symbol: "KSh", flag: "🇰🇪", decimals: 2, kind: "fiat", country: "KE" },
+  { code: "CNY", label: "Chinese Yuan", flag: "🇨🇳", decimals: 2, kind: "synthetic" },
+  // A coin, not "₮": USDT has no country flag, and the symbol it used to
+  // borrow is exactly what this product no longer prints anywhere.
+  { code: "USDT", label: "Tether USD", flag: "🪙", decimals: 2, kind: "crypto" },
+  { code: "KES", label: "Kenyan Shilling", flag: "🇰🇪", decimals: 2, kind: "fiat", country: "KE" },
   // GHS and USD are both under maintenance (src/lib/services.ts) — unusable
   // options belong at the bottom of every list, not the middle or the front.
-  { code: "GHS", label: "Ghanaian Cedi", symbol: "₵", flag: "🇬🇭", decimals: 2, kind: "fiat", country: "GH" },
-  { code: "USD", label: "US Dollar", symbol: "$", flag: "🇺🇸", decimals: 2, kind: "fiat" },
+  { code: "GHS", label: "Ghanaian Cedi", flag: "🇬🇭", decimals: 2, kind: "fiat", country: "GH" },
+  { code: "USD", label: "US Dollar", flag: "🇺🇸", decimals: 2, kind: "fiat" },
 ];
 
 export const CURRENCY_CODES: Currency[] = CURRENCIES.map((c) => c.code);
@@ -76,18 +83,38 @@ export function localCurrencyForCountry(country: string | null | undefined): Cur
   return CURRENCIES.find((c) => c.country === country)?.code ?? null;
 }
 
+/**
+ * The ONE money string in this product: the ISO code, one space, the number.
+ * "NGN 5,000.00", "USDT 10.00", "CNY 200.00". No currency symbol appears
+ * anywhere — see the note on CurrencyMeta.
+ */
 export function formatAmount(currency: Currency, amount: number): string {
   const meta = currencyMeta(currency);
-  return `${meta.symbol}${amount.toLocaleString("en-US", {
-    minimumFractionDigits: meta.decimals,
-    maximumFractionDigits: meta.decimals,
-  })}`;
+  return `${meta.code} ${formatNumber(amount, meta.decimals)}`;
 }
 
-/** Signed, for transaction rows: "−₦5,000.00" / "+₦5,000.00". */
+/** Signed, for transaction rows: "−NGN 5,000.00" / "+NGN 5,000.00". */
 export function formatSignedAmount(currency: Currency, amount: number, direction: "in" | "out"): string {
   const sign = direction === "in" ? "+" : "−";
   return `${sign}${formatAmount(currency, Math.abs(amount))}`;
+}
+
+/**
+ * formatAmount, taken apart for the <Amount> component — which sets the code
+ * and the decimals in their own sizes and weights. Kept here, beside
+ * formatAmount, so the two can never disagree about grouping or decimals.
+ *
+ * UNSIGNED: the component draws its own "+" or "−" at the whole number's
+ * size, so a minus folded into `whole` here would render at the wrong size
+ * and in the wrong place.
+ */
+export function splitAmount(
+  currency: Currency,
+  amount: number,
+): { code: Currency; whole: string; decimals: string } {
+  const meta = currencyMeta(currency);
+  const [whole, decimals = ""] = formatNumber(Math.abs(amount), meta.decimals).split(".");
+  return { code: meta.code, whole, decimals };
 }
 
 /** Bare number with thousands separators, no symbol — for inputs and rates. */
@@ -99,14 +126,14 @@ export function formatNumber(amount: number, decimals = 2): string {
 }
 
 /**
- * Human rate line, e.g. "1 USDT = ₦1,364.26". Rates throughout this codebase
+ * Human rate line, e.g. "1 USDT = NGN 1,392.01". Rates throughout this codebase
  * are always expressed as QUOTE per 1 BASE, matching how the provider reports
  * them — keeping one direction everywhere is what makes the markup maths and
  * the PNL report auditable.
  */
 export function formatRate(base: Currency, quote: Currency, rate: number): string {
   const decimals = rate < 1 ? 6 : 2;
-  return `1 ${base} = ${currencyMeta(quote).symbol}${formatNumber(rate, decimals)}`;
+  return `1 ${base} = ${currencyMeta(quote).code} ${formatNumber(rate, decimals)}`;
 }
 
 /**

@@ -59,7 +59,7 @@ export interface PayToChinaEstimate {
 }
 
 /**
- * The live "about ¥X to your recipient" figure.
+ * The live "about CNY X to your recipient" figure.
  *
  * Priced on the server on every change, debounced by the form, because the
  * yuan rate depends on the SIZE of the order (the ladder in

@@ -96,7 +96,8 @@ export function AmountInput({
           the input can't stretch into, and this is the field people tap most
           often in the whole app. */}
       <div className="jp-field flex min-h-14 items-center gap-2 rounded-lg border border-input bg-secondary px-3">
-        <span className="shrink-0 font-mono text-base text-muted-foreground">{meta.symbol}</span>
+        {/* The ISO code as the prefix, never a symbol. */}
+        <span className="shrink-0 text-base font-medium text-muted-foreground">{meta.code}</span>
 
         <input
           id={id}

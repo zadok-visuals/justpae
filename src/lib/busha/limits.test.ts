@@ -11,7 +11,7 @@ import {
  * THE PROPERTY THAT MATTERS, and the reason this rounds UP rather than to
  * nearest: the figure shown to the customer must never be one the server would
  * then reject. Round 3,125 naira down to 3,000 and the screen says "minimum
- * ₦3,000", the customer types exactly that, and the server — which compares
+ * NGN 3,000", the customer types exactly that, and the server — which compares
  * amount × rate against 5 USD — refuses it. That is the worst possible
  * outcome: the app contradicting itself about its own rule.
  */

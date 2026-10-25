@@ -11,7 +11,8 @@ import { accountActions, howToAddMoney, howToAddMoneyHeading } from "@/lib/accou
 import { depositAvailability } from "@/lib/deposits/availability";
 import { listRoutesFrom } from "@/lib/actions/convert";
 import { localRateCurrencies } from "@/lib/rates/display";
-import { currencyMeta, formatAmount, isCurrency, USD_CONVERSION_UNAVAILABLE } from "@/lib/currencies";
+import { Amount } from "@/components/ui/Amount";
+import { currencyMeta, isCurrency, USD_CONVERSION_UNAVAILABLE } from "@/lib/currencies";
 import { startRouteTiming } from "@/lib/perf/timing";
 import type { Currency, Wallet } from "@/lib/types/database";
 import { requireSessionUser } from "@/lib/auth/session";
@@ -164,8 +165,8 @@ export default async function AccountPage(props: PageProps<"/accounts/[currency]
             <SectionHeader title="Balance" />
             <Card>
               {wallet ? (
-                <p className="font-display text-3xl font-semibold tabular-nums text-foreground">
-                  {formatAmount(currency, wallet.balance)}
+                <p className="text-3xl text-foreground">
+                  <Amount currency={currency} amount={wallet.balance} />
                 </p>
               ) : (
                 <p className="text-sm text-muted-foreground">

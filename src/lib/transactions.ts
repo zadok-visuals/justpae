@@ -211,7 +211,7 @@ async function queryTransactions(
     // A PAY TO CHINA ROW IS THE EXCEPTION, and it matters. Its target
     // currency is CNY, but that yuan goes to a recipient in China — it never
     // touches the user's own CNY wallet. Matching it on the target side would
-    // put "you received ¥2,000" in the CNY account's activity for money that
+    // put "you received CNY 2,000" in the CNY account's activity for money that
     // left. It appears under whichever wallet actually paid for it, and only
     // there.
     query = query.or(

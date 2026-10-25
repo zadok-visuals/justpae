@@ -267,9 +267,9 @@ function ConvertFormFields({
    * What the confirmation actually says, including THE RATE BEING USED.
    *
    * The dialog used to show one unlabelled "Rate" line in quote-per-base
-   * terms: for a naira holder buying USDT that read "1 NGN = ₮0.000724",
+   * terms: for a naira holder buying USDT that read "1 NGN = USDT 0.000724",
    * which is the correct number and tells nobody anything. The board on this
-   * same screen says "Buy USDT at ₦1,387.65", and the figure the user agrees
+   * same screen says "Buy USDT at NGN 1,387.65", and the figure the user agrees
    * to has to be recognisably that one.
    *
    * So the direction gets named. Buying USDT shows the buy price; selling it

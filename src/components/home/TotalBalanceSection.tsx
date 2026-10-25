@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { TotalBalanceCard } from "@/components/home/TotalBalanceCard";
-import { CURRENCIES, formatAmount } from "@/lib/currencies";
+import { CURRENCIES } from "@/lib/currencies";
 import { resolveRateBoard } from "@/lib/rates/display";
 import { isWalletLocked } from "@/lib/services";
 import {
@@ -59,13 +59,15 @@ export async function TotalBalanceSection({
       initialDisplay={initialDisplay}
       initialHidden={initialHidden}
       usdt={{
-        formatted: formatAmount("USDT", usdt.amount),
+        currency: "USDT",
+        amount: usdt.amount,
         approx: usdt.approx,
         excluded: usdt.excluded,
       }}
       local={
         local && {
-          formatted: formatAmount(localCurrency, local.amount),
+          currency: localCurrency,
+          amount: local.amount,
           approx: local.approx,
           excluded: local.excluded,
         }

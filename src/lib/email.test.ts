@@ -83,18 +83,18 @@ test("sendEmail posts html AND text, and reports success", async () => {
         subject: "Your withdrawal has been sent",
         preheader: "p",
         heading: "Sent",
-        bodyParagraphs: ["<strong>₦5,000.00</strong> has been sent."],
+        bodyParagraphs: ["<strong>NGN 5,000.00</strong> has been sent."],
       });
       assert.equal(ok, true);
       assert.equal(calls.length, 1);
       const body = calls[0]!.body as Record<string, unknown>;
       assert.deepEqual(body.to, ["customer@justpae.com"]);
-      assert.ok(typeof body.html === "string" && (body.html as string).includes("₦5,000.00"));
+      assert.ok(typeof body.html === "string" && (body.html as string).includes("NGN 5,000.00"));
       assert.ok(typeof body.text === "string", "must include a plain-text part");
       // The plain-text part must not leak HTML tags into an inbox that
       // renders it raw.
       assert.ok(!(body.text as string).includes("<strong>"));
-      assert.ok((body.text as string).includes("₦5,000.00"));
+      assert.ok((body.text as string).includes("NGN 5,000.00"));
     } finally {
       restore();
     }

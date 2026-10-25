@@ -6,51 +6,60 @@ import { fileURLToPath } from "node:url";
 import * as fontkit from "fontkit";
 
 /**
- * GROUP 7. The whole reason fonts/DejaVuSans*.ttf are bundled at all: next/og's
- * default font has no glyphs for ₦, ₵ or ₮, and a receipt missing one of
- * those prints an empty box exactly where the currency symbol belongs — on
- * the one artefact in this product most likely to leave it and be read by
- * someone who never opened the app. Asserted against the real bytes of the
- * files actually committed here, not against "DejaVu Sans should cover
- * this" as a claim about the typeface in the abstract — a future swap to a
- * different cut or a corrupted re-commit would still be caught.
+ * The receipt draws with Clash Grotesk, read off disk at cold start by
+ * src/app/api/receipts/[source]/[id]/route.tsx.
+ *
+ * This file used to guard naira/cedi/tether symbol coverage, which is why
+ * DejaVu Sans was bundled at all. Amounts are ISO codes now, so what has to
+ * hold is narrower and checked against the real committed bytes rather than
+ * assumed: the three weights the route registers exist, parse as single TTFs,
+ * and carry the Latin letters, digits and punctuation a receipt actually
+ * prints — including the "−" minus sign and the "…" ellipsis that
+ * truncateMiddle() inserts, neither of which is plain ASCII.
  */
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const FONTS_DIR = join(__dirname, "fonts");
+const FONTS_DIR = join(__dirname, "../../app/fonts/clash-grotesk");
 
-// Every currency symbol a receipt can actually draw — see
-// src/lib/currencies.ts's `symbol` field for each CurrencyMeta entry.
+const WEIGHTS = [
+  "ClashGrotesk-Regular.ttf",
+  "ClashGrotesk-Semibold.ttf",
+  "ClashGrotesk-Bold.ttf",
+];
+
 const REQUIRED_GLYPHS: Record<string, number> = {
-  "naira (NGN) ₦": 0x20a6,
-  "cedi (GHS) ₵": 0x20b5,
-  "USDT ₮": 0x20ae,
-  "yen/yuan (CNY) ¥": 0x00a5,
-  "dollar (USD) $": 0x0024,
+  "digit zero": 0x0030,
+  "digit nine": 0x0039,
+  "capital N (as in NGN)": 0x004e,
+  "lowercase a": 0x0061,
+  "comma, the thousands separator": 0x002c,
+  "full stop, the decimal point": 0x002e,
+  "plus sign": 0x002b,
+  "minus sign −": 0x2212,
+  "ellipsis …, inserted by truncateMiddle": 0x2026,
 };
 
-for (const file of ["DejaVuSans.ttf", "DejaVuSans-Bold.ttf"]) {
-  test(`${file} carries every currency glyph a receipt draws`, () => {
+for (const file of WEIGHTS) {
+  test(`${file} carries every glyph a receipt draws`, () => {
     const opened = fontkit.openSync(join(FONTS_DIR, file));
-    // Both bundled files are plain .ttf, never a .ttc/.dfont collection —
-    // asserted rather than assumed, since that's also what tells TypeScript
-    // which of openSync()'s two return types it actually got.
+    // A single font, never a .ttc/.dfont collection — asserted rather than
+    // assumed, since that is also what tells TypeScript which of openSync()'s
+    // two return types it got.
     assert.ok(!("fonts" in opened), `${file} opened as a font collection, not a single font`);
-    const font = opened;
     for (const [name, codePoint] of Object.entries(REQUIRED_GLYPHS)) {
       assert.ok(
-        font.hasGlyphForCodePoint(codePoint),
+        opened.hasGlyphForCodePoint(codePoint),
         `${file} is missing a glyph for ${name} (U+${codePoint.toString(16).toUpperCase()})`,
       );
     }
   });
 }
 
-test("the bundled font files are the real thing, not empty or truncated", () => {
-  for (const file of ["DejaVuSans.ttf", "DejaVuSans-Bold.ttf"]) {
+test("the bundled receipt fonts are the real thing, not empty or truncated", () => {
+  for (const file of WEIGHTS) {
     const bytes = readFileSync(join(FONTS_DIR, file));
-    // A corrupted or LFS-pointer-only commit would be a few hundred bytes,
-    // not the few hundred kilobytes a real TTF with this much coverage is.
-    assert.ok(bytes.length > 100_000, `${file} is only ${bytes.length} bytes — looks truncated`);
+    // A corrupted commit or an LFS pointer would be a few hundred bytes, not
+    // the tens of kilobytes a real TTF of this family is.
+    assert.ok(bytes.length > 20_000, `${file} is only ${bytes.length} bytes — looks truncated`);
   }
 });

@@ -2,12 +2,15 @@
 
 import { useState, useTransition } from "react";
 import { EyeIcon, EyeOffIcon } from "@/components/layout/NavIcons";
+import { Amount } from "@/components/ui/Amount";
 import { setAmountsHidden, setDisplayCurrency } from "@/lib/actions/homePrefs";
 import type { DisplayCurrency } from "@/lib/home/totals";
+import type { Currency } from "@/lib/types/database";
 
 export interface TotalBalanceView {
-  /** Already formatted on the server, where the rates and the decimals live. */
-  formatted: string;
+  /** Totalled on the SERVER, where the rates live; only the figure crosses. */
+  currency: Currency;
+  amount: number;
   approx: boolean;
   /** Currencies left out because they are locked or could not be priced. */
   excluded: string[];
@@ -105,8 +108,8 @@ export function TotalBalanceCard({
         </button>
       </div>
 
-      <p className="mt-3 font-display text-4xl font-semibold tabular-nums text-foreground">
-        {hidden ? "••••••" : view.formatted}
+      <p className="mt-3 text-4xl text-foreground">
+        <Amount currency={view.currency} amount={view.amount} hidden={hidden} />
       </p>
 
       {!hidden && view.approx && (

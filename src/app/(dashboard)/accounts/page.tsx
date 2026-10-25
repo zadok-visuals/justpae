@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { EmptyState } from "@/components/ui/Primitives";
 import { RecentActivitySection } from "@/components/transactions/RecentActivitySection";
-import { currencyMeta, formatAmount, CURRENCIES } from "@/lib/currencies";
+import { Amount } from "@/components/ui/Amount";
+import { currencyMeta, CURRENCIES } from "@/lib/currencies";
 import { startRouteTiming } from "@/lib/perf/timing";
 import { isWalletLocked } from "@/lib/services";
 import { MaintenanceBadge } from "@/components/ui/MaintenanceBadge";
@@ -94,8 +95,8 @@ export default async function AccountsPage() {
                   {/* GROUP 2b */}
                   {locked && <MaintenanceBadge className="shrink-0" />}
                 </span>
-                <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-foreground">
-                  {formatAmount(wallet.currency, wallet.balance)}
+                <span className="shrink-0 text-base text-foreground">
+                  <Amount currency={wallet.currency} amount={wallet.balance} />
                 </span>
               </>
             );

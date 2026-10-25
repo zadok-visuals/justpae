@@ -113,7 +113,7 @@ export function ManualDepositSettingsForm({ config }: { config: ManualDepositCon
       {/* The one number on this rail an admin cannot change, said here
           because the queue is where they meet it. */}
       <p className="text-xs text-muted-foreground">
-        Approvals of ₦1,000,000 or more always need a second, different admin. That threshold
+        Approvals of NGN 1,000,000 or more always need a second, different admin. That threshold
         is fixed in the database and is deliberately not editable here.
       </p>
     </Card>

@@ -333,12 +333,14 @@
   --color-ink-light: #15181c;
   --color-ink-raised: #1b1f24;
 
-  /* Typography — Fraunces (display/balances), Manrope (UI),
-     IBM Plex Mono (data/addresses/amounts). Loaded via next/font in
-     src/app/layout.tsx, which sets these three --font-*-face variables. */
-  --font-sans: var(--font-manrope-face), ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-display: var(--font-fraunces-face), ui-serif, Georgia, serif;
-  --font-mono: var(--font-plex-mono-face), ui-monospace, SFMono-Regular, monospace;
+  /* Typography — Clash Grotesk is the only family. All three aliases point at
+     it so `font-display` and `font-mono` (still used for amounts, references
+     and addresses) stay on-brand instead of pulling in a second face. Loaded
+     via next/font/local in src/app/layout.tsx. Tabular figures are already on
+     for the whole body below, which is what kept the mono face useful. */
+  --font-sans: var(--font-clash-grotesk), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-clash-grotesk), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-clash-grotesk), ui-sans-serif, system-ui, -apple-system, sans-serif;
 
   /* Radii — same lg/md/sm relationship the old config defined. */
   --radius-sm: calc(var(--jp-radius) - 4px);

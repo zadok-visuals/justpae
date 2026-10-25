@@ -129,10 +129,10 @@ test("a network error with no status falls through rather than being guessed at"
 test("the minimum message states the figure when we know it", () => {
   const shown = customerMessageFor("below_minimum", {
     currency: "KES",
-    formattedMinimum: "KSh200.00",
+    formattedMinimum: "KES 200.00",
     action: "deposit",
   });
-  assert.match(shown, /KSh200\.00/);
+  assert.match(shown, /KES 200\.00/);
   assert.match(shown, /KES/);
   // The whole point of the category: it must not tell them to wait.
   assert.doesNotMatch(shown, /try again in a moment/i);
@@ -160,7 +160,7 @@ test("no message ever contains a stray undefined or a double space", () => {
   const contexts = [
     {},
     { currency: "NGN" },
-    { currency: "KES", formattedMinimum: "KSh200.00" },
+    { currency: "KES", formattedMinimum: "KES 200.00" },
     { currency: "USDT", action: "deposit" as const },
     { action: "withdrawal" as const },
   ];

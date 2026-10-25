@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Amount } from "@/components/ui/Amount";
 import { CURRENCIES, currencyMeta, formatAmount } from "@/lib/currencies";
 import { isWalletLocked } from "@/lib/services";
 import { MaintenanceBadge } from "@/components/ui/MaintenanceBadge";
@@ -62,8 +63,8 @@ function WalletCard({ wallet }: { wallet: Wallet }) {
         {locked && <MaintenanceBadge className="ml-auto shrink-0" />}
       </span>
 
-      <span className="font-display text-xl font-semibold tabular-nums text-foreground sm:text-2xl">
-        {formatAmount(wallet.currency, wallet.balance)}
+      <span className="text-xl text-foreground sm:text-2xl">
+        <Amount currency={wallet.currency} amount={wallet.balance} />
       </span>
     </>
   );

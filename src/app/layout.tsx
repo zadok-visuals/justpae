@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Fraunces, Manrope, IBM_Plex_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { Toaster } from "sonner";
 import { siteUrl } from "@/lib/site";
 import { NavigationTracker } from "@/components/layout/NavigationTracker";
@@ -9,31 +9,20 @@ import { THEME_COLORS, THEME_COLOR_META_MARKER } from "@/lib/themeClient";
 import "./globals.css";
 
 /**
- * Three faces, each with a job:
- *   Fraunces      balances and headline amounts — the display voice
- *   Manrope       all UI text
- *   IBM Plex Mono references, wallet addresses, electricity tokens — anything
- *                 read character by character or compared digit by digit
- *
- * The CSS variables these expose are consumed by @theme in globals.css.
+ * Clash Grotesk is the ONLY family in the product. Headings Semibold (600),
+ * body Regular (400), labels Medium (500), amounts Bold (700). Self-hosted
+ * from src/app/fonts/clash-grotesk (ITF Free Font License, LICENSE.txt
+ * alongside the files). The variable it exposes is consumed by @theme in
+ * globals.css, which points --font-sans, --font-display and --font-mono at it.
  */
-const manrope = Manrope({
-  subsets: ["latin"],
-  variable: "--font-manrope-face",
-  display: "swap",
-});
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces-face",
-  display: "swap",
-  axes: ["SOFT", "WONK", "opsz"],
-});
-
-const plexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-plex-mono-face",
+const clashGrotesk = localFont({
+  src: [
+    { path: "./fonts/clash-grotesk/ClashGrotesk-Regular.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/clash-grotesk/ClashGrotesk-Medium.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/clash-grotesk/ClashGrotesk-Semibold.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/clash-grotesk/ClashGrotesk-Bold.woff2", weight: "700", style: "normal" },
+  ],
+  variable: "--font-clash-grotesk",
   display: "swap",
 });
 
@@ -123,7 +112,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${manrope.variable} ${fraunces.variable} ${plexMono.variable}`}
+      className={clashGrotesk.variable}
       // Next 16 no longer overrides scroll-behavior during navigation unless
       // asked. Without this a smooth in-page scroll would also apply to route
       // changes, which should land instantly at the top.

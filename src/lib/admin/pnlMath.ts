@@ -98,8 +98,14 @@ const ROUTE_LABELS: Record<PnlRoute, string> = {
   withdrawal_fee: "Withdrawal fees",
 };
 
+/**
+ * Code first, then one space, then the number — the same shape formatAmount
+ * produces. This is its own function rather than a call to formatAmount
+ * because `currency` here can be "—" for a leg that has none, and because
+ * trailing zeroes are dropped on a P&L sheet.
+ */
 function money(amount: number, currency: string): string {
-  return `${amount.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${currency}`;
+  return `${currency} ${amount.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 }
 
 export function computePnl(

@@ -5,7 +5,7 @@ import { renderEmail, renderEmailText, type EmailOptions } from "@/lib/email/lay
  * Development-only: every shape renderEmail() produces, side by side.
  *
  * An inbox renders an email once, days apart from the next one, so a design
- * mistake — a heading that isn't actually serif, a button short of 48px, a
+ * mistake — a heading in the wrong family, a button short of 48px, a
  * footer missing the address — is easy to ship unnoticed. Rendering every
  * shape on one page, raw HTML included, makes that a glance instead of a
  * round trip through "send yourself a test email and check Gmail".
@@ -47,10 +47,10 @@ const SAMPLES: { name: string; options: EmailOptions }[] = [
     name: "Withdrawal sent (statement, no button)",
     options: {
       subject: "Your withdrawal has been sent",
-      preheader: "₦45,000.00 is on its way.",
+      preheader: "NGN 45,000.00 is on its way.",
       heading: "Your withdrawal is on its way",
       bodyParagraphs: [
-        "<strong>₦45,000.00</strong> has been sent to GTBank ••1234.",
+        "<strong>NGN 45,000.00</strong> has been sent to GTBank ••1234.",
         "How long it takes to arrive depends on the receiving bank or wallet.",
       ],
       closingParagraphs: ["If this wasn't you, contact us immediately and change your password."],

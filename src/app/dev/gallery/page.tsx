@@ -225,8 +225,8 @@ export default function DevGallery() {
                 localLabel="NGN"
                 initialDisplay="local"
                 initialHidden={false}
-                usdt={{ formatted: "₮1,250.00", approx: true, excluded: [] }}
-                local={{ formatted: "₦1,725,000.00", approx: true, excluded: ["GHS"] }}
+                usdt={{ currency: "USDT", amount: 1250, approx: true, excluded: [] }}
+                local={{ currency: "NGN", amount: 1_725_000, approx: true, excluded: ["GHS"] }}
               />
             </Section>
 
@@ -406,18 +406,18 @@ export default function DevGallery() {
               <Card>
                 <div className="mb-3 flex flex-col items-center gap-2">
                   <p className="font-display text-3xl font-semibold tabular-nums text-foreground">
-                    ₦1,856,400.25
+                    NGN 1,856,400.25
                   </p>
                   <StatusPill status="completed" />
                 </div>
                 <DetailRow label="Rate" mono>
-                  1 USD = ₦1,525.40
+                  1 USD = NGN 1,525.40
                 </DetailRow>
                 <DetailRow label="Our spread">0.50%</DetailRow>
                 <DetailRow label="Reference" mono>
                   bu_tr_8f31a90c7721
                 </DetailRow>
-                <DetailRow label="New balance">₦1,856,400.25</DetailRow>
+                <DetailRow label="New balance">NGN 1,856,400.25</DetailRow>
               </Card>
             </Section>
 

@@ -100,7 +100,7 @@ export interface DepositQuoteState {
  *   USDT — no fee on this account today, so the two are equal either way.
  *
  * The visible symptom was three figures that did not add up: "Transfer exactly
- * KSh200 / fee KSh2 / you will receive KSh200". The cause was displaying the
+ * KES 200 / fee KES 2 / you will receive KES 200". The cause was displaying the
  * user's own typed amount as the transfer figure rather than the provider's
  * quoted source_amount — which coincided for NGN (echoed back) and did not for
  * KES (grossed up).
@@ -296,7 +296,7 @@ export async function initiateDeposit(
   const admin = createAdminClient();
   // Record the provider's own confirmed target_amount (net of their gateway
   // fee), not the gross amount the user asked to deposit. Confirmed live: a
-  // ₦2,000 deposit quote returns a target_amount of 1900 after a ₦100 fee, so
+  // NGN 2,000 deposit quote returns a target_amount of 1900 after a NGN 100 fee, so
   // recording the requested amount over-credits by the fee every single time.
   const { data: deposit, error: insertError } = await admin
     .from("deposits")
