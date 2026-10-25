@@ -251,10 +251,22 @@ export interface KycIdField {
 }
 
 export const KYC_ID_FIELDS: Record<string, KycIdField> = {
+  /**
+   * BVN ONLY, where this used to accept "BVN or NIN" under one document type.
+   *
+   * A permanent naira account number can only be issued against a BVN, and a
+   * NIN is refused — so a field that accepted either stored a number nobody
+   * could tell apart and that worked half the time. The two are split: this
+   * one is required, NIGERIA_NIN_FIELD below is optional and additional.
+   *
+   * See src/lib/kyc/bvn.ts for the handling rules (never logged, never shown
+   * in full once saved) and for why an already-verified Nigerian user is
+   * still asked for theirs.
+   */
   NG: {
-    documentType: "nigeria_bvn_or_nin",
-    label: "BVN or NIN",
-    hint: "11 digits. Dial *565*0# for your BVN.",
+    documentType: "nigeria_bvn",
+    label: "BVN",
+    hint: "Dial *565*0# to get it. 11 digits.",
     pattern: "^\\d{11}$",
   },
   GH: {
@@ -270,6 +282,25 @@ export const KYC_ID_FIELDS: Record<string, KycIdField> = {
     hint: "The 7 or 8 digit number on your Huduma or national ID card.",
     pattern: "^\\d{7,8}$",
   },
+};
+
+/**
+ * The NIN, asked alongside the BVN in Nigeria and OPTIONAL.
+ *
+ * It is not a second chance at the BVN. The two numbers are both 11 digits
+ * and look identical in a text box, so the form has to make clear which is
+ * which — the labels and hints here are doing that work, not decoration.
+ *
+ * Optional because nothing in the product needs it: the account issuer wants
+ * a BVN, and a reviewer has the uploaded document. It is collected because a
+ * Nigerian user who has their NIN to hand will give it, and having it saves a
+ * support round trip later when a bank asks for one.
+ */
+export const NIGERIA_NIN_FIELD: KycIdField = {
+  documentType: "nigeria_nin",
+  label: "NIN",
+  hint: "Optional. 11 digits — dial *346# if you don't have it to hand.",
+  pattern: "^\\d{11}$",
 };
 
 /** The compiled form of KycIdField.pattern, or null when there is no check. */

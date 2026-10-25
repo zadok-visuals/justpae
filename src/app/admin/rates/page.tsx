@@ -3,7 +3,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, EmptyState } from "@/components/ui/Primitives";
 import { RateMarkupForm, SettingsForm } from "@/components/admin/RatesForms";
 import { ManualDepositSettingsForm } from "@/components/admin/ManualDepositSettingsForm";
-import { getManualDepositConfig } from "@/lib/settings";
+import { PayoutRouteForm } from "@/components/admin/PayoutRouteForm";
+import { getManualDepositConfig, getPayoutRouteSettings } from "@/lib/settings";
+import { KORAPAY_PAYOUTS } from "@/lib/flags";
 import {
   CnyTierRateForm,
   CnyMarkupForm,
@@ -29,6 +31,7 @@ export default async function AdminRatesPage() {
     { data: cnyMarkup },
     { data: supplier },
     manualDeposit,
+    payoutRoutes,
   ] = await Promise.all([
       listMarkups(),
       admin.from("app_settings").select("key, value, updated_at"),
@@ -36,6 +39,7 @@ export default async function AdminRatesPage() {
       admin.from("cny_markup_rate").select("*").maybeSingle(),
       admin.from("supplier_rates").select("*").order("effective_from", { ascending: false }).limit(50),
       getManualDepositConfig(),
+      getPayoutRouteSettings(),
     ]);
 
   const settingValues = Object.fromEntries((settings ?? []).map((s) => [s.key, s.value]));
@@ -48,6 +52,7 @@ export default async function AdminRatesPage() {
         <RateMarkupForm />
         <SettingsForm values={settingValues} />
         <ManualDepositSettingsForm config={manualDeposit} />
+        <PayoutRouteForm routes={payoutRoutes} flagEnabled={KORAPAY_PAYOUTS} />
         <CnyTierRateForm tiers={(tiers ?? []) as CnyTierRate[]} />
         <CnyMarkupForm markup={(cnyMarkup ?? null) as CnyMarkupRate | null} />
         <SupplierRateForm rates={(supplier ?? []) as SupplierRate[]} />

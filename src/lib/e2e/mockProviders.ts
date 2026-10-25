@@ -247,6 +247,64 @@ export function mockBushaRequest(
   return MOCK_MISS;
 }
 
+/**
+ * The Korapay surface. Mirrors the client's envelope UNWRAPPED — the real
+ * client returns `json.data`, and the mock hook sits inside request() after
+ * that unwrapping would have happened, so these are `data` bodies.
+ */
+export function mockKorapayRequest(
+  path: string,
+  method: "GET" | "POST",
+  body: unknown,
+): unknown | typeof MOCK_MISS {
+  assertE2eProviderMocksAreSafe();
+  const payload = (body ?? {}) as Body;
+
+  if (method === "POST" && path === "/virtual-bank-account") {
+    return {
+      account_reference: String(payload.account_reference ?? mockId("vba")),
+      account_name: String(payload.account_name ?? "justpae Test User"),
+      account_number: "1234567890",
+      bank_code: String(payload.bank_code ?? "000"),
+      bank_name: "Mock Test Bank",
+      currency: "NGN",
+      status: "active",
+    };
+  }
+
+  if (method === "GET" && path.startsWith("/virtual-bank-account/transactions")) {
+    return { transactions: [] };
+  }
+
+  if (method === "GET" && path.startsWith("/balances")) {
+    return { NGN: { available_balance: 1_000_000, pending_balance: 0 } };
+  }
+
+  if (method === "GET" && path.startsWith("/misc/banks")) {
+    return MOCK_BANKS.map((bank) => ({ ...bank, slug: bank.name.toLowerCase() }));
+  }
+
+  if (method === "POST" && path === "/misc/banks/resolve") {
+    return { account_number: String(payload.account ?? ""), account_name: "Mock Test User" };
+  }
+
+  if (method === "GET" && path.startsWith("/misc/mobile-money")) {
+    return [{ name: "M-Pesa", slug: "safaricom", country: "KE" }];
+  }
+
+  if (method === "POST" && path === "/transactions/disburse") {
+    const destination = (payload.destination ?? {}) as Body;
+    return {
+      reference: String(payload.reference ?? mockId("kpo")),
+      amount: String(destination.amount ?? "0"),
+      currency: String(destination.currency ?? "NGN"),
+      status: "processing",
+    };
+  }
+
+  return MOCK_MISS;
+}
+
 /** The Klasha surface. Only the collection endpoint is reachable from the app. */
 export function mockKlashaRequest(
   path: string,

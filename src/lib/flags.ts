@@ -120,8 +120,54 @@ export const NGN_MANUAL_DEPOSIT = enabledUnlessDisabled(
   process.env.NEXT_PUBLIC_FEATURE_NGN_MANUAL_DEPOSIT,
 );
 
+/**
+ * KORAPAY — three flags, all OFF by default, back to this file's original
+ * convention after the three exports above that read backwards from it.
+ *
+ * NEXT_PUBLIC_ for the same reason every other flag here is: these say "is
+ * this rail switched on", never "here is a secret". KORAPAY_SECRET_KEY stays
+ * server-only and is read in exactly one place, src/lib/korapay/client.ts.
+ *
+ * WHY THESE ARE NOT IN src/lib/services.ts. SERVICES carries a customer-facing
+ * `label` used by "Notify me" and by maintenance copy. A provider name is
+ * never shown to a customer in this product — the naira rail is "your account
+ * number", not the name of whoever issues it — so a SERVICES entry would
+ * either carry a label that must never render, or leak the one word the copy
+ * rules forbid. These gate which rail serves a currency; services.ts answers
+ * whether that currency works at all, which is the customer's question.
+ */
+
+/**
+ * Permanent virtual account numbers for naira deposits. When ON this REPLACES
+ * the manual naira deposit for customers; NGN_MANUAL_DEPOSIT above stays the
+ * fallback the moment this goes off, so there is never a window with no naira
+ * deposit path at all. The admin manual-deposit queue is reachable either way,
+ * because requests already in it still need answering.
+ */
+export const KORAPAY_NGN_DEPOSIT = flag(process.env.NEXT_PUBLIC_FEATURE_KORAPAY_NGN_DEPOSIT);
+
+/**
+ * Korapay as a payout route. This is the master switch; WHICH currencies
+ * actually route through it is the per-currency admin setting (see
+ * payoutRouteFor in src/lib/withdrawals/route.ts), and Busha remains the
+ * default for every currency. Both have to agree before a payout leaves
+ * through Korapay.
+ */
+export const KORAPAY_PAYOUTS = flag(process.env.NEXT_PUBLIC_FEATURE_KORAPAY_PAYOUTS);
+
+/**
+ * The daily automatic treasury sweep from the deposit balance to the payout
+ * balance. Off by default and deliberately the most conservative of the
+ * three: it is the only flag here that moves company money without a person
+ * pressing anything.
+ */
+export const KORAPAY_AUTO_SWEEP = flag(process.env.NEXT_PUBLIC_FEATURE_KORAPAY_AUTO_SWEEP);
+
 export const FLAGS = {
   usdWallet: USD_WALLET_ENABLED,
+  korapayNgnDeposit: KORAPAY_NGN_DEPOSIT,
+  korapayPayouts: KORAPAY_PAYOUTS,
+  korapayAutoSweep: KORAPAY_AUTO_SWEEP,
   ngnManualDeposit: NGN_MANUAL_DEPOSIT,
   ghsWallet: GHS_WALLET_ENABLED,
   usdCollection: USD_COLLECTION_ENABLED,

@@ -48,6 +48,20 @@ export const SETTING_KEYS = {
   manualDepositMinNgn: "manual_deposit_min_ngn",
   manualDepositMaxNgn: "manual_deposit_max_ngn",
   manualDepositFeeNgn: "manual_deposit_fee_ngn",
+
+  /**
+   * Which provider pays each currency out. TEXT, not numeric, so these are
+   * absent from SETTING_DEFAULTS and set through setPayoutRoutes rather than
+   * setAppSetting. Unset means Busha — see src/lib/withdrawals/route.ts for
+   * why an unreadable value must never reroute a live payout.
+   */
+  payoutRouteNgn: "payout_route_ngn",
+  payoutRouteKes: "payout_route_kes",
+} as const;
+
+export const PAYOUT_ROUTE_SETTING_KEYS = {
+  NGN: SETTING_KEYS.payoutRouteNgn,
+  KES: SETTING_KEYS.payoutRouteKes,
 } as const;
 
 /** The six keys above, for the admin form and the customer-side reader. */
@@ -95,6 +109,46 @@ export async function getAutomatedPayoutThresholdUsd(): Promise<number> {
 
 export async function getWithdrawalFeeRate(): Promise<number> {
   return getNumericSetting(SETTING_KEYS.withdrawalFeeRate);
+}
+
+/**
+ * The stored payout route for one currency, as a raw string — resolving it to
+ * a provider is resolvePayoutRoute's job, which also applies the flag and the
+ * currency check. Returns null on any read failure, which that function reads
+ * as Busha.
+ */
+export async function getPayoutRouteSetting(currency: "NGN" | "KES"): Promise<string | null> {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("app_settings")
+      .select("value")
+      .eq("key", PAYOUT_ROUTE_SETTING_KEYS[currency])
+      .maybeSingle();
+    return data?.value ?? null;
+  } catch (err) {
+    console.error("[settings.getPayoutRouteSetting] falling back to Busha", { currency, err });
+    return null;
+  }
+}
+
+/** Both routes in one round trip, for the admin screen. */
+export async function getPayoutRouteSettings(): Promise<Record<"NGN" | "KES", string | null>> {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("app_settings")
+      .select("key, value")
+      .in("key", [SETTING_KEYS.payoutRouteNgn, SETTING_KEYS.payoutRouteKes]);
+    const byKey = new Map((data ?? []).map((row) => [row.key, row.value]));
+    return {
+      NGN: byKey.get(SETTING_KEYS.payoutRouteNgn) ?? null,
+      KES: byKey.get(SETTING_KEYS.payoutRouteKes) ?? null,
+    };
+  } catch (err) {
+    console.error("[settings.getPayoutRouteSettings] falling back to Busha", err);
+    return { NGN: null, KES: null };
+  }
 }
 
 /**

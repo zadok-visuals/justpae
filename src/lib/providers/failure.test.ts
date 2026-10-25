@@ -155,6 +155,7 @@ test("no message ever contains a stray undefined or a double space", () => {
     "temporarily_unavailable",
     "not_configured",
     "rejected",
+    "duplicate_reference",
     "unknown",
   ];
   const contexts = [
@@ -214,6 +215,7 @@ test("customer copy never says 'exchange' as the name of the action", () => {
     "temporarily_unavailable",
     "not_configured",
     "rejected",
+    "duplicate_reference",
     "unknown",
   ];
   for (const failure of failures) {
@@ -240,5 +242,77 @@ test("a non-transient message does not invite an immediate identical retry", () 
   for (const failure of ["below_minimum", "above_maximum", "unsupported"] as ProviderFailure[]) {
     const shown = customerMessageFor(failure, { currency: "NGN" });
     assert.doesNotMatch(shown, /try again in a (moment|few minutes)/i, `${failure}: "${shown}"`);
+  }
+});
+
+/**
+ * KORAPAY. A second provider with a different error vocabulary, and three of
+ * its refusals change what the app DOES rather than only what it says.
+ */
+test("a reused payout reference is its own category, never a retry", () => {
+  // The one that matters: Korapay refuses a disbursement carrying a reference
+  // it has already seen. Classified as `rejected` it would read as "check the
+  // amount and try again", and trying again is precisely the thing that must
+  // not happen — the first payout may well be on its way.
+  for (const message of [
+    "Duplicate reference",
+    "Transaction reference already exists",
+    "duplicate transaction",
+    "This reference has already been used",
+  ]) {
+    assert.equal(classifyProviderFailure(400, message), "duplicate_reference", message);
+  }
+  assert.equal(isTransientFailure("duplicate_reference"), false);
+
+  const shown = customerMessageFor("duplicate_reference", { action: "withdrawal" });
+  assert.doesNotMatch(shown, /failed/i, shown);
+  assert.match(shown, /already in progress/i, shown);
+});
+
+test("an un-whitelisted egress IP is our configuration, not a customer refusal", () => {
+  // Korapay gates live payouts on an IP allowlist, and Vercel has no fixed
+  // egress IP. Whatever status it arrives with, no customer can act on it.
+  for (const status of [400, 401, 403]) {
+    assert.equal(
+      classifyProviderFailure(status, "Your IP address is not whitelisted for payouts"),
+      "not_configured",
+    );
+    assert.equal(
+      classifyProviderFailure(status, "Merchant not permitted to perform this action"),
+      "not_configured",
+    );
+  }
+});
+
+test("a payout that never got an answer is an outage, not a failure", () => {
+  // status 0 is the Korapay client's marker for a timeout or a dead socket.
+  // The customer-facing reading is "temporarily unavailable"; the internal
+  // reading is "we do not know whether it happened", which is why the payout
+  // path queries rather than marking it failed.
+  assert.equal(
+    classifyProviderFailure(0, "Korapay request did not complete (timeout)"),
+    "temporarily_unavailable",
+  );
+  assert.equal(classifyProviderFailure(0, undefined), "temporarily_unavailable");
+  assert.equal(
+    classifyProviderFailure(undefined, "The operation was aborted"),
+    "temporarily_unavailable",
+  );
+});
+
+test("Korapay's own refusals do not leak its name either", () => {
+  const hostile = [
+    "Korapay could not process this: insufficient funds",
+    "korapay.com rejected the disbursement — duplicate reference",
+    "KORAPAY_SECRET_KEY is not configured",
+    "Kora Pay: amount is below the minimum",
+  ];
+  for (const message of hostile) {
+    for (const status of [0, 400, 401, 422, 500]) {
+      const failure = classifyProviderFailure(status, message);
+      const shown = customerMessageFor(failure, { currency: "NGN", action: "withdrawal" });
+      assert.doesNotMatch(shown, /kora/i, `leaked a provider name: "${shown}"`);
+      assert.doesNotMatch(shown, /SECRET_KEY/i, shown);
+    }
   }
 });

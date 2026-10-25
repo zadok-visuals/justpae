@@ -4,6 +4,7 @@ import { Card, EmptyState, Pill, DetailRow } from "@/components/ui/Primitives";
 import { KycQueueActions } from "@/components/admin/QueueActions";
 import { KycDocumentViewer } from "@/components/admin/KycDocumentViewer";
 import { countryName } from "@/lib/countries";
+import { displayKycValue } from "@/lib/kyc/bvn";
 
 export const metadata = { title: "Verification queue" };
 export const dynamic = "force-dynamic";
@@ -116,7 +117,14 @@ export default async function AdminKycPage() {
                       )}`}
                     />
                   ) : (
-                    (doc.value ?? "—")
+                    /* MASKED FOR ADMINS TOO, not only for customers. A BVN
+                       identifies a person across every Nigerian bank and
+                       cannot be rotated; the thing a human review is actually
+                       performed against is the uploaded document above, not
+                       the digits. The full number exists in this row to be
+                       handed to the account issuer, and a reviewer has no
+                       task that needs to read it. See src/lib/kyc/bvn.ts. */
+                    displayKycValue(doc.document_type, doc.value)
                   )}
                 </DetailRow>
               ))}

@@ -9,7 +9,9 @@ import {
   kycIdPattern,
   isGovernmentIdType,
   usesBvnOrNin,
+  NIGERIA_NIN_FIELD,
 } from "@/lib/countries";
+import { BVN_DOCUMENT_TYPE, isValidBvn, isValidNin, maskBvn } from "@/lib/kyc/bvn";
 import { verifyOwnedUpload } from "@/lib/storage/verifyUpload";
 import { KYC_BUCKET } from "@/lib/kyc/constants";
 import {
@@ -217,6 +219,9 @@ export async function submitIndividualKyc(
 
   const fullName = String(formData.get("fullName") ?? "").trim();
   const idNumber = String(formData.get("idNumber") ?? "").trim();
+  // Nigeria only, optional, and a SEPARATE number from the BVN above — not a
+  // second chance at it. See NIGERIA_NIN_FIELD in src/lib/countries.ts.
+  const ninNumber = String(formData.get("ninNumber") ?? "").trim();
   const idType = String(formData.get("idType") ?? "").trim();
   // Storage paths, not Files. See requireOwnedUpload above.
   const governmentIdPath = String(formData.get("governmentId") ?? "").trim();
@@ -226,10 +231,15 @@ export async function submitIndividualKyc(
   if (!idNumber) return { error: `${idField.label} is required.` };
 
   if (nigerian) {
-    // The 11-digit check is worth running for Nigeria because a BVN and a NIN
-    // are both fixed-length numbers and a mistyped one is a wasted review.
+    // The 11-digit check is worth running for Nigeria because a BVN is a
+    // fixed-length number and a mistyped one is both a wasted review and an
+    // account number the issuer will refuse to create.
     const idPattern = kycIdPattern(idField);
     if (idPattern && !idPattern.test(idNumber)) return { error: idField.hint };
+    // Only when one was given. An empty optional field is not an error, but a
+    // wrong one is — a NIN saved with a typo is worse than no NIN at all,
+    // because a support agent will later read it as fact.
+    if (ninNumber && !isValidNin(ninNumber)) return { error: NIGERIA_NIN_FIELD.hint };
   } else {
     if (!isGovernmentIdType(idType)) return { error: "Tell us which ID this is." };
     // Deliberately NO format check outside Nigeria. The country's pattern
@@ -267,6 +277,12 @@ export async function submitIndividualKyc(
         tier: "individual_tier_2",
         document_type: "government_id_type",
         value: idType,
+      });
+    } else if (ninNumber) {
+      documents.push({
+        tier: "individual_tier_2",
+        document_type: NIGERIA_NIN_FIELD.documentType,
+        value: ninNumber,
       });
     }
 
@@ -433,4 +449,104 @@ export async function submitBusinessKyc(
 
   revalidatePath("/onboarding/kyc/status");
   redirect("/onboarding/kyc/status");
+}
+
+export interface SaveBvnState {
+  error?: string;
+  ok?: boolean;
+  /** The saved number, already masked. Never the number itself. */
+  masked?: string;
+}
+
+/**
+ * The one-question form shown to an already-verified Nigerian user the first
+ * time they open naira deposit without a BVN on file.
+ *
+ * WHY THIS IS NOT A KYC RESUBMISSION. Re-opening the whole identity flow would
+ * reset kyc_status to pending, which would lock withdrawals and conversions
+ * for someone who is already approved and did nothing wrong — a worse outcome
+ * than the missing number. This writes ONE document row and touches nothing
+ * else: not kyc_status, not kyc_type, not the profile.
+ *
+ * SECURITY SHAPE, same as every other money-adjacent action here:
+ *   - the user id comes from supabase.auth.getUser(), never from the form;
+ *   - the write goes through the service role, because kyc_documents rows
+ *     carry a status a user session must not be able to set;
+ *   - the BVN is validated server-side and is NEVER logged, NEVER returned to
+ *     the browser in full, and NEVER put in a redirect. The success state
+ *     carries the mask only.
+ *
+ * It refuses to overwrite a BVN that is already there. A saved BVN changing is
+ * either a mistake or an attempt to attach a different person's identity to an
+ * approved account; either way it is support's problem, not a form's.
+ */
+export async function saveBvn(
+  _prevState: SaveBvnState,
+  formData: FormData,
+): Promise<SaveBvnState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  // From the stored profile, never from the form — the same rule
+  // submitIndividualKyc follows, so a crafted request cannot claim to be
+  // Nigerian to reach a field its country does not have.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("country, kyc_status")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!usesBvnOrNin(profile?.country)) {
+    return { error: "A BVN is only asked for on Nigerian accounts." };
+  }
+  if (profile?.kyc_status !== "approved") {
+    return { error: "Finish your identity check first, then we'll ask for this." };
+  }
+
+  const bvn = String(formData.get("bvn") ?? "").trim();
+  if (!bvn) return { error: "Enter your BVN to continue." };
+  if (!isValidBvn(bvn)) return { error: "A BVN is exactly 11 digits. Dial *565*0# to get it." };
+
+  const admin = createAdminClient();
+
+  const { data: existing } = await admin
+    .from("kyc_documents")
+    .select("value")
+    .eq("user_id", user.id)
+    .eq("document_type", BVN_DOCUMENT_TYPE)
+    .maybeSingle();
+
+  if (existing?.value) {
+    // Not an error state the user can act on by trying again, so it reports
+    // success with the mask rather than a refusal they would re-read as a bug.
+    return { ok: true, masked: maskBvn(existing.value) };
+  }
+
+  const { error } = await admin.from("kyc_documents").upsert(
+    {
+      user_id: user.id,
+      tier: "individual_tier_2" as const,
+      document_type: BVN_DOCUMENT_TYPE,
+      value: bvn,
+      // 'approved', not 'pending': this account is already approved and a
+      // reviewer has already matched the person to their documents. A pending
+      // row here would put an approved user back in the review queue for a
+      // number they were only asked for because the rail changed under them.
+      status: "approved" as const,
+    },
+    { onConflict: "user_id,document_type" },
+  );
+
+  if (error) {
+    // describeSupabaseError, never the raw error, and never the value — see
+    // src/lib/kyc/bvn.ts on why this number does not go into a log line.
+    console.error("[kyc.saveBvn] failed", describeSupabaseError(error));
+    return { error: "We couldn't save that. Please try again." };
+  }
+
+  revalidatePath("/deposit");
+  return { ok: true, masked: maskBvn(bvn) };
 }

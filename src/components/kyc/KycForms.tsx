@@ -10,7 +10,7 @@ import { UnsavedChangesGuard } from "@/components/ui/UnsavedChangesGuard";
 import { useGoBack } from "@/components/ui/BackButton";
 import { KYC_BUCKET } from "@/lib/kyc/constants";
 import { submitIndividualKyc, submitBusinessKyc } from "@/lib/actions/kyc";
-import { GOVERNMENT_ID_TYPES, type KycIdField } from "@/lib/countries";
+import { GOVERNMENT_ID_TYPES, NIGERIA_NIN_FIELD, type KycIdField } from "@/lib/countries";
 
 /**
  * STAGE TWO — ID submission, as a stepped wizard.
@@ -187,6 +187,7 @@ export function IndividualKycForm({
 
   const [fullName, setFullName] = useState(defaultFullName);
   const [idNumber, setIdNumber] = useState("");
+  const [ninNumber, setNinNumber] = useState("");
   const [idType, setIdType] = useState("");
   const [governmentId, setGovernmentId] = useState<string | null>(null);
 
@@ -259,6 +260,23 @@ export function IndividualKycForm({
             autoCorrect="off"
             enterKeyHint="next"
           />
+
+          {/* Nigeria only, and OPTIONAL. Two 11-digit numbers in a row is a
+              genuine chance to type one into the other's box, so this sits
+              below the BVN with its own label and its own hint rather than
+              sharing a row with it. */}
+          {usesBvnOrNin && (
+            <TextField
+              name="ninNumber"
+              label={NIGERIA_NIN_FIELD.label}
+              hint={NIGERIA_NIN_FIELD.hint}
+              value={ninNumber}
+              onChange={(e) => setNinNumber(e.target.value)}
+              inputMode="numeric"
+              autoCorrect="off"
+              enterKeyHint="next"
+            />
+          )}
         </Card>
 
         <Card>
@@ -323,6 +341,7 @@ export function IndividualKycForm({
         when={
           fullName.trim() !== defaultFullName.trim() ||
           idNumber.trim() !== "" ||
+          ninNumber.trim() !== "" ||
           idType !== "" ||
           governmentId !== null
         }

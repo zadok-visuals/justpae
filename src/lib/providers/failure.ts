@@ -64,6 +64,14 @@ export type ProviderFailure =
   | "not_configured"
   /** The provider refused the request and we could not tell why. */
   | "rejected"
+  /**
+   * The reference has been used before. NEVER a retry: Korapay refuses a
+   * second disbursement carrying a reference it already has, which is the
+   * mechanism that stops a timed-out payout being paid twice. Reaching this
+   * means the payout already exists and the right next step is to QUERY it,
+   * not to send it again — see queryDisbursement in src/lib/korapay/client.ts.
+   */
+  | "duplicate_reference"
   /** Not a recognisable provider failure at all. */
   | "unknown";
 
@@ -74,6 +82,15 @@ export type ProviderFailure =
  * "invalid" of `rejected`, and `unsupported` is the useful answer.
  */
 const PATTERNS: Array<{ failure: ProviderFailure; test: RegExp }> = [
+  // KORAPAY, and first of all: a reused reference. It has to precede
+  // `rejected` (which matches the bare "invalid") and `unsupported` (which
+  // matches "duplicate" nowhere but could through a reworded message), because
+  // mistaking it for either would send the payout path back to the provider
+  // with the same reference — the one outcome this category exists to prevent.
+  {
+    failure: "duplicate_reference",
+    test: /duplicate\s+(reference|transaction)|reference\s+(has\s+)?already\s+(been\s+)?(exists?|used|processed)|already\s+(exists|processed)/i,
+  },
   // Liquidity first: "insufficient balance" contains neither "minimum" nor
   // "maximum" but would be swallowed by the generic validation pattern.
   {
@@ -121,6 +138,23 @@ export function classifyProviderFailure(
   // KlashaError constructor calls for "is not configured". Caught before the
   // 5xx branch below, which would otherwise call it an outage.
   if (message && /is not configured|no readable expiry/i.test(message)) return "not_configured";
+
+  // KORAPAY. An IP that is not on the provider's payout allowlist comes back
+  // as a 401/403 with prose about whitelisting. The blanket 401/403 rule below
+  // would already land it on not_configured, but only by accident of status —
+  // a provider that answers 400 for it would be read as a customer-fixable
+  // refusal, and no customer can fix our egress IP. Named explicitly instead.
+  if (message && /whitelist|not\s+permitted|unauthorized\s+ip|ip\s+address/i.test(message)) {
+    return "not_configured";
+  }
+
+  // KORAPAY. status 0 is this client's marker for "no answer at all" — a
+  // timeout or a dead socket, set by the catch in src/lib/korapay/client.ts.
+  // It is an outage from the customer's point of view; what makes it special
+  // is on OUR side, where it means the result is unknown rather than failed.
+  if (status === 0 || (message && /did not complete|timed?\s*out|aborted/i.test(message))) {
+    return "temporarily_unavailable";
+  }
 
   // GROUP 7. Busha returns restricted_feature as a 403 — the same status the
   // blanket rule two lines down reads as "our own API key is wrong". Those
@@ -229,6 +263,12 @@ export function customerMessageFor(
     case "rejected":
       // Not "try again in a moment": the same request will be refused again.
       return "That request was refused. Check the amount and try again — or contact support if it keeps happening.";
+
+    case "duplicate_reference":
+      // Says "already in progress", never "failed". The money may well be on
+      // its way; telling someone it failed invites a second attempt, which is
+      // exactly what a duplicate reference was refused to prevent.
+      return "That one is already in progress. Give it a few minutes — don't send it again.";
 
     case "unknown":
     default:
