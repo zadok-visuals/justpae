@@ -173,11 +173,27 @@ function NavList({
   return (
     <>
       {GROUPS.map((group) => (
-        <div key={group.title} className="mb-5 last:mb-0">
+        /* GROUP 3 — a rule above each group but the first, 16px of air over
+           it. The line is what stops OVERVIEW / QUEUES / MONEY reading as a
+           first row of links: a heading that is merely smaller text in the
+           same stack is still in the stack. */
+        <div
+          key={group.title}
+          className="mt-4 border-t border-sidebar-border pt-3 first:mt-0 first:border-t-0 first:pt-0"
+        >
           {/* A real heading, not a styled div: an operator navigating by
               screen reader gets the same grouping a sighted one does, which
-              is the entire improvement over the flat pill row. */}
-          <h2 className="mb-1.5 px-3 text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
+              is the entire improvement over the flat pill row.
+              Not focusable and no hover — an <h2> is neither by default, and
+              nothing here adds them, so the one thing that lights up under a
+              cursor is a thing you can actually go to.
+              muted-foreground, NOT tertiary-foreground: the brief asks for
+              the tertiary tone and the token's own note in globals.css says
+              "never small text" — #98A2B3 under 11px on the light sidebar is
+              about 2.4:1. Muted is the quietest tone that stays readable, and
+              with the links now at full foreground the hierarchy still
+              reads. */}
+          <h2 className="mb-2 px-3 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             {group.title}
           </h2>
           <ul className="space-y-0.5">
@@ -190,10 +206,10 @@ function NavList({
                     href={link.href}
                     onClick={onNavigate}
                     aria-current={active ? "page" : undefined}
-                    className={`flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors ${
+                    className={`flex min-h-11 items-center gap-2 rounded-lg px-3 text-[0.9375rem] font-medium transition-colors ${
                       active
                         ? "bg-sidebar-accent text-primary"
-                        : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground active:bg-sidebar-accent"
+                        : "text-foreground hover:bg-sidebar-accent active:bg-sidebar-accent"
                     }`}
                   >
                     <span className="min-w-0 flex-1 truncate">{link.label}</span>
@@ -378,7 +394,13 @@ export function AdminNav({
               </button>
             </div>
 
-            <nav aria-label="Admin" className="flex-1 overflow-y-auto px-3 py-3">
+            {/* min-h-0, for the same reason the desktop sidebar's nav has it
+                — and this is where its absence actually bit: a flex child's
+                default min-height is its content, so overflow-y-auto never
+                fired, the nav grew past the drawer, and PNL, People and
+                System sat below the viewport with no way to reach them. The
+                footer is outside this element, so it stays pinned. */}
+            <nav aria-label="Admin" className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
               <NavList
                 counts={counts}
                 pathname={pathname}
