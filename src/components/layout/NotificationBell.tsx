@@ -8,7 +8,19 @@ import {
   markAllNotificationsRead,
   type NotificationListItem,
 } from "@/lib/actions/notifications";
-import { HEADER_ICON_BUTTON_CLASS } from "@/lib/ui/escapeControl";
+import { HEADER_ICON_BUTTON_CLASS, HOME_HEADER_ICON_CLASS } from "@/lib/ui/escapeControl";
+
+/** The small red count Home's two header circles carry. */
+export function UnreadDot({ count }: { count: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="absolute -right-0.5 -top-0.5 min-w-[1.125rem] rounded-full bg-destructive-solid px-1 text-center text-[0.625rem] font-semibold leading-[1.125rem] text-white"
+    >
+      {count > 9 ? "9+" : count}
+    </span>
+  );
+}
 
 /**
  * The notification bell and its dropdown.
@@ -25,7 +37,17 @@ import { HEADER_ICON_BUTTON_CLASS } from "@/lib/ui/escapeControl";
  * fifteen notification bodies into every dashboard payload to support an
  * interaction most sessions never perform is the wrong trade.
  */
-export function NotificationBell({ initialUnreadCount }: { initialUnreadCount: number }) {
+export function NotificationBell({
+  initialUnreadCount,
+  appearance = "header",
+}: {
+  initialUnreadCount: number;
+  /**
+   * "header" is the blue 44px circle both top bars use. "home" is Home's own
+   * 40px bordered circle with a red count — see HomeHeader.
+   */
+  appearance?: "header" | "home";
+}) {
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(initialUnreadCount);
   const [items, setItems] = useState<NotificationListItem[] | null>(null);
@@ -100,20 +122,23 @@ export function NotificationBell({ initialUnreadCount }: { initialUnreadCount: n
         // state: this one opens a dropdown rather than navigating, so the
         // acknowledgement on press is the only feedback before the panel
         // paints.
-        className={HEADER_ICON_BUTTON_CLASS}
+        className={appearance === "home" ? HOME_HEADER_ICON_CLASS : HEADER_ICON_BUTTON_CLASS}
       >
         <BellIcon className="size-5" />
-        {unread > 0 && (
-          <span
-            // aria-hidden: the count is already in the button's own label, and
-            // announcing "9" on its own after "Notifications, 9 unread" is
-            // just noise.
-            aria-hidden="true"
-            className="absolute right-1 top-1 min-w-4 rounded-full bg-primary px-1 text-[0.625rem] font-semibold leading-4 text-primary-foreground"
-          >
-            {unread > 9 ? "9+" : unread}
-          </span>
-        )}
+        {/* aria-hidden: the count is already in the button's own label, and
+            announcing "9" on its own after "Notifications, 9 unread" is just
+            noise. */}
+        {unread > 0 &&
+          (appearance === "home" ? (
+            <UnreadDot count={unread} />
+          ) : (
+            <span
+              aria-hidden="true"
+              className="absolute right-1 top-1 min-w-4 rounded-full bg-primary px-1 text-[0.625rem] font-semibold leading-4 text-primary-foreground"
+            >
+              {unread > 9 ? "9+" : unread}
+            </span>
+          ))}
       </button>
 
       {open && (

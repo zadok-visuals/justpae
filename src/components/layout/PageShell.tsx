@@ -71,12 +71,18 @@ export function PageShell({
   aside,
   width,
   mobileLeading,
+  mobileHeader,
   wide = false,
 }: {
   title: string;
   subtitle?: string;
-  /** Replaces the mobile bar's title — Home's avatar and greeting. */
+  /** Replaces the mobile bar's title, keeping the bar itself. */
   mobileLeading?: React.ReactNode;
+  /**
+   * GROUP 3a. Replaces MobileTopBar OUTRIGHT, for the one page that does not
+   * want a bordered sticky bar at all — Home, which opens on a greeting.
+   */
+  mobileHeader?: React.ReactNode;
   /**
    * GROUP 5b. `href` is the FALLBACK destination, not the destination: Back
    * walks the session's own history when the previous entry is a page of
@@ -107,7 +113,7 @@ export function PageShell({
       {/* Publishes to the desktop TopBar; renders nothing itself. On mobile
           the title still comes from MobileTopBar below, not this. */}
       <PageTitlePublisher title={title} />
-      <MobileTopBar title={title} leading={mobileLeading} />
+      {mobileHeader ?? <MobileTopBar title={title} leading={mobileLeading} />}
 
       <div className={`mx-auto w-full px-4 py-5 sm:px-6 sm:py-8 ${WIDTHS[resolved]}`}>
         {/* GROUP 5b/5c. Was a mobile-only (`sm:hidden`) grey link to a

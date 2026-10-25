@@ -37,8 +37,11 @@ export function ServiceCircle({
         }`}
       >
         {icon}
+        {/* NEUTRAL GREY, not orange. "Soon" is a state, not a warning —
+            nothing is wrong and nothing needs attention — and an orange chip
+            on six circles made the card read as six problems. */}
         {!live && (
-          <span className="absolute -right-1 -top-1 rounded-full bg-warning px-1 text-[0.5625rem] font-semibold leading-4 text-background">
+          <span className="absolute -right-1 -top-1 rounded-full border border-border bg-muted px-1 text-[0.5625rem] font-semibold leading-4 text-muted-foreground">
             Soon
           </span>
         )}

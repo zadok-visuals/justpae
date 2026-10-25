@@ -1,8 +1,12 @@
 import { notFound } from "next/navigation";
-import { WalletCards } from "@/components/home/WalletCards";
-import { MajorActions } from "@/components/home/MajorActions";
+import { WalletCards } from "@/components/accounts/WalletCards";
+import { ActionTiles } from "@/components/home/ActionTiles";
+import { HomeHeader } from "@/components/home/HomeHeader";
+import { KycRow } from "@/components/home/KycRow";
+import { PromoBanner } from "@/components/home/PromoBanner";
 import { QuickServicesCard } from "@/components/home/QuickServicesCard";
 import { TotalBalanceCard } from "@/components/home/TotalBalanceCard";
+import { WalletsRow } from "@/components/home/WalletsRow";
 import { BuySellRates } from "@/components/rates/BuySellRates";
 import { ActivityRows } from "@/components/transactions/ActivityRows";
 import { ActivityFilters } from "@/components/transactions/ActivityFilters";
@@ -215,10 +219,21 @@ export default function DevGallery() {
               It takes a couple of minutes. You can deposit and convert in the meantime.
             </Banner>
 
-            <section>
-              <SectionHeader title="Your wallets" />
-              <WalletCards wallets={wallets} />
-            </section>
+            {/* GROUP 3 — Home's own pieces, in the order the page stacks
+                them. The header is mobile-only (`sm:hidden`), so it is
+                visible here only in a narrow window — which is the width it
+                is worth checking at anyway. */}
+            <Section title="Home header">
+              <HomeHeader initials="AG" firstName="Ada" serverGreeting="Good morning," />
+            </Section>
+
+            <Section title="Identity row">
+              <div className="space-y-2">
+                <KycRow status="not_started" phone="+2348000000000" kycType="individual" />
+                <KycRow status="pending" phone="+2348000000000" kycType="individual" />
+                <KycRow status="rejected" phone="+2348000000000" kycType="individual" />
+              </div>
+            </Section>
 
             <Section title="Total balance">
               <TotalBalanceCard
@@ -230,13 +245,26 @@ export default function DevGallery() {
               />
             </Section>
 
-            <Section title="Major actions">
-              <MajorActions />
+            <Section title="Promo banner">
+              <PromoBanner />
+            </Section>
+
+            <Section title="Action tiles">
+              <ActionTiles />
+            </Section>
+
+            <Section title="Wallets row">
+              <WalletsRow wallets={wallets} />
             </Section>
 
             <Section title="Quick services">
               <QuickServicesCard />
             </Section>
+
+            <section>
+              <SectionHeader title="Wallet cards (/accounts)" />
+              <WalletCards wallets={wallets} />
+            </section>
 
             <section>
               <SectionHeader title="Today's rates" action={{ href: "/convert", label: "See all" }} />

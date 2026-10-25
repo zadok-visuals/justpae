@@ -68,3 +68,14 @@ export const HEADER_ICON_BUTTON_CLASS =
   "relative flex size-11 items-center justify-center rounded-full text-primary " +
   "transition-colors hover:bg-sidebar-accent hover:text-primary-hover " +
   "active:scale-95 active:bg-sidebar-accent";
+
+/**
+ * GROUP 3a — the same two controls on Home, which has its own borderless
+ * header. 40px and outlined rather than 44px and blue: the header already
+ * carries a blue avatar and the page opens on a solid blue balance card, so
+ * two more blue discs in the corner read as clutter rather than as affordance.
+ * The 44px target is preserved by the gap around them, not by the disc.
+ */
+export const HOME_HEADER_ICON_CLASS =
+  "relative flex size-10 items-center justify-center rounded-full border border-border " +
+  "text-foreground transition-colors hover:bg-accent active:scale-95 active:bg-accent";

@@ -43,13 +43,19 @@ test.describe("a verified account", () => {
     await signIn(page, users.verified);
   });
 
-  test("home shows a total, the four actions, wallets, services and rates", async ({ page }) => {
+  // GROUP 3. Rates left Home for /convert, where a rate is something you act
+  // on rather than something you read, so this no longer looks for them.
+  test("home shows a total, the four tiles, wallets, services and transactions", async ({
+    page,
+  }) => {
     await page.goto("/home");
     await expect(page.getByText(/total balance/i)).toBeVisible();
     await expect(page.getByRole("navigation", { name: /money actions/i })).toBeVisible();
+    await expect(page.getByText(/what do you need today/i)).toBeVisible();
     await expect(page.getByText(/your wallets/i)).toBeVisible();
     await expect(page.getByText(/quick services/i)).toBeVisible();
-    await expect(page.getByText(/today's rates/i)).toBeVisible();
+    await expect(page.getByText(/recent transactions/i)).toBeVisible();
+    await expect(page.getByText(/today's rates/i)).toHaveCount(0);
   });
 
   test("accounts lists one row per wallet and each row opens", async ({ page }) => {
@@ -192,12 +198,23 @@ test.describe("a verified account", () => {
     const BACK = /^←?\s*(back|accounts|home|activity|profile)/i;
 
     test("arriving from another page returns to that page", async ({ page }) => {
-      // Home → a wallet card → Back. The fallback for /accounts/NGN is
-      // /accounts, so landing on /home instead of /accounts is the proof that
+      // Home → the wallets row → a wallet card → Back twice. The fallback
+      // for /accounts/NGN is /accounts, so the first Back landing there
+      // proves nothing; the second one landing on /home is the proof that
       // history was walked rather than the fallback being used.
+      //
+      // GROUP 3. Home no longer carries the wallet cards themselves — it has
+      // one row through to /accounts — so the journey has a step it did not
+      // have before.
       await page.goto("/home");
+      await page.getByRole("link", { name: /your wallets/i }).click();
+      await expect(page).toHaveURL(/\/accounts/);
+
       await page.locator("main").getByRole("link", { name: /NGN/ }).first().click();
       await expect(page).toHaveURL(/\/accounts\/NGN/);
+
+      await page.getByRole("button", { name: BACK }).first().click();
+      await expect(page).toHaveURL(/\/accounts(\?|$)/);
 
       await page.getByRole("button", { name: BACK }).first().click();
       await expect(page).toHaveURL(/\/home/);

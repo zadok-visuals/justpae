@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { StatusPill } from "@/components/ui/Primitives";
 import { ActivityDetail } from "@/components/transactions/ActivityDetail";
-import { formatSignedAmount } from "@/lib/currencies";
+import { formatAmount, formatSignedAmount } from "@/lib/currencies";
 import type { UnifiedActivity } from "@/lib/transactions";
 import {
   ReceiveIcon,
@@ -36,14 +36,19 @@ function iconFor(row: UnifiedActivity) {
 
 /**
  * The circle's colour says what KIND of movement this was before the title
- * is read: green in, blue converted, coral failed, ink out.
+ * is read: green in, violet converted, coral failed, neutral out.
+ *
+ * Conversions went violet in Group 3: blue is the brand, used by the balance
+ * card and every primary control, and spending it on one transaction type
+ * made a conversion row look like the app talking rather than like money
+ * moving.
  */
 function toneFor(row: UnifiedActivity): string {
   if (row.status === "failed" || row.status === "refunded") {
     return "bg-icon-coral-soft text-icon-coral";
   }
   if (row.direction === "in") return "bg-icon-green-soft text-icon-green";
-  if (row.type === "conversion") return "bg-icon-blue-soft text-icon-blue";
+  if (row.type === "conversion") return "bg-icon-violet-soft text-icon-violet";
   return "bg-accent text-foreground";
 }
 
@@ -72,6 +77,15 @@ function groupLabel(iso: string): string {
 
 function timeLabel(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
+/**
+ * The ungrouped list has no date header above it, so each row carries its
+ * own date — "Today 14:32" rather than a bare "14:32" that could be any day
+ * in the last month.
+ */
+function dateLabel(iso: string): string {
+  return `${groupLabel(iso)} ${timeLabel(iso)}`;
 }
 
 function groupByDate(rows: UnifiedActivity[]): { label: string; rows: UnifiedActivity[] }[] {
@@ -123,11 +137,11 @@ export function ActivityRows({
                       </span>
 
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium text-foreground">
+                        <span className="block truncate text-sm font-semibold text-foreground">
                           {row.title}
                         </span>
                         <span className="block text-xs text-muted-foreground">
-                          {timeLabel(row.created_at)}
+                          {grouped ? timeLabel(row.created_at) : dateLabel(row.created_at)}
                         </span>
                       </span>
 
@@ -139,7 +153,20 @@ export function ActivityRows({
                         >
                           {formatSignedAmount(row.currency, row.amount, row.direction)}
                         </span>
-                        <StatusPill status={row.status} />
+                        {/* The short list trades the status pill for what the
+                            money turned into — a conversion row whose second
+                            figure is missing says only half of what happened.
+                            The full activity page keeps the pill, where
+                            filtering by status is the point. */}
+                        {grouped ? (
+                          <StatusPill status={row.status} />
+                        ) : row.targetCurrency && row.targetAmount != null ? (
+                          <span className="text-xs tabular-nums text-muted-foreground">
+                            {formatAmount(row.targetCurrency, row.targetAmount)}
+                          </span>
+                        ) : (
+                          <StatusPill status={row.status} />
+                        )}
                       </span>
                     </button>
                   </li>

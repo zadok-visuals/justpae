@@ -1,14 +1,10 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/layout/PageShell";
 import { EmptyState } from "@/components/ui/Primitives";
 import { RecentActivitySection } from "@/components/transactions/RecentActivitySection";
-import { Amount } from "@/components/ui/Amount";
-import { currencyMeta, CURRENCIES } from "@/lib/currencies";
+import { WalletCards } from "@/components/accounts/WalletCards";
 import { startRouteTiming } from "@/lib/perf/timing";
-import { isWalletLocked } from "@/lib/services";
-import { MaintenanceBadge } from "@/components/ui/MaintenanceBadge";
-import type { Currency, Wallet } from "@/lib/types/database";
+import type { Wallet } from "@/lib/types/database";
 import { requireSessionUser } from "@/lib/auth/session";
 
 export const metadata = { title: "Accounts" };
@@ -47,11 +43,6 @@ export default async function AccountsPage() {
   const wallets = (data ?? []) as Wallet[];
   endRouteTiming();
 
-  // Config order, not database order, so rows don't reshuffle between loads.
-  const ordered = [...wallets].sort(
-    (a, b) => currencyIndex(a.currency) - currencyIndex(b.currency),
-  );
-
   return (
     <PageShell
       title="Accounts"
@@ -65,61 +56,18 @@ export default async function AccountsPage() {
         <RecentActivitySection userId={user.id} limit={6} seeAllHref="/transactions" />
       }
     >
-      {ordered.length === 0 ? (
+      {wallets.length === 0 ? (
         <EmptyState
           title="No wallets yet"
           body="Every account gets a dollar and a USDT wallet, plus a local one for your country. If yours are missing, our team can sort it out."
           action={{ href: "/support", label: "Contact support" }}
         />
       ) : (
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {ordered.map((wallet) => {
-            const meta = currencyMeta(wallet.currency);
-            const locked = isWalletLocked(wallet.currency);
-            const rowClassName =
-              "flex min-h-16 items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3";
-            const row = (
-              <>
-                <span className="flex min-w-0 items-center gap-2">
-                  <span aria-hidden="true" className="text-lg leading-none">
-                    {meta.flag}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium text-foreground">
-                      {wallet.currency}
-                    </span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {meta.label}
-                    </span>
-                  </span>
-                  {/* GROUP 2b */}
-                  {locked && <MaintenanceBadge className="shrink-0" />}
-                </span>
-                <span className="shrink-0 text-base text-foreground">
-                  <Amount currency={wallet.currency} amount={wallet.balance} />
-                </span>
-              </>
-            );
-            return (
-              <li key={wallet.currency}>
-                {locked ? (
-                  <div className={`${rowClassName} opacity-80`}>{row}</div>
-                ) : (
-                  <Link href={`/accounts/${wallet.currency}`} className={rowClassName}>
-                    {row}
-                  </Link>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+        /* GROUP 3i. The cards themselves — ordering included — belong to the
+           component now, so /home and /accounts cannot drift apart on what a
+           wallet card looks like. Home no longer shows them at all. */
+        <WalletCards wallets={wallets} />
       )}
     </PageShell>
   );
-}
-
-const ORDER: Currency[] = CURRENCIES.map((c) => c.code);
-function currencyIndex(currency: Currency): number {
-  const index = ORDER.indexOf(currency);
-  return index === -1 ? ORDER.length : index;
 }

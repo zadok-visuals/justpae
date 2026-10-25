@@ -119,6 +119,12 @@
   --jp-icon-sky: 200 100% 39.4%; /* #0086C9 */
   --jp-icon-sky-soft: 208.7 100% 95.5%; /* #E8F4FF */
 
+  /* Home's balance card: a solid royal blue panel, one step deeper in dark
+     so white text keeps its contrast against a near-black page. Both values
+     are brand blues the palette already holds (primary and primary-hover in
+     light) — this is a semantic alias, not a seventh colour. */
+  --jp-balance-card: 228.2 82.5% 55.3%; /* #2F54EB */
+
   /* ── Elevation — LIGHT ─────────────────────────────────────────────────
      ONE shadow in the entire product, and it belongs to the floating mobile
      bottom nav. Nothing else may use it. Everything that used to be raised
@@ -202,6 +208,8 @@
   --jp-icon-teal-soft: 183.8 49.2% 12.4%;
   --jp-icon-sky: 198.1 95.2% 59.6%;
   --jp-icon-sky-soft: 200.6 49.3% 13.9%;
+
+  --jp-balance-card: 228.3 71.9% 48.8%; /* #2346D6 */
 
   --jp-shadow-nav: 0 4px 24px rgb(0 0 0 / 0.45);
 }
@@ -344,6 +352,18 @@
   --color-icon-teal-soft: hsl(var(--jp-icon-teal-soft));
   --color-icon-sky: hsl(var(--jp-icon-sky));
   --color-icon-sky-soft: hsl(var(--jp-icon-sky-soft));
+
+  /* Home's balance card. */
+  --color-balance-card: hsl(var(--jp-balance-card));
+
+  /* Home's tile arrow circles. LITERAL, and fixed in both themes — like
+     --color-ink above. They are a solid 32px disc carrying a white arrow, so
+     the dark palette's lighter step would drop the arrow below the 3:1 bar
+     for a UI element. These four are the light tints' solid values. */
+  --color-arrow-green: #12b76a;
+  --color-arrow-violet: #7a5af8;
+  --color-arrow-coral: #f04438;
+  --color-arrow-sky: #0086c9;
 
   /* The one shadow in the product. `shadow-nav` on the mobile bottom bar is
      its ONLY legitimate use. */

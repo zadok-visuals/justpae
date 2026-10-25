@@ -25,7 +25,10 @@ export function QuickServicesCard() {
         </Link>
       </div>
 
-      <ul className="grid grid-cols-4 gap-1 sm:grid-cols-6">
+      {/* FOUR PER ROW AT EVERY WIDTH. Seven circles is two rows either way,
+          and from lg up this card lives in the 22rem reference column, where
+          six across would crush each label to two characters. */}
+      <ul className="grid grid-cols-4 gap-1">
         {services.map((service) => (
           <li key={service.key}>
             <ServiceCircle
