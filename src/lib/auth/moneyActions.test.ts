@@ -48,6 +48,9 @@ const EXEMPT: Record<string, string> = {
   // kycPrompt.ts: no account, no session, no money — a signed-out visitor
   // on the landing page can set this too.
   "theme.ts": "writes only a UI theme-preference cookie, no account or money data",
+  // Which currency Home's total is shown in, and whether amounts are hidden.
+  // Same reasoning again: two display cookies, no account or money data.
+  "homePrefs.ts": "writes only UI display-preference cookies, no account or money data",
 };
 
 function sourceFiles(): string[] {

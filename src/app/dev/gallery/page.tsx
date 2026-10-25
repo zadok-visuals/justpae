@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { WalletCards } from "@/components/home/WalletCards";
-import { QuickActions } from "@/components/home/QuickActions";
+import { MajorActions } from "@/components/home/MajorActions";
+import { QuickServicesCard } from "@/components/home/QuickServicesCard";
+import { TotalBalanceCard } from "@/components/home/TotalBalanceCard";
 import { BuySellRates } from "@/components/rates/BuySellRates";
 import { ActivityRows } from "@/components/transactions/ActivityRows";
 import { ActivityFilters } from "@/components/transactions/ActivityFilters";
@@ -218,15 +220,28 @@ export default function DevGallery() {
               <WalletCards wallets={wallets} />
             </section>
 
-            <section>
-              <SectionHeader title="Quick actions" />
-              <QuickActions wallets={wallets} />
-            </section>
+            <Section title="Total balance">
+              <TotalBalanceCard
+                localLabel="NGN"
+                initialDisplay="local"
+                initialHidden={false}
+                usdt={{ formatted: "₮1,250.00", approx: true, excluded: [] }}
+                local={{ formatted: "₦1,725,000.00", approx: true, excluded: ["GHS"] }}
+              />
+            </Section>
+
+            <Section title="Major actions">
+              <MajorActions />
+            </Section>
+
+            <Section title="Quick services">
+              <QuickServicesCard />
+            </Section>
 
             <section>
-              <SectionHeader title="Today's rates" />
+              <SectionHeader title="Today's rates" action={{ href: "/convert", label: "See all" }} />
               <BuySellRates
-                variant="strip"
+                variant="list"
                 rates={[
                   {
                     currency: "NGN",

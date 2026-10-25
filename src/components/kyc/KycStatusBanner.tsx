@@ -1,4 +1,38 @@
+import Link from "next/link";
 import { Banner } from "@/components/ui/Primitives";
+
+/**
+ * The one-line form Home uses: a sentence and a Verify pill, not a titled
+ * box with a paragraph in it. Home already has a lot to say, and the full
+ * banner's three lines pushed the balance below the fold on a 360px screen.
+ */
+function CompactBanner({
+  tone,
+  message,
+  action,
+}: {
+  tone: "info" | "warning" | "danger";
+  message: string;
+  action: { href: string; label: string };
+}) {
+  const tones = {
+    info: "border-border bg-secondary",
+    warning: "border-warning/40 bg-warning-soft",
+    danger: "border-destructive/40 bg-destructive/10",
+  } as const;
+
+  return (
+    <div className={`flex items-center gap-3 rounded-xl border px-3 py-2 ${tones[tone]}`}>
+      <p className="min-w-0 flex-1 truncate text-sm text-foreground">{message}</p>
+      <Link
+        href={action.href}
+        className="inline-flex h-9 shrink-0 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground"
+      >
+        {action.label}
+      </Link>
+    </div>
+  );
+}
 
 /**
  * The one place that decides what to say about an unfinished identity check,
@@ -20,17 +54,48 @@ export function KycStatusBanner({
   phone,
   kycType,
   rejectionReason,
+  compact = false,
 }: {
   status: string | null | undefined;
   phone: string | null | undefined;
   kycType: string | null | undefined;
   rejectionReason: string | null | undefined;
+  /** Home's one-line form. */
+  compact?: boolean;
 }) {
   if (status === "approved") return null;
 
   /** The ID form matching the type the user already chose. */
   const idFormHref =
     kycType === "business" ? "/onboarding/kyc/business" : "/onboarding/kyc/individual";
+
+  if (compact) {
+    if (status === "pending") {
+      return (
+        <CompactBanner
+          tone="info"
+          message="We're reviewing your details."
+          action={{ href: "/onboarding/kyc/status", label: "View" }}
+        />
+      );
+    }
+    if (status === "rejected") {
+      return (
+        <CompactBanner
+          tone="danger"
+          message="We couldn't verify your details."
+          action={{ href: idFormHref, label: "Resubmit" }}
+        />
+      );
+    }
+    return (
+      <CompactBanner
+        tone="warning"
+        message="Verify your identity to withdraw."
+        action={{ href: !phone || !kycType ? "/onboarding/kyc" : idFormHref, label: "Verify" }}
+      />
+    );
+  }
 
   if (status === "pending") {
     return (

@@ -51,7 +51,7 @@ test.afterAll(async () => {
 
 /** The two-column layouts, and the four money forms. */
 const SPLIT_PAGES = ["/home", "/accounts", "/accounts/NGN", "/accounts/USDT"];
-const MONEY_FORMS = ["/deposit", "/convert", "/withdraw", "/pay-to-china"];
+const MONEY_FORMS = ["/deposit", "/convert", "/withdraw", "/pay-to-china", "/services"];
 
 async function horizontalOverflow(page: import("@playwright/test").Page): Promise<number> {
   return page.evaluate(() => {

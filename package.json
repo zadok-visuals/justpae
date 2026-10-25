@@ -16,7 +16,7 @@
     "e2e": "playwright test",
     "e2e:public": "playwright test --project=public",
     "e2e:authed": "E2E_REQUIRE_AUTHED=1 playwright test --project=authed",
-    "e2e:responsive": "playwright test --project=mobile-375 --project=tablet-768 --project=desktop-1024 --project=desktop-1280 --project=desktop-1440 --project=desktop-1920",
+    "e2e:responsive": "playwright test --project=mobile-360 --project=mobile-375 --project=mobile-390 --project=mobile-390-dark --project=tablet-768 --project=desktop-1024 --project=desktop-1280 --project=desktop-1440 --project=desktop-1440-dark --project=desktop-1920",
     "e2e:ui": "playwright test --ui"
   },
   "dependencies": {

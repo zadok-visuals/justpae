@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronRightIcon } from "@/components/layout/NavIcons";
 import type { TransactionStatus } from "@/lib/types/database";
 
 /** Surfaces, pills, skeletons, empty states — the non-interactive furniture. */
@@ -35,9 +36,10 @@ export function SectionHeader({
         // however neatly it sits next to the title.
         <Link
           href={action.href}
-          className="-my-3 inline-flex min-h-11 items-center text-sm font-medium text-primary"
+          className="-my-3 inline-flex min-h-11 items-center gap-0.5 text-sm font-medium text-primary"
         >
           {action.label}
+          <ChevronRightIcon />
         </Link>
       )}
     </div>

@@ -206,3 +206,77 @@ export function MoreIcon({ className = "size-6" }: IconProps) {
     </svg>
   );
 }
+
+export function DataIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M2 8.5a14 14 0 0 1 20 0" />
+      <path d="M5 12.5a9.5 9.5 0 0 1 14 0" />
+      <path d="M8.5 16.5a5 5 0 0 1 7 0" />
+      <circle cx="12" cy="20" r="0.6" fill="currentColor" />
+    </Icon>
+  );
+}
+
+export function ElectricityIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12L13 2Z" />
+    </Icon>
+  );
+}
+
+export function CableTvIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="2.5" y="7" width="19" height="12.5" rx="2" />
+      <path d="M8 3.5 12 7l4-3.5" />
+    </Icon>
+  );
+}
+
+export function WaterIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 3s6 6.4 6 10.4A6 6 0 0 1 6 13.4C6 9.4 12 3 12 3Z" />
+    </Icon>
+  );
+}
+
+export function EducationIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M2.5 8.5 12 4l9.5 4.5L12 13 2.5 8.5Z" />
+      <path d="M6.5 10.8V16c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5v-5.2" />
+      <path d="M21.5 8.5v5" />
+    </Icon>
+  );
+}
+
+export function EyeIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </Icon>
+  );
+}
+
+export function EyeOffIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M3 3l18 18" />
+      <path d="M10.6 6.2A9.6 9.6 0 0 1 12 6c6 0 9.5 6 9.5 6a16.4 16.4 0 0 1-3.3 3.9" />
+      <path d="M6.6 7.6A16.2 16.2 0 0 0 2.5 12S6 18 12 18a9.7 9.7 0 0 0 3.4-.6" />
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    </Icon>
+  );
+}
+
+export function ChevronRightIcon({ className = "size-4" }: IconProps) {
+  return (
+    <Icon className={className}>
+      <path d="m9 5 7 7-7 7" />
+    </Icon>
+  );
+}

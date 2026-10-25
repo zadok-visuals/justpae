@@ -78,10 +78,40 @@ export default defineConfig({
      * layout that only breaks at 375px is exactly the kind of thing a single
      * desktop-sized run never sees.
      */
+    /**
+     * 360 and 390 are the two phone widths Group 3 names: 360 is the
+     * narrowest Android in real use and the width the four-up action row and
+     * the four-up service grid are tightest at; 390 is the current iPhone.
+     */
+    {
+      name: "mobile-360",
+      testMatch: /.*\.responsive\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 360, height: 800 } },
+    },
     {
       name: "mobile-375",
       testMatch: /.*\.responsive\.spec\.ts/,
       use: { ...devices["Desktop Chrome"], viewport: { width: 375, height: 812 } },
+    },
+    {
+      name: "mobile-390",
+      testMatch: /.*\.responsive\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 390, height: 844 } },
+    },
+    /**
+     * The dark theme, at one phone width and one desktop width. Layout is
+     * theme-independent, so this is not the whole sweep again — it is the
+     * check that nothing in the dark palette changes a box's size (a border
+     * that only exists in one theme is the classic way it does).
+     */
+    {
+      name: "mobile-390-dark",
+      testMatch: /.*\.responsive\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 390, height: 844 },
+        colorScheme: "dark",
+      },
     },
     {
       name: "tablet-768",
@@ -109,6 +139,15 @@ export default defineConfig({
       name: "desktop-1440",
       testMatch: /.*\.responsive\.spec\.ts/,
       use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+    },
+    {
+      name: "desktop-1440-dark",
+      testMatch: /.*\.responsive\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1440, height: 900 },
+        colorScheme: "dark",
+      },
     },
     {
       name: "desktop-1920",

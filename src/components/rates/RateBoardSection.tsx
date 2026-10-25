@@ -50,7 +50,9 @@ import type { Currency } from "@/lib/types/database";
  */
 
 /** The skeleton. Sized to the board it replaces so nothing jumps. */
-export function RateBoardSkeleton({ variant = "stacked" }: { variant?: "strip" | "stacked" }) {
+export type RateBoardVariant = "strip" | "stacked" | "list";
+
+export function RateBoardSkeleton({ variant = "stacked" }: { variant?: RateBoardVariant }) {
   if (variant === "strip") {
     return (
       <div className="flex gap-2 overflow-hidden">
@@ -59,6 +61,9 @@ export function RateBoardSkeleton({ variant = "stacked" }: { variant?: "strip" |
         ))}
       </div>
     );
+  }
+  if (variant === "list") {
+    return <Skeleton className="h-[8.5rem] w-full rounded-xl" />;
   }
   return (
     <div className="space-y-2">
@@ -93,7 +98,7 @@ async function RateBoard({
   variant,
 }: {
   currencies?: Currency[];
-  variant: "strip" | "stacked";
+  variant: RateBoardVariant;
 }) {
   let rates;
   try {
@@ -123,15 +128,17 @@ export function RateBoardSection({
   currencies,
   variant = "stacked",
   title = "Today's rates",
+  action,
 }: {
   /** Omitted means the whole local-currency board. */
   currencies?: Currency[];
-  variant?: "strip" | "stacked";
+  variant?: RateBoardVariant;
   title?: string;
+  action?: { href: string; label: string };
 }) {
   return (
     <section>
-      <SectionHeader title={title} />
+      <SectionHeader title={title} action={action} />
       {/* The heading is OUTSIDE the boundary on purpose: it is free, it tells
           the reader what the skeleton below is going to become, and it means
           the section does not pop into existence a beat after everything

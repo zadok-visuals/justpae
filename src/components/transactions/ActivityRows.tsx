@@ -35,6 +35,19 @@ function iconFor(row: UnifiedActivity) {
 }
 
 /**
+ * The circle's colour says what KIND of movement this was before the title
+ * is read: green in, blue converted, coral failed, ink out.
+ */
+function toneFor(row: UnifiedActivity): string {
+  if (row.status === "failed" || row.status === "refunded") {
+    return "bg-icon-coral-soft text-icon-coral";
+  }
+  if (row.direction === "in") return "bg-icon-green-soft text-icon-green";
+  if (row.type === "conversion") return "bg-icon-blue-soft text-icon-blue";
+  return "bg-accent text-foreground";
+}
+
+/**
  * "Today" and "Yesterday" rather than a date, because that is how someone
  * looking for a transaction they just made thinks about it.
  */
@@ -103,7 +116,9 @@ export function ActivityRows({
                       onClick={() => setOpen(row)}
                       className="flex w-full min-h-16 items-center gap-3 px-3 py-3 text-left hover:bg-accent"
                     >
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent text-muted-foreground">
+                      <span
+                        className={`flex size-10 shrink-0 items-center justify-center rounded-full ${toneFor(row)}`}
+                      >
                         <Icon className="size-5" />
                       </span>
 

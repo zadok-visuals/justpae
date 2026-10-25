@@ -402,12 +402,21 @@ function SignOutForm() {
  * destination lives in the bottom bar, so there is nothing to hide behind a
  * hamburger.
  */
-export function MobileTopBar({ title }: { title?: string }) {
+export function MobileTopBar({
+  title,
+  leading,
+}: {
+  title?: string;
+  /** Replaces the title entirely — Home puts its avatar and greeting here. */
+  leading?: React.ReactNode;
+}) {
   const { notifications: unreadNotifications, support: unreadSupport } = useUnreadCounts();
 
   return (
     <header className="sticky top-0 z-30 flex min-h-14 items-center justify-between gap-3 border-b border-border bg-background/95 px-4 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md sm:hidden">
-      {title ? (
+      {leading ? (
+        leading
+      ) : title ? (
         <h1 className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">{title}</h1>
       ) : (
         <Link

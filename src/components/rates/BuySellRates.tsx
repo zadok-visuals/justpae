@@ -27,13 +27,34 @@ export function BuySellRates({
 }: {
   rates: UsdtPairDisplay[];
   /**
-   * "strip" is the horizontal rail Home uses under its wallet cards;
-   * "stacked" is the full-width list /convert and the account pages use.
+   * "strip"   the horizontal rail the account pages use.
+   * "stacked" the full-width list /convert uses.
+   * "list"    one card, one row per currency — Home, where a sideways rail
+   *           hid half the board behind a swipe nobody made.
    */
-  variant?: "strip" | "stacked";
+  variant?: "strip" | "stacked" | "list";
   className?: string;
 }) {
   if (rates.length === 0) return null;
+
+  if (variant === "list") {
+    return (
+      <ul className={`divide-y divide-border overflow-hidden rounded-xl border border-border bg-card ${className}`}>
+        {rates.map((rate) => (
+          <li key={rate.currency} className="flex items-center justify-between gap-3 px-4 py-2.5">
+            <span className="flex shrink-0 items-center gap-2 text-sm font-medium text-foreground">
+              <span aria-hidden="true">{currencyMeta(rate.currency).flag}</span>
+              {rate.currency}
+              <span className="text-xs text-muted-foreground">/ USDT</span>
+            </span>
+            <div className="min-w-0 flex-1">
+              <RateLines rate={rate} compact />
+            </div>
+          </li>
+        ))}
+      </ul>
+    );
+  }
 
   if (variant === "strip") {
     return (

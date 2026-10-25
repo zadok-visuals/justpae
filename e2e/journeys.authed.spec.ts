@@ -43,10 +43,12 @@ test.describe("a verified account", () => {
     await signIn(page, users.verified);
   });
 
-  test("home shows wallets, quick actions and a rates strip", async ({ page }) => {
+  test("home shows a total, the four actions, wallets, services and rates", async ({ page }) => {
     await page.goto("/home");
+    await expect(page.getByText(/total balance/i)).toBeVisible();
+    await expect(page.getByRole("navigation", { name: /money actions/i })).toBeVisible();
     await expect(page.getByText(/your wallets/i)).toBeVisible();
-    await expect(page.getByText(/quick actions/i)).toBeVisible();
+    await expect(page.getByText(/quick services/i)).toBeVisible();
     await expect(page.getByText(/today's rates/i)).toBeVisible();
   });
 

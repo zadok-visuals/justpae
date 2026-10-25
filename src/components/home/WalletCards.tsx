@@ -56,17 +56,22 @@ function WalletCard({ wallet }: { wallet: Wallet }) {
           {meta.flag}
         </span>
         <span className="text-sm font-medium text-foreground">{wallet.currency}</span>
-        <span className="truncate text-xs text-muted-foreground">{meta.label}</span>
+        {/* The full name only once there is room for it: at 46% of a 360px
+            screen it was always truncated to two characters. */}
+        <span className="hidden truncate text-xs text-muted-foreground sm:inline">{meta.label}</span>
         {locked && <MaintenanceBadge className="ml-auto shrink-0" />}
       </span>
 
-      <span className="font-display text-2xl font-semibold tabular-nums text-foreground">
+      <span className="font-display text-xl font-semibold tabular-nums text-foreground sm:text-2xl">
         {formatAmount(wallet.currency, wallet.balance)}
       </span>
     </>
   );
 
-  const className = `snap-item flex min-w-[15rem] shrink-0 flex-col justify-between gap-5 rounded-xl border border-border bg-gradient-to-br p-4 sm:min-w-0 ${
+  // 46% of the rail on a phone: two cards fully visible with a sliver of the
+  // third showing, which is what tells anyone the row continues. A fixed
+  // 15rem showed one and a half and read as a layout bug.
+  const className = `snap-item flex w-[46%] shrink-0 flex-col justify-between gap-4 rounded-xl border border-border bg-gradient-to-br p-3 shadow-card sm:w-auto sm:gap-5 sm:p-4 ${
     WASHES[wallet.currency]
   }`;
 
