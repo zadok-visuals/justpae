@@ -9,6 +9,7 @@ import {
   NGN_BANK_DEPOSIT_MAINTENANCE,
   KES_BANK_DEPOSIT_MAINTENANCE,
   NGN_MANUAL_DEPOSIT,
+  KORAPAY_NGN_DEPOSIT,
 } from "../flags.ts";
 import type { UnavailableKind } from "../ui/unavailability.ts";
 
@@ -51,10 +52,26 @@ const BANK_DEPOSIT_MAINTENANCE_REASON: Partial<Record<Currency, string>> = {
  * why the three are not all "Maintenance".
  */
 export type DepositAvailability =
-  | { available: true; provider: "busha" | "klasha" | "manual" }
+  | { available: true; provider: "busha" | "klasha" | "manual" | "korapay" }
   | { available: false; kind: UnavailableKind; reason: string };
 
 export function depositAvailability(currency: Currency): DepositAvailability {
+  /**
+   * GROUP 2 — the naira account number, FIRST, because when it is on it
+   * replaces the manual rail rather than sitting beside it. Two naira
+   * deposit paths offered at once is a customer choosing between "send to
+   * your own account number" and "send to ours with a reference", which is
+   * not a choice anybody can make well.
+   *
+   * The manual rail below stays exactly where it is and becomes the fallback
+   * the moment this flag goes off — which is why this is a branch and not a
+   * replacement. The kill switch is deliberately NOT consulted here: it
+   * governs the provider's temporary-account rail, which this is not.
+   */
+  if (currency === "NGN" && KORAPAY_NGN_DEPOSIT) {
+    return { available: true, provider: "korapay" };
+  }
+
   /**
    * GROUP 4 — manual naira, BEFORE the provider branch and before the naira
    * kill switch.

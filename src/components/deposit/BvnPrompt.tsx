@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { SubmitButton } from "@/components/ui/Button";
 import { TextField, FieldError } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Primitives";
@@ -20,9 +20,31 @@ import { KYC_ID_FIELDS } from "@/lib/countries";
  * issued by a bank, against the BVN — and the only framing a customer can act
  * on. Whose API we call is not their concern and never appears in this copy.
  */
-export function BvnPrompt({ masked }: { masked: string | null }) {
+export function BvnPrompt({
+  masked,
+  /**
+   * Run once the BVN is saved. The deposit screen uses it to issue the
+   * account number immediately — making somebody press a second button for
+   * the thing they have just enabled reads as the form not having worked.
+   */
+  onSaved,
+}: {
+  masked: string | null;
+  onSaved?: () => void;
+}) {
   const [state, action] = useActionState(saveBvn, {});
   const saved = state.masked ?? masked;
+
+  // Fires on the transition from "not saved" to "saved", not on every
+  // render: a second call would issue nothing new but would cost a provider
+  // round trip on every re-render of a settled screen.
+  const announced = useRef(false);
+  useEffect(() => {
+    if (saved && onSaved && !announced.current) {
+      announced.current = true;
+      onSaved();
+    }
+  }, [saved, onSaved]);
 
   if (saved) {
     return (

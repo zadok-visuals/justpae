@@ -3,6 +3,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getTransfer } from "@/lib/busha/client";
 import { requireCronSecret, staleCutoff } from "@/lib/cron/auth";
 import { notifyDepositCredited } from "@/lib/notify/events";
+import { KORAPAY_NGN_DEPOSIT } from "@/lib/flags";
+import {
+  reconcileKorapayDeposits,
+  type KorapayReconcileResult,
+} from "@/lib/korapay/reconcile";
 
 /**
  * Safety net for deposits that are still pending long after they should have
@@ -53,6 +58,25 @@ export async function GET(request: Request) {
       if (typeof expiredManual === "number" && expiredManual > 0) {
         console.warn("[reconcile-deposits] expired stale manual deposits", { expiredManual });
       }
+    }
+  }
+
+  /**
+   * GROUP 2e — virtual-account naira deposits.
+   *
+   * Also before the provider loop, and for the same reason the manual sweep
+   * is: it reads a different provider and must not be skipped because the
+   * first one is down. It is gated on the flag because the scan costs one
+   * provider request per issued account and there are no accounts to scan
+   * with the rail off.
+   */
+  let korapay: KorapayReconcileResult | string = { accountsChecked: 0, credited: 0, outcomes: [] };
+  if (KORAPAY_NGN_DEPOSIT) {
+    try {
+      korapay = await reconcileKorapayDeposits(admin);
+    } catch (err) {
+      console.error("[reconcile-deposits] korapay reconcile failed", err);
+      korapay = err instanceof Error ? `failed: ${err.message}` : "failed";
     }
   }
 
@@ -154,5 +178,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ checked: results.length, expiredManual, results });
+  return NextResponse.json({ checked: results.length, expiredManual, korapay, results });
 }

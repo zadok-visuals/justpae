@@ -7,6 +7,12 @@ import { isWalletLocked } from "@/lib/services";
 import { parseCurrencyParam, preselectCurrency } from "@/lib/accounts/preselect";
 import { startRouteTiming } from "@/lib/perf/timing";
 import { getManualDepositConfig } from "@/lib/settings";
+import { KORAPAY_NGN_DEPOSIT } from "@/lib/flags";
+import {
+  getNgnVirtualAccount,
+  loadNgnVirtualAccount,
+  type VirtualAccountState,
+} from "@/lib/korapay/virtualAccount";
 import type { Wallet } from "@/lib/types/database";
 import { requireSessionUser } from "@/lib/auth/session";
 
@@ -52,6 +58,27 @@ export default async function DepositPage(props: PageProps<"/deposit">) {
     list.map((w) => w.currency),
   );
 
+  /**
+   * GROUP 2 — the naira account number, resolved server-side.
+   *
+   * ISSUED HERE ONLY WHEN NAIRA IS THE CURRENCY BEING DEPOSITED INTO. The
+   * read is cheap and safe for everyone; the PROVIDER CALL creates a real
+   * object at a real bank, and making one for somebody who opened this
+   * screen to deposit USDT is waste that the sandbox's account cap makes
+   * expensive. A customer who switches to naira after the page renders gets
+   * the button in NgnAccountNumber instead.
+   */
+  let ngnAccount: { state: VirtualAccountState; depositFee: number } | undefined;
+  if (KORAPAY_NGN_DEPOSIT && list.some((w) => w.currency === "NGN")) {
+    const state =
+      initialCurrency === "NGN"
+        ? await getNgnVirtualAccount(user.id)
+        : await loadNgnVirtualAccount(user.id);
+    // The same setting the manual rail quotes. One naira deposit fee, not
+    // two that drift — see migration 0040.
+    ngnAccount = { state, depositFee: manualConfig.fee };
+  }
+
   endRouteTiming();
 
   return (
@@ -73,6 +100,7 @@ export default async function DepositPage(props: PageProps<"/deposit">) {
           kycStatus: profile?.kyc_status ?? "not_started",
           config: manualConfig,
         }}
+        ngnAccount={ngnAccount}
       />
     </PageShell>
   );

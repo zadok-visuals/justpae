@@ -38,7 +38,9 @@ export type CountryCode = string;
  * person fulfils by hand and photographs the receipt of.
  */
 export type TransactionType = "convert" | "withdrawal" | "pay_to_china";
-export type TransactionProvider = "busha" | "klasha" | "manual";
+/** 'korapay' added in 0039 — naira virtual accounts, and a second payout
+ *  route for NGN and KES. */
+export type TransactionProvider = "busha" | "klasha" | "manual" | "korapay";
 /**
  * 'partially_completed' (migration 0023) is a conversion-only terminal state:
  * leg 1 of a fiat-to-fiat bridge converted the source into USDT and leg 2 did
@@ -325,6 +327,34 @@ export type Deposit = {
   first_approver_id: string | null;
   first_approved_at: string | null;
   first_approval_amount: number | null;
+
+  // ── Migration 0040: virtual-account deposits ────────────────────────────
+  /** What the PROVIDER deducted from the settlement. Recorded, never charged
+   *  on — the customer's credit is received_amount minus `fee`, ours. */
+  provider_fee: number | null;
+  /** Which issued account number it arrived in. Null on every other rail. */
+  virtual_account_id: string | null;
+};
+
+/**
+ * A permanent provider-issued account number (migration 0040).
+ *
+ * Readable by its owner, writable by nobody but the service role — there is
+ * no insert, update or delete policy on the table, deliberately.
+ */
+export type VirtualAccount = {
+  id: string;
+  user_id: string;
+  currency: Currency;
+  provider: TransactionProvider;
+  account_number: string;
+  bank_name: string;
+  account_name: string;
+  /** OUR reference, passed as account_reference when the account was created
+   *  and used to look it up again at the provider. */
+  provider_reference: string;
+  status: string;
+  created_at: string;
 };
 
 /**
@@ -723,6 +753,19 @@ export type Database = {
         };
         Update: Partial<Deposit>; Relationships: [];
       };
+      virtual_accounts: {
+        Row: VirtualAccount;
+        Insert: Partial<VirtualAccount> & {
+          user_id: string;
+          currency: Currency;
+          provider: TransactionProvider;
+          account_number: string;
+          bank_name: string;
+          account_name: string;
+          provider_reference: string;
+        };
+        Update: Partial<VirtualAccount>; Relationships: [];
+      };
       withdrawal_recipients: {
         Row: WithdrawalRecipient;
         Insert: Partial<WithdrawalRecipient> & { user_id: string; currency: Currency; account_holder_name: string };
@@ -896,6 +939,45 @@ export type Database = {
         Returns: boolean;
       };
       expire_stale_manual_deposits: { Args: Record<string, never>; Returns: number };
+
+      /**
+       * MIGRATION 0040 — virtual-account naira deposits. Both service-role
+       * only; neither is callable from a user session.
+       *
+       * credit_korapay_deposit is idempotent on the provider reference and is
+       * the SINGLE path a virtual-account deposit credits by — the webhook
+       * and the reconcile cron both call it, so they are two triggers for one
+       * code path rather than two code paths that have to agree about money.
+       *
+       * p_gross_amount must come from a FRESH query of the charge at the
+       * provider, never from a webhook body. The function cannot tell the
+       * difference; the rule lives at the call site and is asserted in
+       * src/app/api/webhooks/korapay/route.test.ts.
+       */
+      record_virtual_account: {
+        Args: {
+          p_user_id: string;
+          p_currency: Currency;
+          p_provider: TransactionProvider;
+          p_account_number: string;
+          p_bank_name: string;
+          p_account_name: string;
+          p_provider_reference: string;
+        };
+        Returns: VirtualAccount;
+      };
+      credit_korapay_deposit: {
+        Args: {
+          p_user_id: string;
+          p_virtual_account_id: string | null;
+          p_provider_reference: string;
+          p_currency: Currency;
+          p_gross_amount: number;
+          p_provider_fee: number;
+        };
+        /** 'credited' | 'already_credited' | 'below_fee' */
+        Returns: string;
+      };
 
       /**
        * Replaces create_conversion (dropped in 0010). Takes an id and a PIN —

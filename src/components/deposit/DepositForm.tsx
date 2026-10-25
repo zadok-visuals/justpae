@@ -22,6 +22,8 @@ import { LegalReminder } from "@/components/ui/LegalReminder";
 import { DepositAddressQr, networkLabel } from "@/components/deposit/DepositAddressQr";
 import { MoneyFormLayout, WhatHappensNext } from "@/components/money/MoneyFormLayout";
 import { ManualNgnDeposit } from "@/components/deposit/ManualNgnDeposit";
+import { NgnAccountNumber } from "@/components/deposit/NgnAccountNumber";
+import type { VirtualAccountState } from "@/lib/korapay/virtualAccount";
 import type { ManualDepositConfig } from "@/lib/deposits/manualDeposit";
 import type { KycStatus } from "@/lib/types/database";
 
@@ -70,6 +72,7 @@ export function DepositForm({
   availability,
   initialCurrency,
   manualDeposit,
+  ngnAccount,
 }: {
   wallets: Wallet[];
   availability: Record<string, DepositAvailability>;
@@ -84,6 +87,12 @@ export function DepositForm({
    * and no session.
    */
   manualDeposit?: { userId: string; kycStatus: KycStatus; config: ManualDepositConfig };
+  /**
+   * GROUP 2 — the naira account-number rail, also resolved server-side so
+   * the screen never asks the browser which account number to show. Absent
+   * when the flag is off and in the component gallery.
+   */
+  ngnAccount?: { state: VirtualAccountState; depositFee: number };
 }) {
   const router = useRouter();
 
@@ -165,6 +174,22 @@ export function DepositForm({
         userId={manualDeposit.userId}
         kycStatus={manualDeposit.kycStatus}
         config={manualDeposit.config}
+        picker={picker}
+      />
+    );
+  }
+
+  /**
+   * GROUP 2 — naira by permanent account number. The same one-line branch as
+   * the manual rail above it and for the same reason: no quote, no amount,
+   * no expiry clock and no status to poll means every step below would need
+   * a conditional around it.
+   */
+  if (current?.available && current.provider === "korapay" && ngnAccount) {
+    return (
+      <NgnAccountNumber
+        initial={ngnAccount.state}
+        depositFee={ngnAccount.depositFee}
         picker={picker}
       />
     );

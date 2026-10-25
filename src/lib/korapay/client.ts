@@ -196,11 +196,14 @@ export function getVirtualBankAccount(reference: string): Promise<KorapayVirtual
 export type KorapayVbaTransaction = {
   reference: string;
   amount: string | number;
+  /** Korapay's own cut. Note it can DIFFER from the same charge's `fee` read
+   *  through /charges — 50.00 here against 53.75 there on one sandbox
+   *  payment. Neither figure is charged to the customer, so the discrepancy
+   *  only affects the recorded cost of the rail. */
+  fee?: string | number;
   currency: string;
   status: string;
-  /** Present on a virtual-account credit; absent on other transaction kinds. */
-  account_number?: string;
-  virtual_bank_account?: { account_number?: string; account_reference?: string };
+  description?: string;
   transaction_date?: string;
   created_at?: string;
 };
@@ -209,6 +212,15 @@ export type KorapayVbaTransaction = {
  * GET /virtual-bank-account/transactions. The reconcile cron's only input —
  * with no webhook URL configured in the test dashboard, this is how a sandbox
  * deposit is ever noticed at all.
+ *
+ * account_number IS REQUIRED. Confirmed live: omitting it answers 400
+ * "account_number is required". There is no merchant-wide pay-in listing, so
+ * the reconcile job has to iterate accounts — see src/lib/korapay/reconcile.ts
+ * for how that is capped.
+ *
+ * The response nests the list under `data.transactions`, alongside
+ * `total_amount_received` and a pagination block. The array form is accepted
+ * too, so a future flattening of the envelope does not break the cron.
  */
 export async function listVirtualAccountTransactions(params: {
   accountNumber: string;
@@ -228,20 +240,30 @@ export async function listVirtualAccountTransactions(params: {
 
 // ── Charges (what a webhook claims, re-asked of the provider) ───────────────
 
+type KorapayVbaDetails = {
+  account_number?: string;
+  account_reference?: string;
+  account_name?: string;
+};
+
 export type KorapayCharge = {
   reference: string;
   amount: string | number;
-  /** What actually lands after Korapay's own fee. Not always present. */
+  /** What actually landed. Equal to `amount` on every sandbox charge seen. */
   amount_paid?: string | number;
   fee?: string | number;
   currency: string;
   status: string;
   payment_method?: string;
-  virtual_bank_account_details?: {
-    account_number?: string;
-    account_reference?: string;
-    account_name?: string;
-  };
+  /**
+   * CONFIRMED LIVE: the charge response names this `virtual_bank_account`,
+   * while parts of the documentation call it `virtual_bank_account_details`.
+   * Both are declared and chargeAccountNumber reads whichever is present —
+   * reading only the documented one found nothing on a real sandbox charge,
+   * which would have made every webhook delivery an "unknown account".
+   */
+  virtual_bank_account?: KorapayVbaDetails;
+  virtual_bank_account_details?: KorapayVbaDetails;
 };
 
 /**
@@ -250,6 +272,16 @@ export type KorapayCharge = {
  */
 export function getCharge(reference: string): Promise<KorapayCharge> {
   return request(`/charges/${encodeURIComponent(reference)}`, { method: "GET" });
+}
+
+/** The account number a charge arrived in, under whichever key it came back
+ *  on. Null when the charge was not a virtual-account pay-in at all. */
+export function chargeAccountNumber(charge: KorapayCharge): string | null {
+  return (
+    charge.virtual_bank_account?.account_number ??
+    charge.virtual_bank_account_details?.account_number ??
+    null
+  );
 }
 
 // ── Balances ────────────────────────────────────────────────────────────────
