@@ -48,7 +48,7 @@ export default async function AdminPage() {
   await requireAdminUser();
   const admin = createAdminClient();
 
-  const [{ data, error }, { data: failed }] = await Promise.all([
+  const [{ data, error }, { data: failed }, { count: depositsAwaitingReview }] = await Promise.all([
     admin.rpc("admin_dashboard_stats"),
     // A short, deliberate window rather than every failure ever. This is a
     // "what has just gone wrong" list, and paging it would turn it into an
@@ -59,6 +59,14 @@ export default async function AdminPage() {
       .eq("status", "failed")
       .order("created_at", { ascending: false })
       .range(0, 9),
+    // GROUP 4. admin_dashboard_stats does not return this depth, and
+    // widening it would mean a migration for a tile. head: true sends no
+    // rows, and deposits_awaiting_review_idx (0037) serves it.
+    admin
+      .from("deposits")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "awaiting_review")
+      .eq("method", "manual_bank_transfer"),
   ]);
 
   const failedDeposits = failed ?? [];
@@ -100,6 +108,11 @@ export default async function AdminPage() {
 
   const queues = [
     { href: "/admin/kyc", label: "Waiting on verification", count: stats.kyc_pending },
+    {
+      href: "/admin/deposits",
+      label: "Naira transfers to check",
+      count: depositsAwaitingReview ?? 0,
+    },
     { href: "/admin/withdrawals", label: "Withdrawals in the queue", count: stats.withdrawals_queued },
     {
       href: "/admin/withdrawals?filter=flagged",

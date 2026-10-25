@@ -347,6 +347,10 @@ function StatusTimeline({ detail }: { detail: Detail }) {
   const done = detail.status === "completed";
   const inFlight = detail.status === "processing";
   const expired = detail.status === "expired";
+  // GROUP 4. The customer has said they made the transfer and a person has
+  // not yet confirmed it arrived — the money has moved at their bank and not
+  // yet here, which is neither "waiting for your transfer" nor "received".
+  const underReview = detail.status === "awaiting_review";
 
   const isPayToChina = detail.source === "transaction" && detail.type === "pay_to_china";
   const isDeposit = detail.source === "deposit";
@@ -359,9 +363,23 @@ function StatusTimeline({ detail }: { detail: Detail }) {
           // true and whose move it is. It only becomes "Funds received" once
           // the provider has told us so — which is what moves the row to
           // 'processing' or 'completed'.
-          label: done || inFlight ? "Funds received" : expired ? "No transfer received" : "Waiting for your transfer",
-          state: done || inFlight ? "done" : expired ? "failed" : failed ? "failed" : "current",
+          label: done || inFlight
+            ? "Funds received"
+            : underReview
+              ? "You've sent it"
+              : expired
+                ? "No transfer received"
+                : "Waiting for your transfer",
+          state: done || inFlight || underReview
+            ? "done"
+            : expired ? "failed" : failed ? "failed" : "current",
         },
+        // GROUP 4. A manual deposit has a step the provider rails do not: a
+        // person checking the bank statement. Shown only when the row is
+        // actually in it, so the provider path's ladder is unchanged.
+        ...(underReview
+          ? [{ label: "We're checking our statement", state: "current" as StepState }]
+          : []),
         {
           label: expired ? "Expired" : failed ? "Failed" : "Completed",
           // An expired deposit's last step is reached, not pending — the row

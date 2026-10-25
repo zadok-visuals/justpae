@@ -241,6 +241,14 @@ export async function initiateDeposit(
     return initiateKlashaGhsDeposit(supabase, user.id, formData);
   }
 
+  // GROUP 4. A manual bank-transfer deposit is created by
+  // create_manual_deposit (actions/manualDeposit.ts), never here — this
+  // function provisions a PROVIDER transfer, and a crafted POST naming a
+  // manual currency must not reach that call with a stale quote id.
+  if (availability.provider === "manual") {
+    return { error: "This deposit is made by bank transfer. Start it from the deposit screen." };
+  }
+
   const quoteId = String(formData.get("quoteId") ?? "");
   if (!quoteId) return { error: "Missing quote." };
 

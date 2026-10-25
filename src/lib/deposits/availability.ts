@@ -4,7 +4,12 @@
 // (flags.ts) or type-only. tsconfig's allowImportingTsExtensions is what lets
 // the app's own build read the same specifiers.
 import type { Currency } from "../types/database.ts";
-import { GHS_WALLET_ENABLED, NGN_BANK_DEPOSIT_MAINTENANCE, KES_BANK_DEPOSIT_MAINTENANCE } from "../flags.ts";
+import {
+  GHS_WALLET_ENABLED,
+  NGN_BANK_DEPOSIT_MAINTENANCE,
+  KES_BANK_DEPOSIT_MAINTENANCE,
+  NGN_MANUAL_DEPOSIT,
+} from "../flags.ts";
 import type { UnavailableKind } from "../ui/unavailability.ts";
 
 /**
@@ -46,10 +51,25 @@ const BANK_DEPOSIT_MAINTENANCE_REASON: Partial<Record<Currency, string>> = {
  * why the three are not all "Maintenance".
  */
 export type DepositAvailability =
-  | { available: true; provider: "busha" | "klasha" }
+  | { available: true; provider: "busha" | "klasha" | "manual" }
   | { available: false; kind: UnavailableKind; reason: string };
 
 export function depositAvailability(currency: Currency): DepositAvailability {
+  /**
+   * GROUP 4 — manual naira, BEFORE the provider branch and before the naira
+   * kill switch.
+   *
+   * The kill switch exists to take the PROVIDER rail down. The manual rail is
+   * the replacement for that rail being down, so a deposit path gated on the
+   * switch being off would be unreachable in exactly the situation it was
+   * built for. While NGN_MANUAL_DEPOSIT is on, naira deposits are a bank
+   * transfer the customer makes to the company's own account; the switch
+   * still governs the provider path it replaces.
+   */
+  if (currency === "NGN" && NGN_MANUAL_DEPOSIT) {
+    return { available: true, provider: "manual" };
+  }
+
   if (BUSHA_DEPOSIT_CURRENCIES.includes(currency)) {
     if (BANK_DEPOSIT_MAINTENANCE[currency]) {
       return {

@@ -64,6 +64,8 @@ import { BACK_BUTTON_CLASS } from "@/lib/ui/escapeControl";
 
 export interface AdminNavCounts {
   verification: number;
+  /** GROUP 4 — manual naira transfers claimed as sent and not yet checked. */
+  deposits: number;
   withdrawals: number;
   payToChina: number;
   support: number;
@@ -91,6 +93,10 @@ const GROUPS: { title: string; links: AdminLink[] }[] = [
     title: "Queues",
     links: [
       { href: "/admin/kyc", label: "Verification", count: "verification" },
+      // Above Withdrawals: money coming IN is waiting on us before the
+      // customer can do anything else, and a deposit left unchecked is
+      // somebody's money already sent and not yet theirs.
+      { href: "/admin/deposits", label: "Deposits", count: "deposits" },
       { href: "/admin/withdrawals", label: "Withdrawals", count: "withdrawals" },
       { href: "/admin/pay-to-china", label: "Pay to China", count: "payToChina" },
       { href: "/admin/support", label: "Support", count: "support" },
@@ -389,5 +395,11 @@ export function AdminNav({
 }
 
 function totalWaiting(counts: AdminNavCounts): number {
-  return counts.verification + counts.withdrawals + counts.payToChina + counts.support;
+  return (
+    counts.verification +
+    counts.deposits +
+    counts.withdrawals +
+    counts.payToChina +
+    counts.support
+  );
 }

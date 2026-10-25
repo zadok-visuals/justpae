@@ -20,6 +20,9 @@ import { unavailableSuffix, type UnavailableKind } from "@/lib/ui/unavailability
 import { LegalReminder } from "@/components/ui/LegalReminder";
 import { DepositAddressQr, networkLabel } from "@/components/deposit/DepositAddressQr";
 import { MoneyFormLayout, WhatHappensNext } from "@/components/money/MoneyFormLayout";
+import { ManualNgnDeposit } from "@/components/deposit/ManualNgnDeposit";
+import type { ManualDepositConfig } from "@/lib/deposits/manualDeposit";
+import type { KycStatus } from "@/lib/types/database";
 
 /**
  * GROUP 4f — the heading over the reason, matched to the reason.
@@ -65,6 +68,7 @@ export function DepositForm({
   wallets,
   availability,
   initialCurrency,
+  manualDeposit,
 }: {
   wallets: Wallet[];
   availability: Record<string, DepositAvailability>;
@@ -73,6 +77,12 @@ export function DepositForm({
    * and already fallen back, so this component takes it at face value.
    */
   initialCurrency?: Currency;
+  /**
+   * GROUP 4 — what the naira bank-transfer rail needs, read server-side.
+   * Absent in the component gallery, which renders this form with fixtures
+   * and no session.
+   */
+  manualDeposit?: { userId: string; kycStatus: KycStatus; config: ManualDepositConfig };
 }) {
   const router = useRouter();
 
@@ -99,6 +109,62 @@ export function DepositForm({
       window.location.href = depositState.redirectUrl;
     }
   }, [depositState.redirectUrl]);
+
+  // One definition, rendered by the provider path below and handed to the
+  // manual naira path — two pickers in one product is two pickers to keep in
+  // step.
+  const picker = (
+    <Card className="space-y-3">
+      <SelectField
+        label="Deposit into"
+        value={currency}
+        onChange={(e) => setCurrency(e.target.value as Currency)}
+      >
+        {wallets.map((wallet) => {
+          const info = availability[wallet.currency];
+          return (
+            <option key={wallet.currency} value={wallet.currency} disabled={!info?.available}>
+              {currencyMeta(wallet.currency).flag} {wallet.currency}
+              {/* GROUP 4f. Was a bare " · unavailable" for all three of the
+                  reasons a currency lands here, which told a cedi holder
+                  nothing and told a dollar holder something wrong. The kind
+                  comes from depositAvailability, which has always known. */}
+              {info == null || info.available ? "" : unavailableSuffix(info.kind)}
+            </option>
+          );
+        })}
+      </SelectField>
+
+      {current && !current.available && (
+        // The title names the STATE, not a generic absence. "aren't available
+        // yet" was printed over cedis — a rail that exists and is down — and
+        // over dollars, which are not deposited at all.
+        <Banner tone="info" title={depositUnavailableTitle(currency, current.kind)}>
+          {current.reason}
+        </Banner>
+      )}
+    </Card>
+  );
+
+  /**
+   * GROUP 4 — naira by bank transfer.
+   *
+   * A whole different rail, not a variant of the provider flow: there is no
+   * quote, no generated account, no expiry clock and no status that settles
+   * on its own. Branching inside the form below would have meant four
+   * conditionals around every step, so it gets its own component and this is
+   * the only line that chooses between them.
+   */
+  if (current?.available && current.provider === "manual" && manualDeposit) {
+    return (
+      <ManualNgnDeposit
+        userId={manualDeposit.userId}
+        kycStatus={manualDeposit.kycStatus}
+        config={manualDeposit.config}
+        picker={picker}
+      />
+    );
+  }
 
   const instructions = depositState.bankDetails ?? depositState.cryptoAddress;
 
@@ -186,36 +252,7 @@ export function DepositForm({
     <div className="space-y-4">
       <StepIndicator step={quoteState.quoteId ? 2 : 1} total={3} />
 
-      <Card className="space-y-3">
-        <SelectField
-          label="Deposit into"
-          value={currency}
-          onChange={(e) => setCurrency(e.target.value as Currency)}
-        >
-          {wallets.map((wallet) => {
-            const info = availability[wallet.currency];
-            return (
-              <option key={wallet.currency} value={wallet.currency} disabled={!info?.available}>
-                {currencyMeta(wallet.currency).flag} {wallet.currency}
-                {/* GROUP 4f. Was a bare " · unavailable" for all three of the
-                    reasons a currency lands here, which told a cedi holder
-                    nothing and told a dollar holder something wrong. The kind
-                    comes from depositAvailability, which has always known. */}
-                {info == null || info.available ? "" : unavailableSuffix(info.kind)}
-              </option>
-            );
-          })}
-        </SelectField>
-
-        {current && !current.available && (
-          // The title names the STATE, not a generic absence. "aren't
-          // available yet" was printed over cedis — a rail that exists and is
-          // down — and over dollars, which are not deposited at all.
-          <Banner tone="info" title={depositUnavailableTitle(currency, current.kind)}>
-            {current.reason}
-          </Banner>
-        )}
-      </Card>
+      {picker}
 
       {current?.available && (
         <form action={quoteAction} className="space-y-4">

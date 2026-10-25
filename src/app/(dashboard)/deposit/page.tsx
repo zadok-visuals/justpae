@@ -6,6 +6,7 @@ import { depositAvailability } from "@/lib/deposits/availability";
 import { isWalletLocked } from "@/lib/services";
 import { parseCurrencyParam, preselectCurrency } from "@/lib/accounts/preselect";
 import { startRouteTiming } from "@/lib/perf/timing";
+import { getManualDepositConfig } from "@/lib/settings";
 import type { Wallet } from "@/lib/types/database";
 import { requireSessionUser } from "@/lib/auth/session";
 
@@ -17,9 +18,15 @@ export default async function DepositPage(props: PageProps<"/deposit">) {
   const supabase = await createClient();
   const user = await requireSessionUser();
 
-  const [{ data: wallets }, params] = await Promise.all([
+  // GROUP 4. The naira rail needs the profile's KYC state and the receiving
+  // account, both read server-side: the gate must not be a client-side
+  // decision, and the account number shown must be one the server chose.
+  // In parallel with the wallets read — none of the four needs another.
+  const [{ data: wallets }, params, { data: profile }, manualConfig] = await Promise.all([
     supabase.from("wallets").select("*").eq("user_id", user.id),
     props.searchParams,
+    supabase.from("profiles").select("kyc_status").eq("id", user.id).maybeSingle(),
+    getManualDepositConfig(),
   ]);
   const list = (wallets ?? []) as Wallet[];
 
@@ -61,6 +68,11 @@ export default async function DepositPage(props: PageProps<"/deposit">) {
         wallets={list}
         availability={availability}
         initialCurrency={initialCurrency}
+        manualDeposit={{
+          userId: user.id,
+          kycStatus: profile?.kyc_status ?? "not_started",
+          config: manualConfig,
+        }}
       />
     </PageShell>
   );

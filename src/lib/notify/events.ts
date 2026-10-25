@@ -10,6 +10,8 @@ import {
   sendPayToChinaCompletedEmail,
   sendPayToChinaRejectedEmail,
   sendAdminPayToChinaAlertEmail,
+  sendAdminManualDepositSentEmail,
+  sendManualDepositRejectedEmail,
   adminNotificationRecipients,
 } from "@/lib/email";
 import type { Currency } from "@/lib/types/database";
@@ -469,4 +471,84 @@ async function insertNotificationWithAttachment(
     .update({ attachment_ref: params.attachmentRef })
     .eq("id", latest.id);
   if (error) console.error("[notify] attachment link failed", { userId, error });
+}
+
+// ── Manual NGN bank-transfer deposits (migration 0037) ──────────────────────
+//
+// APPROVAL REUSES notifyDepositCredited. The money landed in the wallet the
+// same way it does on every other rail, confirmed_amount holds what landed,
+// and claim_deposit_notification already guarantees one message per deposit.
+// A second "your deposit landed" email with its own wording would be a second
+// design for one event, which is what src/lib/email.ts exists to prevent.
+
+/** To the ops inbox, when a customer marks a manual deposit as sent. */
+export async function notifyAdminsManualDepositSent(depositId: string): Promise<void> {
+  try {
+    const to = adminNotificationRecipients();
+    if (to.length === 0) return;
+
+    const admin = createAdminClient();
+    const { data: deposit } = await admin
+      .from("deposits")
+      .select("user_id, currency, amount, reference, screenshot_path")
+      .eq("id", depositId)
+      .maybeSingle();
+    if (!deposit) return;
+
+    const userEmail = await emailFor(admin, deposit.user_id);
+
+    await sendAdminManualDepositSentEmail({
+      to,
+      userEmail: userEmail ?? deposit.user_id,
+      amount: formatAmount(deposit.currency as Currency, deposit.amount),
+      reference: deposit.reference ?? "(no reference)",
+      hasScreenshot: Boolean(deposit.screenshot_path),
+    });
+  } catch (err) {
+    console.error("[notify.notifyAdminsManualDepositSent] threw", {
+      depositId,
+      error: err instanceof Error ? err.message : err,
+    });
+  }
+}
+
+/**
+ * To the customer, when an admin could not confirm the transfer.
+ *
+ * NOT claimed through claim_deposit_notification. That claim is the
+ * "credited" announcement, and spending it here would silently suppress the
+ * credited email if a rejected request were ever reopened and approved.
+ * Rejection has exactly one caller — the admin action — so there is no second
+ * path to de-duplicate against.
+ */
+export async function notifyManualDepositRejected(
+  depositId: string,
+  reason: string,
+): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    const { data: deposit } = await admin
+      .from("deposits")
+      .select("user_id, currency, amount, reference")
+      .eq("id", depositId)
+      .maybeSingle();
+    if (!deposit) return;
+
+    const amount = formatAmount(deposit.currency as Currency, deposit.amount);
+    const reference = deposit.reference ?? "your request";
+
+    await insertNotification(admin, deposit.user_id, {
+      title: "We couldn't confirm that deposit",
+      body: `We couldn't match a transfer to ${reference} for ${amount}. ${reason}`,
+      href: "/transactions",
+    });
+
+    const to = await emailFor(admin, deposit.user_id);
+    if (to) await sendManualDepositRejectedEmail({ to, amount, reference, reason });
+  } catch (err) {
+    console.error("[notify.notifyManualDepositRejected] threw", {
+      depositId,
+      error: err instanceof Error ? err.message : err,
+    });
+  }
 }

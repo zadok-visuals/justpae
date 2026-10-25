@@ -2,6 +2,8 @@ import { requireAdminUser } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, EmptyState } from "@/components/ui/Primitives";
 import { RateMarkupForm, SettingsForm } from "@/components/admin/RatesForms";
+import { ManualDepositSettingsForm } from "@/components/admin/ManualDepositSettingsForm";
+import { getManualDepositConfig } from "@/lib/settings";
 import {
   CnyTierRateForm,
   CnyMarkupForm,
@@ -20,13 +22,20 @@ export default async function AdminRatesPage() {
 
   // Read with the service role, which is the only role that CAN read them:
   // all three CNY pricing tables have RLS on and no policies (0026).
-  const [markups, { data: settings }, { data: tiers }, { data: cnyMarkup }, { data: supplier }] =
-    await Promise.all([
+  const [
+    markups,
+    { data: settings },
+    { data: tiers },
+    { data: cnyMarkup },
+    { data: supplier },
+    manualDeposit,
+  ] = await Promise.all([
       listMarkups(),
       admin.from("app_settings").select("key, value, updated_at"),
       admin.from("cny_tier_rates").select("*").order("tier_min_cny"),
       admin.from("cny_markup_rate").select("*").maybeSingle(),
       admin.from("supplier_rates").select("*").order("effective_from", { ascending: false }).limit(50),
+      getManualDepositConfig(),
     ]);
 
   const settingValues = Object.fromEntries((settings ?? []).map((s) => [s.key, s.value]));
@@ -38,6 +47,7 @@ export default async function AdminRatesPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <RateMarkupForm />
         <SettingsForm values={settingValues} />
+        <ManualDepositSettingsForm config={manualDeposit} />
         <CnyTierRateForm tiers={(tiers ?? []) as CnyTierRate[]} />
         <CnyMarkupForm markup={(cnyMarkup ?? null) as CnyMarkupRate | null} />
         <SupplierRateForm rates={(supplier ?? []) as SupplierRate[]} />

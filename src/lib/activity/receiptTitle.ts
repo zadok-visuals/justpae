@@ -29,6 +29,11 @@ export function receiptTitle(detail: Pick<ActivityDetail, "source" | "type" | "s
         return "Deposit failed";
       case "expired":
         return "Deposit expired";
+      // 0036. "Deposit pending" would be wrong in the one way that matters:
+      // pending means we are waiting on the customer, and here they have
+      // already made the transfer.
+      case "awaiting_review":
+        return "Deposit under review";
       default:
         return "Deposit pending";
     }

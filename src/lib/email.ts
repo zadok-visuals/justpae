@@ -565,3 +565,62 @@ export async function sendAdminPayToChinaAlertEmail(params: {
     button: { label: "Open the queue", href: `${appUrl()}/admin/pay-to-china` },
   });
 }
+
+// ── Manual NGN bank-transfer deposits (migration 0037) ──────────────────────
+// Both customer-facing messages are statements of fact and carry no button,
+// for the reason on EmailOptions.button. The ops alert does, because its whole
+// purpose is to get somebody into the queue.
+//
+// None of these names a bank-transfer rail operator or uses the word
+// "exchange": the customer transferred money to justpae's account, and that is
+// the whole of what happened.
+
+/** To the ops team, when a customer says they have made the transfer. */
+export async function sendAdminManualDepositSentEmail(params: {
+  to: string[];
+  userEmail: string;
+  amount: string;
+  reference: string;
+  hasScreenshot: boolean;
+}): Promise<boolean> {
+  return sendEmail({
+    to: params.to,
+    subject: `Naira deposit to review — ${params.reference}`,
+    preheader: `${params.userEmail} says they sent ${params.amount}.`,
+    heading: "A naira deposit is waiting",
+    bodyParagraphs: [
+      `<strong>${escapeHtml(params.userEmail)}</strong> says they have transferred <strong>${escapeHtml(params.amount)}</strong> with the narration <strong>${escapeHtml(params.reference)}</strong>.`,
+      params.hasScreenshot
+        ? "They attached a screenshot."
+        : "No screenshot was attached — match it by the reference on the statement.",
+      // The one rule that cannot be enforced from an inbox.
+      "Credit the amount that actually arrived, not the amount they asked for.",
+    ],
+    button: { label: "Open the queue", href: `${appUrl()}/admin/deposits` },
+  });
+}
+
+/** To the customer, when an admin rejects their claimed transfer. */
+export async function sendManualDepositRejectedEmail(params: {
+  to: string;
+  amount: string;
+  reference: string;
+  reason: string;
+}): Promise<boolean> {
+  return sendEmail({
+    to: params.to,
+    subject: "We couldn't confirm your naira deposit",
+    preheader: `Nothing was taken from your account for ${params.reference}.`,
+    heading: "We couldn't confirm that deposit",
+    bodyParagraphs: [
+      // Said first, because it is the only thing the reader actually wants to
+      // know: we never debited them, so there is nothing of theirs with us.
+      `We couldn't match a transfer to your request <strong>${escapeHtml(params.reference)}</strong> for <strong>${escapeHtml(params.amount)}</strong>. Nothing was taken from your account by us.`,
+      `The reason: <em>${escapeHtml(params.reason)}</em>`,
+      "If you did send the money, reply to this with your bank's transfer receipt and we'll trace it.",
+    ],
+    closingParagraphs: [
+      "To try again, start a new deposit — it comes with a new reference, and the old one is closed.",
+    ],
+  });
+}

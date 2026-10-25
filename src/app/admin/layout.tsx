@@ -57,23 +57,24 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
 const ZERO_COUNTS: AdminNavCounts = {
   verification: 0,
+  deposits: 0,
   withdrawals: 0,
   payToChina: 0,
   support: 0,
 };
 
 /**
- * The four queue depths for the sidebar badges.
+ * The five queue depths for the sidebar badges.
  *
- * TWO QUERIES, IN PARALLEL, ON EVERY ADMIN PAGE RENDER — which is a cost
+ * THREE QUERIES, IN PARALLEL, ON EVERY ADMIN PAGE RENDER — which is a cost
  * worth naming rather than hiding:
  *
  *   admin_dashboard_stats()   one round trip for every count the dashboard
- *                             already reads. Three of the four come from it,
+ *                             already reads. Three of the five come from it,
  *                             so this is not a new query shape, it is the
  *                             same one the landing page makes.
- *   a head-count on the RMB queue, because pay_to_china's pending depth is
- *   the one the RPC does not return. `head: true` sends no rows.
+ *   two head-counts, for the RMB and manual-deposit queues — the two depths
+ *   the RPC does not return. `head: true` sends no rows.
  *
  * FAILS SOFT, DELIBERATELY. A badge is an affordance, not a record: if either
  * read fails the nav renders with no badges and every link still works. The
@@ -85,22 +86,37 @@ async function loadQueueCounts(): Promise<AdminNavCounts> {
   try {
     const admin = createAdminClient();
 
-    const [{ data, error }, { count, error: rmbError }] = await Promise.all([
+    const [
+      { data, error },
+      { count, error: rmbError },
+      { count: depositCount, error: depositError },
+    ] = await Promise.all([
       admin.rpc("admin_dashboard_stats"),
       admin
         .from("transactions")
         .select("id", { count: "exact", head: true })
         .eq("type", "pay_to_china")
         .eq("status", "pending"),
+      // GROUP 4. Served by deposits_awaiting_review_idx (0037), and
+      // head: true sends no rows. Like the RMB depth, this one is not in
+      // admin_dashboard_stats — widening that function would mean a migration
+      // for a badge.
+      admin
+        .from("deposits")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "awaiting_review")
+        .eq("method", "manual_bank_transfer"),
     ]);
 
     if (error) console.error("[admin.layout] queue counts failed", error);
     if (rmbError) console.error("[admin.layout] RMB queue count failed", rmbError);
+    if (depositError) console.error("[admin.layout] deposit queue count failed", depositError);
 
     const stats = (data as AdminDashboardStats | null) ?? null;
 
     return {
       verification: stats?.kyc_pending ?? 0,
+      deposits: depositCount ?? 0,
       // The queue plus the ones held for extra verification: both are rows a
       // person has to look at, and splitting them in the badge would
       // understate the work waiting behind one link.

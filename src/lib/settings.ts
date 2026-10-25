@@ -1,4 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  MANUAL_DEPOSIT_DEFAULTS,
+  type ManualDepositConfig,
+} from "@/lib/deposits/manualDeposit";
 
 /**
  * Server-only. Operator-tunable settings backed by the `app_settings` table,
@@ -36,7 +40,31 @@ export const SETTING_KEYS = {
   pinMaxFailedAttempts: "pin_max_failed_attempts",
   /** How long a locked transaction PIN stays locked, in minutes. Default 30. */
   pinLockMinutes: "pin_lock_minutes",
+
+  /**
+   * Migration 0037 — the company account naira bank-transfer deposits are
+   * sent to, and the limits quoted before an amount is accepted. The three
+   * account fields are TEXT, which is why they are not in SETTING_DEFAULTS
+   * and not editable through setAppSetting (numbers only); see
+   * setManualDepositAccount in actions/adminManualDeposits.ts.
+   */
+  manualDepositBankName: "manual_deposit_bank_name",
+  manualDepositAccountNumber: "manual_deposit_account_number",
+  manualDepositAccountName: "manual_deposit_account_name",
+  manualDepositMinNgn: "manual_deposit_min_ngn",
+  manualDepositMaxNgn: "manual_deposit_max_ngn",
+  manualDepositFeeNgn: "manual_deposit_fee_ngn",
 } as const;
+
+/** The six keys above, for the admin form and the customer-side reader. */
+export const MANUAL_DEPOSIT_SETTING_KEYS = [
+  SETTING_KEYS.manualDepositBankName,
+  SETTING_KEYS.manualDepositAccountNumber,
+  SETTING_KEYS.manualDepositAccountName,
+  SETTING_KEYS.manualDepositMinNgn,
+  SETTING_KEYS.manualDepositMaxNgn,
+  SETTING_KEYS.manualDepositFeeNgn,
+] as const;
 
 export const SETTING_DEFAULTS: Record<string, number> = {
   [SETTING_KEYS.automatedPayoutThresholdUsd]: 1000,
@@ -45,6 +73,9 @@ export const SETTING_DEFAULTS: Record<string, number> = {
   [SETTING_KEYS.billPaymentFeeRate]: 0,
   [SETTING_KEYS.pinMaxFailedAttempts]: 5,
   [SETTING_KEYS.pinLockMinutes]: 30,
+  [SETTING_KEYS.manualDepositMinNgn]: MANUAL_DEPOSIT_DEFAULTS.minAmount,
+  [SETTING_KEYS.manualDepositMaxNgn]: MANUAL_DEPOSIT_DEFAULTS.maxAmount,
+  [SETTING_KEYS.manualDepositFeeNgn]: MANUAL_DEPOSIT_DEFAULTS.fee,
 };
 
 /**
@@ -75,4 +106,53 @@ export async function getAutomatedPayoutWindowHours(): Promise<number> {
 
 export async function getWithdrawalFeeRate(): Promise<number> {
   return getNumericSetting(SETTING_KEYS.withdrawalFeeRate);
+}
+
+/**
+ * The manual NGN deposit configuration, in one round trip.
+ *
+ * READ SERVER-SIDE AND PASSED DOWN, never fetched by the browser. app_settings
+ * is readable by any authenticated session (0002) and nothing secret lives in
+ * these six — but reading them here is what stops the screen being made to
+ * show an account number the server did not choose.
+ *
+ * Falls back to the documented defaults on any read failure, and leaves the
+ * three text fields EMPTY rather than inventing an account. The customer
+ * screen refuses to render instructions until all three are set — see
+ * isManualDepositConfigured.
+ */
+export async function getManualDepositConfig(): Promise<ManualDepositConfig> {
+  const fallback: ManualDepositConfig = {
+    bankName: "",
+    accountNumber: "",
+    accountName: "",
+    ...MANUAL_DEPOSIT_DEFAULTS,
+  };
+
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("app_settings")
+      .select("key, value")
+      .in("key", [...MANUAL_DEPOSIT_SETTING_KEYS]);
+
+    const byKey = new Map((data ?? []).map((row) => [row.key, row.value ?? ""]));
+    const text = (key: string) => (byKey.get(key) ?? "").trim();
+    const num = (key: string, dflt: number) => {
+      const parsed = Number(text(key));
+      return Number.isFinite(parsed) && parsed >= 0 ? parsed : dflt;
+    };
+
+    return {
+      bankName: text(SETTING_KEYS.manualDepositBankName),
+      accountNumber: text(SETTING_KEYS.manualDepositAccountNumber),
+      accountName: text(SETTING_KEYS.manualDepositAccountName),
+      minAmount: num(SETTING_KEYS.manualDepositMinNgn, MANUAL_DEPOSIT_DEFAULTS.minAmount),
+      maxAmount: num(SETTING_KEYS.manualDepositMaxNgn, MANUAL_DEPOSIT_DEFAULTS.maxAmount),
+      fee: num(SETTING_KEYS.manualDepositFeeNgn, MANUAL_DEPOSIT_DEFAULTS.fee),
+    };
+  } catch (err) {
+    console.error("[settings.getManualDepositConfig] falling back to defaults", err);
+    return fallback;
+  }
 }

@@ -28,6 +28,34 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient();
 
+  /**
+   * GROUP 4 — the 24-hour sweep for manual bank-transfer deposits.
+   *
+   * Added to this route rather than given its own because it is the same
+   * concern on the same table, and a second route would be a second external
+   * scheduler entry for ops to forget. It runs FIRST and independently of the
+   * provider loop below: a provider outage must not be the reason a naira
+   * request nobody ever marked sent stays open forever.
+   *
+   * expire_stale_manual_deposits (0037) touches only 'pending' rows. A row
+   * the customer marked sent belongs to a human however long that takes —
+   * being able to expire one would be a way to make a real claim disappear by
+   * waiting.
+   */
+  let expiredManual: number | string = 0;
+  {
+    const { data, error } = await admin.rpc("expire_stale_manual_deposits");
+    if (error) {
+      console.error("[reconcile-deposits] expire_stale_manual_deposits failed", error);
+      expiredManual = `failed: ${error.message}`;
+    } else {
+      expiredManual = data ?? 0;
+      if (typeof expiredManual === "number" && expiredManual > 0) {
+        console.warn("[reconcile-deposits] expired stale manual deposits", { expiredManual });
+      }
+    }
+  }
+
   const { data: staleDeposits } = await admin
     .from("deposits")
     .select("id, provider_reference, pay_in_expires_at")
@@ -126,5 +154,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ checked: results.length, results });
+  return NextResponse.json({ checked: results.length, expiredManual, results });
 }

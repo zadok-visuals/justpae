@@ -88,6 +88,11 @@ const STATUS_LABELS: Record<string, { label: string; tone: StatusTone }> = {
   // money arrived. Neutral, not "failed": the tone is the message. Nothing
   // went wrong and nothing was taken — the window simply closed.
   expired: { label: "Expired", tone: "neutral" },
+  // 0036's status, for a manual bank transfer the customer says they have
+  // made and a person has not yet confirmed. "Pending" would be wrong in the
+  // one way that matters: pending means we are waiting on the CUSTOMER, and
+  // here they have already done their part.
+  awaiting_review: { label: "Under review", tone: "pending" },
 };
 
 export function StatusPill({ status }: { status: TransactionStatus | "refunded" }) {
