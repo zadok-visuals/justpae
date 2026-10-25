@@ -124,6 +124,10 @@ const GROUPS: { title: string; links: AdminLink[] }[] = [
        */
       { href: "/admin/rates#markups", label: "Margin" },
       { href: "/admin/pnl", label: "PNL" },
+      // GROUP 4a. Under Money rather than System: it is a balance sheet, and
+      // the question it answers ("can we pay tomorrow") belongs beside what
+      // we charge and what we made.
+      { href: "/admin/treasury", label: "Treasury" },
     ],
   },
   {

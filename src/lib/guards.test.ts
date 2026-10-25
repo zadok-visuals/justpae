@@ -143,6 +143,14 @@ describe("no customer-facing copy names a payout provider", () => {
     // customer. Verified by reading every call site before exempting these:
     // the exemption is only sound while that remains true.
     if (rel.startsWith("lib/busha/") || rel.startsWith("lib/klasha/")) return false;
+    // GROUP 4. The treasury. Every string in here is rendered on
+    // /admin/treasury or written into treasury_movements, which has RLS on
+    // and no policies at all — there is no code path by which a customer
+    // session reads either. And naming them is the point: an operator
+    // choosing which of two balances to top up at 2am cannot do that from
+    // the words "primary" and "secondary". The exemption is sound only while
+    // nothing in lib/treasury/ is rendered to a customer; nothing is.
+    if (rel.startsWith("lib/treasury/")) return false;
     return true;
   });
 

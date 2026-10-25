@@ -3,6 +3,7 @@ import {
   MANUAL_DEPOSIT_DEFAULTS,
   type ManualDepositConfig,
 } from "@/lib/deposits/manualDeposit";
+import type { SweepSettings } from "@/lib/treasury/sweep";
 
 /**
  * Server-only. Operator-tunable settings backed by the `app_settings` table,
@@ -57,6 +58,21 @@ export const SETTING_KEYS = {
    */
   payoutRouteNgn: "payout_route_ngn",
   payoutRouteKes: "payout_route_kes",
+
+  /**
+   * Migration 0042 — the daily treasury sweep. The three account fields and
+   * sweep_paused_until are written together by admin_set_sweep_account, not
+   * by setAppSetting: a destination half-changed is an account that exists
+   * and is not the one anybody intended.
+   */
+  sweepFundingBankCode: "sweep_funding_bank_code",
+  sweepFundingAccountNumber: "sweep_funding_account_number",
+  sweepFundingAccountName: "sweep_funding_account_name",
+  sweepMinKeepNgn: "sweep_min_keep_ngn",
+  sweepTargetPayoutNgn: "sweep_target_payout_ngn",
+  sweepMaxDailyNgn: "sweep_max_daily_ngn",
+  sweepTimeLagos: "sweep_time_lagos",
+  sweepPausedUntil: "sweep_paused_until",
 } as const;
 
 export const PAYOUT_ROUTE_SETTING_KEYS = {
@@ -83,7 +99,17 @@ export const SETTING_DEFAULTS: Record<string, number> = {
   [SETTING_KEYS.manualDepositMinNgn]: MANUAL_DEPOSIT_DEFAULTS.minAmount,
   [SETTING_KEYS.manualDepositMaxNgn]: MANUAL_DEPOSIT_DEFAULTS.maxAmount,
   [SETTING_KEYS.manualDepositFeeNgn]: MANUAL_DEPOSIT_DEFAULTS.fee,
+  [SETTING_KEYS.sweepMinKeepNgn]: 500_000,
+  [SETTING_KEYS.sweepTargetPayoutNgn]: 2_000_000,
+  [SETTING_KEYS.sweepMaxDailyNgn]: 1_000_000,
 };
+
+/** The three numeric sweep dials, for the admin form. */
+export const SWEEP_NUMERIC_SETTING_KEYS = [
+  SETTING_KEYS.sweepMinKeepNgn,
+  SETTING_KEYS.sweepTargetPayoutNgn,
+  SETTING_KEYS.sweepMaxDailyNgn,
+] as const;
 
 /**
  * Reads one numeric setting, falling back to its documented default. A missing
@@ -196,6 +222,67 @@ export async function getManualDepositConfig(): Promise<ManualDepositConfig> {
     };
   } catch (err) {
     console.error("[settings.getManualDepositConfig] falling back to defaults", err);
+    return fallback;
+  }
+}
+
+/**
+ * The eight sweep settings, in one round trip.
+ *
+ * The three account fields fall back to EMPTY, never to a guess, and
+ * sweepDestinationReady refuses to run the sweep until all three are set —
+ * the same shape as the manual deposit account above, and for a stronger
+ * reason: this one is a destination the company's own money is sent to.
+ */
+export async function getSweepSettings(): Promise<SweepSettings> {
+  const fallback: SweepSettings = {
+    minKeep: SETTING_DEFAULTS[SETTING_KEYS.sweepMinKeepNgn]!,
+    target: SETTING_DEFAULTS[SETTING_KEYS.sweepTargetPayoutNgn]!,
+    maxDaily: SETTING_DEFAULTS[SETTING_KEYS.sweepMaxDailyNgn]!,
+    timeLagos: "17:30",
+    bankCode: "",
+    accountNumber: "",
+    accountName: "",
+    pausedUntil: null,
+  };
+
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("app_settings")
+      .select("key, value")
+      .in("key", [
+        SETTING_KEYS.sweepFundingBankCode,
+        SETTING_KEYS.sweepFundingAccountNumber,
+        SETTING_KEYS.sweepFundingAccountName,
+        SETTING_KEYS.sweepMinKeepNgn,
+        SETTING_KEYS.sweepTargetPayoutNgn,
+        SETTING_KEYS.sweepMaxDailyNgn,
+        SETTING_KEYS.sweepTimeLagos,
+        SETTING_KEYS.sweepPausedUntil,
+      ]);
+
+    const byKey = new Map((data ?? []).map((row) => [row.key, (row.value ?? "").trim()]));
+    const text = (key: string) => byKey.get(key) ?? "";
+    const num = (key: string) => {
+      const parsed = Number(text(key));
+      return Number.isFinite(parsed) && parsed >= 0 ? parsed : SETTING_DEFAULTS[key]!;
+    };
+
+    return {
+      minKeep: num(SETTING_KEYS.sweepMinKeepNgn),
+      target: num(SETTING_KEYS.sweepTargetPayoutNgn),
+      maxDaily: num(SETTING_KEYS.sweepMaxDailyNgn),
+      timeLagos: text(SETTING_KEYS.sweepTimeLagos) || "17:30",
+      bankCode: text(SETTING_KEYS.sweepFundingBankCode),
+      accountNumber: text(SETTING_KEYS.sweepFundingAccountNumber),
+      accountName: text(SETTING_KEYS.sweepFundingAccountName),
+      pausedUntil: text(SETTING_KEYS.sweepPausedUntil) || null,
+    };
+  } catch (err) {
+    // Falls back to a destination-less config, which cannot sweep. The safe
+    // direction for an unreadable setting that moves money.
+    console.error("[settings.getSweepSettings] falling back to a sweep that cannot run", err);
     return fallback;
   }
 }

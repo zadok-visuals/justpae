@@ -10,6 +10,10 @@ import {
 } from "@/lib/notify/events";
 import { korapaySettlePayoutDeps } from "@/lib/korapay/payoutDeps";
 import { settleKorapayPayout, type SettlePayoutOutcome } from "@/lib/korapay/payout";
+import { getSweepSettings } from "@/lib/settings";
+import { sweepDeps } from "@/lib/treasury/deps";
+import { runSweep, type SweepResult } from "@/lib/treasury/run";
+import { KORAPAY_AUTO_SWEEP } from "@/lib/flags";
 
 /**
  * Safety net for `transactions` rows waiting on a provider transfer — the
@@ -189,10 +193,35 @@ export async function GET(request: Request) {
     }
   }
 
+  /**
+   * GROUP 4b — the daily treasury sweep, on the existing cron rather than a
+   * fourth scheduler entry for ops to forget.
+   *
+   * LAST, and deliberately: it moves the company's own money, and a payout
+   * balance that was just topped up by a customer withdrawal failing is a
+   * better input than one read fifteen seconds earlier. runSweep decides for
+   * itself whether it is due — this route runs every fifteen minutes and the
+   * sweep is once a day, so all but one call a day returns "not yet".
+   */
+  let sweep: SweepResult | string = { swept: false, reason: "flag_off" };
+  if (KORAPAY_AUTO_SWEEP) {
+    try {
+      const settings = await getSweepSettings();
+      sweep = await runSweep(sweepDeps(admin, settings, "treasury sweep"), {
+        settings,
+        flagEnabled: true,
+      });
+    } catch (err) {
+      console.error("[reconcile-transfers] sweep failed", err);
+      sweep = err instanceof Error ? `failed: ${err.message}` : "failed";
+    }
+  }
+
   return NextResponse.json({
     checked: results.length,
     holdsReleased,
     korapay: korapayOutcomes,
+    sweep,
     results,
   });
 }

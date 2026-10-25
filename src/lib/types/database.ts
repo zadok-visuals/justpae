@@ -361,6 +361,30 @@ export type VirtualAccount = {
 };
 
 /**
+ * Company money moving between provider balances and bank accounts
+ * (migration 0042). No customer balance is ever touched by one of these.
+ * RLS is on with NO policies: service role only, both ways.
+ */
+export type TreasuryMovement = {
+  id: string;
+  occurred_on: string;
+  currency: Currency;
+  amount: number;
+  from_account: string;
+  to_account: string;
+  /** Unique. A sweep's is derived from its date, which is what stops the
+   *  same day's sweep sending twice. */
+  reference: string;
+  source: "manual" | "automatic";
+  status: "recorded" | "sent" | "failed";
+  provider_reference: string | null;
+  note: string | null;
+  /** Null for an automatic sweep: nobody pressed anything. */
+  created_by: string | null;
+  created_at: string;
+};
+
+/**
  * Migration 0031. A user's "tell me when this opens" mark for one flagged-off
  * feature. Deliberately generic — `feature` is text so a new flag needs no
  * schema change — and deliberately not a column on `profiles`, whose narrow
@@ -768,6 +792,17 @@ export type Database = {
           provider_reference: string;
         };
         Update: Partial<VirtualAccount>; Relationships: [];
+      };
+      treasury_movements: {
+        Row: TreasuryMovement;
+        Insert: Partial<TreasuryMovement> & {
+          currency: Currency;
+          amount: number;
+          from_account: string;
+          to_account: string;
+          reference: string;
+        };
+        Update: Partial<TreasuryMovement>; Relationships: [];
       };
       withdrawal_recipients: {
         Row: WithdrawalRecipient;
@@ -1195,6 +1230,45 @@ export type Database = {
       record_payout_balance_hold: {
         Args: { p_transaction_id: string; p_reason: string };
         Returns: boolean;
+      };
+
+      /**
+       * Migration 0042. record_treasury_movement returns NULL when the
+       * reference already exists, and only a non-null answer is permission
+       * to call the payout API — the no-double-sweep rule, settled by a
+       * unique index rather than by a read.
+       */
+      record_treasury_movement: {
+        Args: {
+          p_currency: Currency;
+          p_amount: number;
+          p_from_account: string;
+          p_to_account: string;
+          p_reference: string;
+          p_source?: string;
+          p_occurred_on?: string | null;
+          p_note?: string | null;
+          p_created_by?: string | null;
+        };
+        Returns: TreasuryMovement | null;
+      };
+      settle_treasury_movement: {
+        Args: { p_reference: string; p_status: string; p_provider_reference?: string | null };
+        Returns: undefined;
+      };
+      admin_wallet_liabilities: {
+        Args: Record<string, never>;
+        Returns: { currency: Currency; total: number }[];
+      };
+      admin_set_sweep_account: {
+        Args: {
+          p_bank_code: string;
+          p_account_number: string;
+          p_account_name: string;
+          p_admin_id: string;
+        };
+        /** When the 24-hour pause the change triggers runs out. */
+        Returns: string;
       };
       rolling_withdrawal_total: { Args: { p_user_id: string; p_hours: number }; Returns: RollingWithdrawalTotalRow[] };
 
