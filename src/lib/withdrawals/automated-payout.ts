@@ -3,7 +3,10 @@ import type { Currency } from "@/lib/types/database";
 import { getPayoutChannel, createBushaRecipient, createPayoutTransfer } from "@/lib/busha/payout";
 import { MINIMUM_WITHDRAWAL_USDT_THRESHOLD } from "@/lib/busha/limits";
 import { evaluateWithdrawalRouting } from "@/lib/withdrawals/threshold";
-import { RECIPIENT_CHANGE_HOLD_HOURS } from "@/lib/withdrawals/rules";
+import {
+  RECIPIENT_CHANGE_HOLD_HOURS,
+  recipientChangeHoldActive,
+} from "@/lib/withdrawals/rules";
 import { notifyWithdrawalCompleted } from "@/lib/notify/events";
 
 /**
@@ -62,15 +65,7 @@ export async function attemptAutomatedPayout(
     // rather than paying two sequential round trips. The recipient read is
     // wasted in the over-threshold case, which is the less common path.
     const [routing, recipientResult] = await Promise.all([
-      evaluateWithdrawalRouting({
-        userId,
-        currency,
-        amount,
-        // The row already exists at this point, so exclude it from its own
-        // rolling window — otherwise this request is counted twice and every
-        // withdrawal over half the threshold routes to manual review.
-        excludeTransactionId: transactionId,
-      }),
+      evaluateWithdrawalRouting({ currency, amount }),
       admin
         .from("withdrawal_recipients")
         .select("*")
@@ -95,11 +90,7 @@ export async function attemptAutomatedPayout(
     // rows inside the window, so the hold holds even if this path is skipped
     // entirely; this branch is what stops the payout attempt itself and makes
     // the reason legible in the admin queue.
-    if (
-      recipient?.recipient_changed_at &&
-      Date.now() - new Date(recipient.recipient_changed_at).getTime() <
-        RECIPIENT_CHANGE_HOLD_HOURS * 60 * 60 * 1000
-    ) {
+    if (recipientChangeHoldActive(recipient?.recipient_changed_at)) {
       await admin.rpc("flag_withdrawal_for_verification", { p_transaction_id: transactionId });
       await admin.rpc("record_automated_payout_failure", {
         p_transaction_id: transactionId,
@@ -118,8 +109,8 @@ export async function attemptAutomatedPayout(
         await clearAutomatedPayoutFailure(admin, transactionId);
         return;
       }
-      // Over the threshold, or over it once the rolling window is counted:
-      // flag for the extra-verification gate and leave it in the manual queue.
+      // Over the threshold: flag for the extra-verification gate and leave it
+      // in the manual queue.
       await admin.rpc("flag_withdrawal_for_verification", { p_transaction_id: transactionId });
       return;
     }

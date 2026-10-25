@@ -89,12 +89,6 @@ export function SettingsForm({ values }: { values: Record<string, string> }) {
       help: "At or below this, payouts go out automatically. Above it, they wait for you.",
     },
     {
-      key: SETTING_KEYS.automatedPayoutWindowHours,
-      label: "Rolling window",
-      hint: "Hours",
-      help: "A user's withdrawals over this window are summed and checked against the same limit, so one large withdrawal can't be split into several small automatic ones.",
-    },
-    {
       key: SETTING_KEYS.withdrawalFeeRate,
       label: "Withdrawal fee",
       hint: "Fraction, e.g. 0.01 for 1%",
@@ -112,8 +106,8 @@ export function SettingsForm({ values }: { values: Record<string, string> }) {
 
       <div className="space-y-5">
         {settings.map((setting) => (
-          // One form per setting rather than one form with three fields: a
-          // single form would make every save rewrite all three, so a stale
+          // One form per setting rather than one form with every field: a
+          // single form would make every save rewrite them all, so a stale
           // field left open in another tab would quietly revert the others.
           <form key={setting.key} action={formAction} className="space-y-2">
             <input type="hidden" name="key" value={setting.key} />
@@ -124,7 +118,7 @@ export function SettingsForm({ values }: { values: Record<string, string> }) {
               inputMode="decimal"
               // The STORED value normally, but the rejected edit when this is
               // the setting that just failed. settingKey is what scopes that:
-              // one action state is shared by all three forms, so without the
+              // one action state is shared by every form, so without the
               // key check a rejected edit to one would repopulate the others.
               // Snapping silently back to the stored number is the worst
               // outcome here — it looks exactly like a successful save.

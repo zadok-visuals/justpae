@@ -20,12 +20,6 @@ export const SETTING_KEYS = {
    * anything above waits for admin approval. Default 1000.
    */
   automatedPayoutThresholdUsd: "automated_payout_threshold_usd",
-  /**
-   * The rolling window, in hours, over which a user's withdrawals are summed
-   * and checked against the SAME threshold — so one large withdrawal can't be
-   * split into several small automated ones. Default 24.
-   */
-  automatedPayoutWindowHours: "automated_payout_window_hours",
   /** Flat withdrawal fee as a fraction of the amount. Default 0.01 (1%). */
   withdrawalFeeRate: "withdrawal_fee_rate",
   /**
@@ -68,7 +62,6 @@ export const MANUAL_DEPOSIT_SETTING_KEYS = [
 
 export const SETTING_DEFAULTS: Record<string, number> = {
   [SETTING_KEYS.automatedPayoutThresholdUsd]: 1000,
-  [SETTING_KEYS.automatedPayoutWindowHours]: 24,
   [SETTING_KEYS.withdrawalFeeRate]: 0.01,
   [SETTING_KEYS.billPaymentFeeRate]: 0,
   [SETTING_KEYS.pinMaxFailedAttempts]: 5,
@@ -98,10 +91,6 @@ export async function getNumericSetting(key: string): Promise<number> {
 
 export async function getAutomatedPayoutThresholdUsd(): Promise<number> {
   return getNumericSetting(SETTING_KEYS.automatedPayoutThresholdUsd);
-}
-
-export async function getAutomatedPayoutWindowHours(): Promise<number> {
-  return getNumericSetting(SETTING_KEYS.automatedPayoutWindowHours);
 }
 
 export async function getWithdrawalFeeRate(): Promise<number> {

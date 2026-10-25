@@ -66,48 +66,58 @@ export function withdrawalFee(amount: number, feeRate: number): number {
 }
 
 /**
+ * Whether a newly-changed payout destination is still inside the hold.
+ *
+ * The decision itself, as a pure function, so the rule can be tested without a
+ * recipient row and a clock. Enforced for real in attemptAutomatedPayout and
+ * again in Postgres (recipient_change_hold_active).
+ */
+export function recipientChangeHoldActive(
+  recipientChangedAt: string | Date | null | undefined,
+  now: number = Date.now(),
+): boolean {
+  if (!recipientChangedAt) return false;
+  const changedAt = new Date(recipientChangedAt).getTime();
+  if (!Number.isFinite(changedAt)) return false;
+  return now - changedAt < RECIPIENT_CHANGE_HOLD_HOURS * 60 * 60 * 1000;
+}
+
+/**
  * Whether a withdrawal goes out automatically, and if not, what to tell the
  * customer.
  *
  * Pulled out of evaluateWithdrawalRouting as a pure function so the rule can
  * be read — and tested — without a database, a settings lookup and a live rate
- * probe standing in front of it. The caller gathers the four numbers; this
- * decides.
+ * probe standing in front of it.
  *
- * ORDER MATTERS and is deliberate. An unsupported corridor is checked first
- * because no amount of it is automatable; the single-request limit next; the
- * rolling window last, because its message only makes sense once the request
- * itself is known to be under the limit.
+ * Two reasons to hold a withdrawal back, and only two. An unsupported corridor
+ * is checked first because no amount of it is automatable; the single-request
+ * limit second. The third reason — a payout destination changed inside
+ * RECIPIENT_CHANGE_HOLD_HOURS — is recipientChangeHoldActive above, applied in
+ * the payout path where the recipient row is in hand.
+ *
+ * There is deliberately NO rolling per-user total here: several small
+ * withdrawals in one day are each judged on their own size.
  */
 export function decideWithdrawalRouting(input: {
   /** False when this currency has no automated payout channel at all. */
   hasPayoutChannel: boolean;
   currency: string;
   thresholdUsd: number;
-  windowHours: number;
   /** USD-equivalent of this request alone. */
   requestUsd: number;
-  /** USD-equivalent of the user's other withdrawals inside the window. */
-  windowUsd: number;
 }): { automated: boolean; reason: string | null } {
   if (!input.hasPayoutChannel) {
     return {
       automated: false,
-      reason: `${input.currency} payouts are reviewed by our team before they go out.`,
+      reason: `Needs a quick review because ${input.currency} payouts aren't automated`,
     };
   }
 
   if (input.requestUsd > input.thresholdUsd) {
     return {
       automated: false,
-      reason: "Withdrawals above our instant limit are reviewed by our team first.",
-    };
-  }
-
-  if (input.requestUsd + input.windowUsd > input.thresholdUsd) {
-    return {
-      automated: false,
-      reason: `This takes your withdrawals in the last ${input.windowHours} hours past our instant limit, so it will be reviewed first.`,
+      reason: `Needs a quick review because it's above ${input.thresholdUsd.toLocaleString("en-US")} USDT`,
     };
   }
 

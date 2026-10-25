@@ -1,10 +1,6 @@
-import { createAdminClient } from "@/lib/supabase/admin";
 import type { Currency } from "@/lib/types/database";
 import { probeFiatToUsdtRate } from "@/lib/busha/rate";
-import {
-  getAutomatedPayoutThresholdUsd,
-  getAutomatedPayoutWindowHours,
-} from "@/lib/settings";
+import { getAutomatedPayoutThresholdUsd } from "@/lib/settings";
 import { getPayoutChannel } from "@/lib/busha/payout";
 import { decideWithdrawalRouting } from "@/lib/withdrawals/rules";
 
@@ -12,19 +8,14 @@ import { decideWithdrawalRouting } from "@/lib/withdrawals/rules";
  * Server-only. Decides whether a withdrawal is paid out automatically or waits
  * for an admin.
  *
- * Two changes from the architecture this is built on, both deliberate:
+ * The threshold is read from app_settings, not a hardcoded 1000, so changing
+ * the risk appetite of the whole payout system does not need a deploy.
  *
- *  1. The threshold is read from app_settings, not a hardcoded 1000. It was a
- *     literal buried in a module three files from any admin surface, so
- *     changing the risk appetite of the whole payout system needed a deploy.
- *
- *  2. A rolling per-user window is checked against the SAME threshold. Without
- *     it, every individual withdrawal can sit just under the limit and an
- *     unlimited amount moves per day with no review at all — the threshold
- *     only ever constrained one request in isolation. The window counts
- *     pending, processing and completed withdrawals (everything except
- *     failed), so a burst submitted back to back is caught rather than each
- *     request seeing an empty history.
+ * GROUP 4: the rolling per-user window is gone. A withdrawal is judged on its
+ * own size, so several small withdrawals in one day are each automatic. The
+ * other two reasons to hold one back — a currency with no payout route, and a
+ * payout destination changed inside RECIPIENT_CHANGE_HOLD_HOURS — are
+ * unchanged.
  *
  * This module is also what /withdraw calls to tell the user, BEFORE they
  * confirm, whether their withdrawal will be instant or will need approval.
@@ -53,116 +44,32 @@ export type WithdrawalRouting = {
   /** Why it will not be, in customer-facing language. Null when it will be. */
   reason: string | null;
   thresholdUsd: number;
-  windowHours: number;
   /** USD-equivalent of this request alone. */
   requestUsd: number;
-  /** USD-equivalent of the user's other withdrawals inside the window. */
-  windowUsd: number;
 };
 
-/**
- * Evaluates routing for a prospective or just-created withdrawal.
- *
- * `excludeTransactionId` is passed once the withdrawal row already exists, so
- * the row being evaluated is not counted twice — once as `amount` and again as
- * part of the rolling total.
- */
+/** Evaluates routing for a prospective or just-created withdrawal. */
 export async function evaluateWithdrawalRouting(params: {
-  userId: string;
   currency: Currency;
   amount: number;
-  excludeTransactionId?: string;
 }): Promise<WithdrawalRouting> {
-  const { userId, currency, amount, excludeTransactionId } = params;
+  const { currency, amount } = params;
 
-  const [thresholdUsd, windowHours] = await Promise.all([
+  const [thresholdUsd, requestUsd] = await Promise.all([
     getAutomatedPayoutThresholdUsd(),
-    getAutomatedPayoutWindowHours(),
+    usdEquivalent(currency, amount),
   ]);
 
-  const requestUsd = await usdEquivalent(currency, amount);
-  const windowUsd = await rollingWithdrawalUsd(userId, windowHours, excludeTransactionId);
-
-  const base = { thresholdUsd, windowHours, requestUsd, windowUsd };
-
   // The decision itself is a pure function in ../rules, so the rule can be read
-  // and tested without a database, a settings read and a live rate probe in
-  // front of it. Everything above this line is gathering the four numbers.
+  // and tested without a settings read and a live rate probe in front of it.
   return {
-    ...base,
+    thresholdUsd,
+    requestUsd,
     ...decideWithdrawalRouting({
       hasPayoutChannel: Boolean(getPayoutChannel(currency)),
       currency,
       thresholdUsd,
-      windowHours,
       requestUsd,
-      windowUsd,
     }),
   };
-}
-
-/**
- * Sum of a user's withdrawals inside the rolling window, in USD.
- *
- * The SQL side groups by currency and returns one row each, because summing
- * across currencies in SQL would produce a meaningless number. The conversion
- * to a common unit happens here, where the rate probe lives.
- *
- * A rate probe that fails must not silently under-count the window — that
- * would let a withdrawal through automation precisely when the provider is
- * unhealthy. An unconvertible currency's own units are added as a floor
- * instead, which can only ever push the total UP and therefore only ever
- * routes to manual review, never away from it.
- */
-async function rollingWithdrawalUsd(
-  userId: string,
-  windowHours: number,
-  excludeTransactionId?: string,
-): Promise<number> {
-  const admin = createAdminClient();
-
-  const { data, error } = await admin.rpc("rolling_withdrawal_total", {
-    p_user_id: userId,
-    p_hours: windowHours,
-  });
-
-  if (error) {
-    console.error("[threshold.rollingWithdrawalUsd] rolling total lookup failed", error);
-    // Fail closed: an unknown history is treated as "already at the limit", so
-    // a database problem cannot open the automated path.
-    return Number.POSITIVE_INFINITY;
-  }
-
-  const rows = data ?? [];
-  let excludedUsd = 0;
-
-  if (excludeTransactionId) {
-    const { data: excluded } = await admin
-      .from("transactions")
-      .select("currency, amount, status")
-      .eq("id", excludeTransactionId)
-      .maybeSingle();
-    if (excluded && excluded.status !== "failed") {
-      excludedUsd = await safeUsdEquivalent(excluded.currency, Number(excluded.amount));
-    }
-  }
-
-  let total = 0;
-  for (const row of rows) {
-    total += await safeUsdEquivalent(row.currency, Number(row.total));
-  }
-
-  return Math.max(total - excludedUsd, 0);
-}
-
-async function safeUsdEquivalent(currency: Currency, amount: number): Promise<number> {
-  try {
-    return await usdEquivalent(currency, amount);
-  } catch (err) {
-    console.error("[threshold.safeUsdEquivalent] rate probe failed, counting face value", {
-      currency,
-      err,
-    });
-    return amount;
-  }
 }

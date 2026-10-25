@@ -378,9 +378,6 @@ export async function setAppSetting(
   if (key === SETTING_KEYS.withdrawalFeeRate && value >= 1) {
     return { error: "The fee rate is a fraction, e.g. 0.01 for 1%.", values };
   }
-  if (key === SETTING_KEYS.automatedPayoutWindowHours && (value < 1 || value > 168)) {
-    return { error: "The window must be between 1 and 168 hours.", values };
-  }
   if (key === SETTING_KEYS.automatedPayoutThresholdUsd && value <= 0) {
     return { error: "The threshold must be greater than zero.", values };
   }

@@ -421,17 +421,22 @@ function WithdrawFormFields({
         </Card>
       )}
 
-      {/* The answer to "when will this arrive", before they commit. */}
+      {/* The answer to "when will this arrive", before they commit. The title
+          IS the routing line — "Pays out automatically", or "Needs a quick
+          review because it's above 1,000 USDT" — straight from the same
+          evaluator the payout path uses. */}
       {activeRouting && (
         <Banner
           tone={activeRouting.automated ? "success" : "info"}
           title={
-            activeRouting.automated ? "This goes out instantly" : "This one needs a quick review"
+            activeRouting.automated
+              ? "Pays out automatically"
+              : activeRouting.reason ?? "Needs a quick review"
           }
         >
           {activeRouting.automated
             ? "We'll send it as soon as you confirm."
-            : activeRouting.reason}
+            : "The amount is held off your balance while a person checks it."}
         </Banner>
       )}
 

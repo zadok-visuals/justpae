@@ -326,7 +326,7 @@ export async function previewWithdrawalRouting(currency: Currency, amount: numbe
 
   try {
     const [routing, feeRate] = await Promise.all([
-      evaluateWithdrawalRouting({ userId: user.id, currency, amount }),
+      evaluateWithdrawalRouting({ currency, amount }),
       getWithdrawalFeeRate(),
     ]);
 
@@ -343,7 +343,6 @@ export async function previewWithdrawalRouting(currency: Currency, amount: numbe
       automated: routing.automated,
       reason: routing.reason,
       thresholdUsd: routing.thresholdUsd,
-      windowHours: routing.windowHours,
       fee,
       netAmount: amount - fee,
       /** The 5 USD floor, in the currency the user is holding. */
