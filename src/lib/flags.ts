@@ -94,8 +94,35 @@ export const USD_WALLET_ENABLED = flag(process.env.NEXT_PUBLIC_FEATURE_USD_WALLE
 export const NGN_BANK_DEPOSIT_MAINTENANCE = flag(process.env.NEXT_PUBLIC_MAINTENANCE_NGN_BANK_DEPOSIT);
 export const KES_BANK_DEPOSIT_MAINTENANCE = flag(process.env.NEXT_PUBLIC_MAINTENANCE_KES_BANK_DEPOSIT);
 
+/**
+ * GROUP 4 — NGN deposits by manual bank transfer. ON BY DEFAULT, which makes
+ * it the third export in this file that reads backwards from the convention
+ * at the top, and for the same reason the two kill switches above do.
+ *
+ * The provider's temporary bank accounts are unavailable, so the naira rail
+ * this replaces is DOWN. A flag following the usual "off unless explicitly
+ * set" rule would mean that deploying with
+ * NEXT_PUBLIC_FEATURE_NGN_MANUAL_DEPOSIT unset in Vercel — which is the state
+ * production is in right now — ships the maintenance notice and no way to
+ * deposit naira at all. Off is not the safe default when the thing it falls
+ * back to is also broken.
+ *
+ * So unset means ON, and ops sets it to "false" to deliberately take manual
+ * naira deposits down. It gates the customer flow; the admin queue stays
+ * reachable either way, because requests already in it still need answering
+ * after the flag goes off.
+ */
+function enabledUnlessDisabled(value: string | undefined): boolean {
+  return !(value === "false" || value === "0");
+}
+
+export const NGN_MANUAL_DEPOSIT = enabledUnlessDisabled(
+  process.env.NEXT_PUBLIC_FEATURE_NGN_MANUAL_DEPOSIT,
+);
+
 export const FLAGS = {
   usdWallet: USD_WALLET_ENABLED,
+  ngnManualDeposit: NGN_MANUAL_DEPOSIT,
   ghsWallet: GHS_WALLET_ENABLED,
   usdCollection: USD_COLLECTION_ENABLED,
   bills: BILLS_ENABLED,

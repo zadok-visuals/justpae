@@ -53,13 +53,25 @@ export type TransactionProvider = "busha" | "klasha" | "manual";
  * and telling someone their money failed when they never sent any is how a
  * support thread starts.
  */
+/**
+ * 'awaiting_review' (migration 0036) is a MANUAL DEPOSIT state and nothing
+ * else: the customer says they have made the bank transfer and no human has
+ * confirmed it arrived. Not 'pending' (which means we are waiting on the
+ * customer) and not 'processing' (which everywhere else means a provider is
+ * holding the money) — nobody holds anything yet except a claim.
+ */
 export type TransactionStatus =
   | "pending"
   | "processing"
+  | "awaiting_review"
   | "completed"
   | "failed"
   | "partially_completed"
   | "expired";
+
+/** Migration 0037. How a deposit is funded: a provider rail, or a bank
+ *  transfer the customer makes themselves and an admin confirms. */
+export type DepositMethod = "provider" | "manual_bank_transfer";
 
 /** 'education' added by migration 0031 (Group 4e). Nothing writes it while
  *  BILLS_ENABLED is off; it exists so the category tile has somewhere to go
@@ -290,6 +302,29 @@ export type Deposit = {
    */
   pay_in_expires_at: string | null;
   created_at: string;
+
+  // ── Migration 0037: manual bank transfer ────────────────────────────────
+  method: DepositMethod;
+  /** The JP######## code the customer puts in their transfer narration, and
+   *  the only thing tying a bank-statement line to this row. */
+  reference: string | null;
+  /** What an admin read off the bank statement, before the fee. Entered
+   *  server-side; never supplied by the browser. `confirmed_amount` keeps its
+   *  meaning across every rail — what landed in the wallet. */
+  received_amount: number | null;
+  fee: number | null;
+  /** Path in the private `deposit-proof` bucket. Optional. */
+  screenshot_path: string | null;
+  marked_sent_at: string | null;
+  /** The admin who COMPLETED the decision — on a dual-admin approval, the
+   *  second one. */
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  /** The first half of a dual-admin approval (>= 1,000,000 NGN). The amount
+   *  is held so the second admin has to agree the same figure. */
+  first_approver_id: string | null;
+  first_approved_at: string | null;
+  first_approval_amount: number | null;
 };
 
 /**
@@ -828,6 +863,39 @@ export type Database = {
        *  when the deadline has not passed, the row is no longer pending, or
        *  money arrived after all. */
       expire_deposit: { Args: { p_deposit_id: string }; Returns: boolean };
+
+      /**
+       * Migration 0037 — manual NGN bank-transfer deposits. All five are
+       * service-role only, and none of them takes a credited amount from the
+       * browser.
+       *
+       * create_manual_deposit takes the customer's REQUESTED amount, which is
+       * the one customer-supplied figure in the flow and credits nothing. It
+       * returns the new row's id and its generated JP reference.
+       *
+       * approve_manual_deposit is the money function: idempotent on the
+       * deposit id, only from 'awaiting_review', credits p_received_amount
+       * less the configured flat fee, and enforces the >= 1,000,000 NGN
+       * second-admin rule itself. Returns 'credited',
+       * 'awaiting_second_approval', 'already_credited' or 'not_reviewable'.
+       */
+      create_manual_deposit: {
+        Args: { p_user_id: string; p_amount: number };
+        Returns: { deposit_id: string; reference: string }[];
+      };
+      mark_manual_deposit_sent: {
+        Args: { p_user_id: string; p_deposit_id: string; p_screenshot_path?: string | null };
+        Returns: boolean;
+      };
+      approve_manual_deposit: {
+        Args: { p_deposit_id: string; p_admin_id: string; p_received_amount: number };
+        Returns: string;
+      };
+      reject_manual_deposit: {
+        Args: { p_deposit_id: string; p_admin_id: string; p_reason: string };
+        Returns: boolean;
+      };
+      expire_stale_manual_deposits: { Args: Record<string, never>; Returns: number };
 
       /**
        * Replaces create_conversion (dropped in 0010). Takes an id and a PIN —
