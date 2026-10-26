@@ -11,6 +11,7 @@ import { ThemeToggle } from "@/components/settings/ThemeToggle";
 import { logOut } from "@/lib/actions/auth";
 import { isAdmin } from "@/lib/auth/admin";
 import { getBanks, type BushaBank } from "@/lib/busha/client";
+import { withoutCny } from "@/lib/ui/currencyPicker";
 import { countryName } from "@/lib/countries";
 import { startRouteTiming } from "@/lib/perf/timing";
 import { getThemePreference } from "@/lib/theme";
@@ -63,8 +64,9 @@ export default async function ProfilePage() {
 
   // USD is excluded: there is no payout channel for it on this account. USD is
   // spent by converting it, so offering a USD destination would be offering
-  // something that can never be used.
-  const payoutCurrencies = ((wallets ?? []) as Wallet[])
+  // something that can never be used. CNY goes through the same `withoutCny`
+  // Withdraw uses — the database refuses a yuan payout outright.
+  const payoutCurrencies = withoutCny((wallets ?? []) as Wallet[])
     .map((w) => w.currency)
     .filter((c): c is Currency => c !== "USD");
 

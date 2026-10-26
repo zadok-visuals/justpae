@@ -91,7 +91,7 @@ interface WalletLike {
  * channel at all (migration 0026 refuses it in the database). Listing it to
  * say so is one more row to read past on every deposit.
  */
-function withoutCny(wallets: WalletLike[]): WalletLike[] {
+export function withoutCny(wallets: WalletLike[]): WalletLike[] {
   return wallets.filter((w) => w.currency !== "CNY");
 }
 
