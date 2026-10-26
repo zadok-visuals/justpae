@@ -397,6 +397,19 @@ export async function sendConversionCompletedEmail(params: {
   });
 }
 
+export async function sendSellOrderCreditedUsdtEmail(params: { to: string }): Promise<boolean> {
+  return sendEmail({
+    to: params.to,
+    subject: "Couldn't sell your USDT automatically",
+    preheader: "It's in your USDT wallet instead — nothing is missing.",
+    heading: "Your USDT is safe in your wallet",
+    bodyParagraphs: [
+      "We couldn't complete that sale automatically, so the USDT you sent is sitting in your USDT wallet rather than the currency you asked for.",
+    ],
+    closingParagraphs: ["You can sell it from your USDT account page whenever you're ready."],
+  });
+}
+
 export async function sendWithdrawalCompletedEmail(params: {
   to: string;
   amount: string;

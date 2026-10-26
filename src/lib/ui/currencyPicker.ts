@@ -5,6 +5,7 @@
 import type { Currency } from "../types/database.ts";
 import { isWalletLocked } from "../services.ts";
 import { depositAvailability } from "../deposits/availability.ts";
+import { currencyMeta } from "../currencies.ts";
 import { MAINTENANCE_LABEL, SOON_LABEL, UNAVAILABLE_LABEL } from "./unavailability.ts";
 
 /**
@@ -168,6 +169,28 @@ export function convertPickerOptions(
       if (blocked) return { currency: wallet.currency, balance, pill: blocked, disabled: true };
       return { currency: wallet.currency, balance };
     }),
+  );
+}
+
+/**
+ * GROUP — sell orders (migration 0046). /sell's "Receive in" picker: the
+ * fiat currencies the user holds, NGN selectable, every other one "Soon" —
+ * selling into a currency the flow has not opened for yet would promise a
+ * credit this screen cannot deliver. Not the same question as
+ * depositPickerOptions or isWalletLocked: a sell credits by CONVERSION, so
+ * a wallet that is otherwise perfectly live (KES, say) can still be "Soon"
+ * here specifically, on purpose, while the feature rolls out one currency
+ * at a time.
+ */
+export function sellTargetPickerOptions(wallets: WalletLike[]): CurrencyOptionData[] {
+  return sortCurrencyOptions(
+    withoutCny(wallets)
+      .filter((w) => currencyMeta(w.currency).kind === "fiat")
+      .map((wallet) =>
+        wallet.currency === "NGN"
+          ? { currency: wallet.currency }
+          : { currency: wallet.currency, pill: SOON_LABEL, disabled: true },
+      ),
   );
 }
 

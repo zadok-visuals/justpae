@@ -10,6 +10,7 @@ import {
   notifyWithdrawalCompleted,
   notifyWithdrawalFailed,
 } from "@/lib/notify/events";
+import { settleSellOrderForDeposit } from "@/lib/sellOrders/settle";
 
 /**
  * Provider webhook receiver.
@@ -206,6 +207,9 @@ async function handleDeposit(
       // notifyDepositCredited never throws, so this cannot turn a successful
       // credit into a non-2xx that gets the whole webhook retried.
       await notifyDepositCredited(deposit.id);
+      // A no-op for an ordinary deposit; for one funding a sell order, this
+      // is the exactly-once settlement. Never throws — see settle.ts.
+      await settleSellOrderForDeposit(deposit.id, actualAmount);
     }
   } else if (transferStatus === "cancelled" || transferStatus === "funds_not_delivered") {
     const { error } = await admin.rpc("fail_deposit", {

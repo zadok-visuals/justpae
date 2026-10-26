@@ -10,6 +10,15 @@ import { requireSessionUser } from "@/lib/auth/session";
 export const metadata = { title: "Withdraw" };
 export const dynamic = "force-dynamic";
 
+/** `?amount=` from /sell's "Withdraw to bank" link — a positive finite
+ *  number, or undefined for anything else, same defensiveness as
+ *  parseCurrencyParam just above. */
+function parseAmountParam(value: string | string[] | undefined): number | undefined {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const parsed = Number(raw);
+  return raw && Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
 export default async function WithdrawPage(props: PageProps<"/withdraw">) {
   const supabase = await createClient();
   const user = await requireSessionUser();
@@ -62,6 +71,14 @@ export default async function WithdrawPage(props: PageProps<"/withdraw">) {
         wallets={walletList}
         recipients={recipientList}
         initialCurrency={initialCurrency}
+        // GROUP — sell orders. /sell's "Withdraw to bank" button hands off
+        // here with the amount it just sold for already typed, so the one
+        // extra tap is confirming it, not retyping a figure already on
+        // screen a moment ago. Only honoured for the currency that was
+        // actually preselected — never a stray number for a different wallet.
+        initialAmount={
+          parseCurrencyParam(params.currency) === initialCurrency ? parseAmountParam(params.amount) : undefined
+        }
         hasPin={hasPin === true}
         // Checked here for the UI only. create_withdrawal_request checks it
         // again in SQL, which is the check that actually holds — this one just

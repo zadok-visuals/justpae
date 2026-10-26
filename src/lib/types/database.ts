@@ -418,6 +418,37 @@ export type WithdrawalRecipient = {
   created_at: string;
 };
 
+/** Migration 0046. See src/lib/sellOrders for the flow this row drives. */
+export type SellOrderStatus =
+  | "awaiting_deposit"
+  | "received"
+  | "sold"
+  | "credited_usdt"
+  | "expired"
+  | "failed";
+
+export type SellOrder = {
+  id: string;
+  user_id: string;
+  target_currency: Currency;
+  expected_usdt_amount: number;
+  estimated_target_amount: number;
+  provider_rate: number;
+  markup_rate: number;
+  customer_rate: number;
+  status: SellOrderStatus;
+  deposit_id: string | null;
+  received_usdt_amount: number | null;
+  flagged: boolean;
+  hold_id: string | null;
+  conversion_transaction_id: string | null;
+  failure_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  received_at: string | null;
+  resolved_at: string | null;
+};
+
 /**
  * NOTE: pin_hash is deliberately absent from this type, and the table is no
  * longer readable by `authenticated` at all (0012 dropped the select policy
@@ -815,6 +846,23 @@ export type Database = {
         Insert: Partial<WithdrawalRecipient> & { user_id: string; currency: Currency; account_holder_name: string };
         Update: Partial<WithdrawalRecipient>; Relationships: [];
       };
+      // Migration 0046. Read-only to a user session (RLS: own rows only) —
+      // every write happens inside one of the sell-order functions below,
+      // never a direct .insert()/.update(), but the shape is still given in
+      // full for consistency with every other table here.
+      sell_orders: {
+        Row: SellOrder;
+        Insert: Partial<SellOrder> & {
+          user_id: string;
+          target_currency: Currency;
+          expected_usdt_amount: number;
+          estimated_target_amount: number;
+          provider_rate: number;
+          markup_rate: number;
+          customer_rate: number;
+        };
+        Update: Partial<SellOrder>; Relationships: [];
+      };
       withdrawal_pins: { Row: WithdrawalPin; Insert: { user_id: string }; Update: Partial<WithdrawalPin>; Relationships: [] };
       rate_markups: {
         Row: RateMarkup;
@@ -1074,6 +1122,67 @@ export type Database = {
         Returns: string;
       };
       expire_stale_conversion_holds: {
+        Args: { p_older_than?: string };
+        Returns: number;
+      };
+
+      /**
+       * Migration 0046 — sell orders. See src/lib/sellOrders for the TS side
+       * of this. All six are service-role only.
+       *
+       * create_sell_order records the intent and verifies the PIN — the one
+       * point in the whole flow where a customer is present to give one.
+       * link_sell_order_deposit ties the existing deposit flow's new deposit
+       * id to the order. claim_sell_order_for_deposit is the exactly-once
+       * gate: called after credit_deposit succeeds, from the webhook, the
+       * reconcile cron or the status poll, whichever gets there first — only
+       * the first call finds the order still 'awaiting_deposit' and returns
+       * a row; every other caller gets an empty result. settle_sell_order
+       * writes the ledger row once the provider has executed, reusing
+       * conversion_holds rather than a new hold table.
+       * mark_sell_order_credited_usdt pairs with the EXISTING
+       * release_conversion_hold on the fallback path. expire_stale_sell_orders
+       * is the cron's safety net for an order nobody ever sent USDT to.
+       */
+      create_sell_order: {
+        Args: {
+          p_user_id: string;
+          p_expected_usdt_amount: number;
+          p_target_currency: Currency;
+          p_estimated_target_amount: number;
+          p_provider_rate: number;
+          p_markup_rate: number;
+          p_customer_rate: number;
+          p_pin: string;
+        };
+        Returns: string;
+      };
+      link_sell_order_deposit: {
+        Args: { p_sell_order_id: string; p_user_id: string; p_deposit_id: string };
+        Returns: undefined;
+      };
+      claim_sell_order_for_deposit: {
+        Args: { p_deposit_id: string; p_received_amount: number };
+        Returns: SellOrder[];
+      };
+      settle_sell_order: {
+        Args: {
+          p_sell_order_id: string;
+          p_hold_id: string;
+          p_user_id: string;
+          p_target_amount: number;
+          p_provider_reference: string;
+          p_provider_rate: number;
+          p_markup_rate: number;
+          p_customer_rate: number;
+        };
+        Returns: string;
+      };
+      mark_sell_order_credited_usdt: {
+        Args: { p_sell_order_id: string; p_reason?: string | null };
+        Returns: undefined;
+      };
+      expire_stale_sell_orders: {
         Args: { p_older_than?: string };
         Returns: number;
       };

@@ -13,6 +13,7 @@ import { transferCurrencyMatches } from "@/lib/deposits/transferCurrency";
 import { toCustomerError } from "@/lib/provider-error";
 import { fiatMinimumDeposit } from "@/lib/busha/limits";
 import { formatAmount } from "@/lib/currencies";
+import { settleSellOrderForDeposit } from "@/lib/sellOrders/settle";
 
 /**
  * Deposits.
@@ -513,6 +514,11 @@ export async function checkDepositStatus(depositId: string): Promise<DepositStat
             error: creditError,
           });
         } else {
+          // A no-op for an ordinary deposit; for one funding a sell order,
+          // this is the exactly-once settlement — the user watching this
+          // very screen is often the first of the three callers to get
+          // here. Never throws — see sellOrders/settle.ts.
+          await settleSellOrderForDeposit(depositId, Number(transfer.target_amount));
           revalidatePath("/home");
           revalidatePath("/transactions");
           return { status: "completed" };

@@ -46,6 +46,14 @@ interface WithdrawFormProps {
    * src/lib/accounts/preselect.ts, so this is taken at face value.
    */
   initialCurrency?: Currency;
+  /**
+   * From `?amount=` — /sell's "Withdraw to bank" hand-off, already checked
+   * server-side against `initialCurrency` so a stray value for the wrong
+   * wallet can never arrive here. Still just a starting point: the field
+   * stays editable, and every rule below (balance, minimum, routing) runs
+   * on whatever is actually typed when the form is submitted.
+   */
+  initialAmount?: number;
 }
 
 /**
@@ -118,6 +126,7 @@ function WithdrawFormFields({
   hasBasics,
   rejectionReason,
   initialCurrency,
+  initialAmount,
   state,
   formAction,
 }: WithdrawFormProps & {
@@ -141,7 +150,14 @@ function WithdrawFormFields({
       : undefined;
     return requested ?? withdrawable[0]?.currency ?? pickerOptions[0]?.currency ?? "NGN";
   });
-  const [amountText, setAmountText] = useState("");
+  // Only seeded when the requested currency actually took effect above —
+  // the same guard the page already applied, kept here too rather than
+  // trusted blindly.
+  const [amountText, setAmountText] = useState(() =>
+    initialAmount && pickerOptions.some((o) => o.currency === initialCurrency)
+      ? formatAmountInput(initialAmount.toFixed(2))
+      : "",
+  );
   const [pin, setPin] = useState("");
 
   const [routing, setRouting] = useState<Awaited<

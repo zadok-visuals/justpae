@@ -99,6 +99,7 @@ const GROUPS: { title: string; links: AdminLink[] }[] = [
       { href: "/admin/deposits", label: "Deposits", count: "deposits" },
       { href: "/admin/withdrawals", label: "Withdrawals", count: "withdrawals" },
       { href: "/admin/pay-to-china", label: "Pay to China", count: "payToChina" },
+      { href: "/admin/sell-orders", label: "Sell orders" },
       { href: "/admin/support", label: "Support", count: "support" },
     ],
   },

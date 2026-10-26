@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { isWalletLocked } from "@/lib/services";
 import { createClient } from "@/lib/supabase/server";
@@ -198,6 +199,19 @@ export default async function AccountPage(props: PageProps<"/accounts/[currency]
           <section>
             <SectionHeader title="What you can do" />
             <AccountActions actions={actions} />
+            {/* GROUP — sell orders. "Sell USDT" above is /sell: USDT in,
+                fiat credited once that NEW deposit lands. Someone who
+                already holds a balance has no deposit to wait for, so this
+                is the existing /convert flow instead — a separate, small
+                link rather than a second button in the row above. */}
+            {currency === "USDT" && wallet && wallet.balance > 0 && (
+              <Link
+                href="/convert?currency=USDT&to=NGN"
+                className="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-primary"
+              >
+                Sell from your balance
+              </Link>
+            )}
           </section>
 
           <section>

@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getTransfer } from "@/lib/busha/client";
 import { requireCronSecret, staleCutoff } from "@/lib/cron/auth";
 import { notifyDepositCredited } from "@/lib/notify/events";
+import { settleSellOrderForDeposit } from "@/lib/sellOrders/settle";
 import { KORAPAY_NGN_DEPOSIT } from "@/lib/flags";
 import {
   reconcileKorapayDeposits,
@@ -80,6 +81,22 @@ export async function GET(request: Request) {
     }
   }
 
+  /**
+   * GROUP — sell orders (0046). An order nobody ever started a deposit for,
+   * or whose linked deposit itself expired with nothing received, has no
+   * other path out of 'awaiting_deposit'.
+   */
+  let expiredSellOrders: number | string = 0;
+  {
+    const { data, error } = await admin.rpc("expire_stale_sell_orders");
+    if (error) {
+      console.error("[reconcile-deposits] expire_stale_sell_orders failed", error);
+      expiredSellOrders = `failed: ${error.message}`;
+    } else {
+      expiredSellOrders = data ?? 0;
+    }
+  }
+
   const { data: staleDeposits } = await admin
     .from("deposits")
     .select("id, provider_reference, pay_in_expires_at")
@@ -117,6 +134,7 @@ export async function GET(request: Request) {
           // closed the tab, the webhook never arrived, and this notification
           // is the only way they find out the money landed.
           await notifyDepositCredited(deposit.id);
+          await settleSellOrderForDeposit(deposit.id, Number(transfer.target_amount));
           results.push({ depositId: deposit.id, outcome: "credited" });
         }
       } else if (transfer.status === "cancelled" || transfer.status === "funds_not_delivered") {
@@ -178,5 +196,11 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ checked: results.length, expiredManual, korapay, results });
+  return NextResponse.json({
+    checked: results.length,
+    expiredManual,
+    expiredSellOrders,
+    korapay,
+    results,
+  });
 }

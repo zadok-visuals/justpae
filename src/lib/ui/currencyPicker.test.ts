@@ -7,6 +7,7 @@ import {
   depositPickerOptions,
   fundingPickerOptions,
   payoutAccountPickerOptions,
+  sellTargetPickerOptions,
   sortCurrencyOptions,
   walletLockLabel,
   withdrawPickerOptions,
@@ -162,6 +163,18 @@ test("admin filters disable nothing — a broken currency is why you filter", ()
   assert.ok(options.every((o) => !o.disabled && !o.pill));
 });
 
+test("/sell's receive-in picker opens only NGN, holds GHS/USD/KES as Soon, drops yuan and USDT", () => {
+  const options = sellTargetPickerOptions(wallets({ NGN: 100, KES: 50, USDT: 10 }));
+  assert.ok(!codesOf(options).includes("CNY"));
+  assert.ok(!codesOf(options).includes("USDT"));
+  assert.equal(options.find((o) => o.currency === "NGN")?.disabled, undefined);
+  for (const code of ["KES", "GHS", "USD"] as Currency[]) {
+    const row = options.find((o) => o.currency === code);
+    assert.equal(row?.pill, "Soon", `${code} should say Soon`);
+    assert.equal(row?.disabled, true, `${code} should not be selectable`);
+  }
+});
+
 test("no pill is ever a sentence", () => {
   // Pills sit in a 44px row beside a flag, a code, a name and a balance.
   const everyPill = [
@@ -169,6 +182,7 @@ test("no pill is ever a sentence", () => {
     ...withdrawPickerOptions(wallets({}), []),
     ...fundingPickerOptions(wallets({})),
     ...payoutAccountPickerOptions([...CURRENCY_CODES], ["NGN"]),
+    ...sellTargetPickerOptions(wallets({})),
   ]
     .map((o) => o.pill)
     .filter((p): p is string => p != null);

@@ -3,6 +3,7 @@ import { formatAmount } from "@/lib/currencies";
 import {
   sendDepositCreditedEmail,
   sendConversionCompletedEmail,
+  sendSellOrderCreditedUsdtEmail,
   sendWithdrawalCompletedEmail,
   sendWithdrawalFailedEmail,
   sendPayToChinaSubmittedEmail,
@@ -219,6 +220,41 @@ export async function notifyConversionCompleted(transactionId: string): Promise<
   } catch (err) {
     console.error("[notify.notifyConversionCompleted] threw", {
       transactionId,
+      error: err instanceof Error ? err.message : err,
+    });
+  }
+}
+
+/**
+ * A sell order's automated conversion couldn't run — no quote, below the
+ * minimum, a provider error — so the USDT it was going to sell is sitting in
+ * the user's own USDT wallet instead. GROUP — sell orders (migration 0046).
+ *
+ * No separate exactly-once claim here: claim_sell_order_for_deposit already
+ * is one, for the whole settlement, and this is only ever reached once per
+ * order through it — see src/lib/sellOrders/sequence.ts.
+ */
+export async function notifySellOrderCreditedUsdt(sellOrderId: string): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    const { data: order } = await admin
+      .from("sell_orders")
+      .select("user_id, target_currency")
+      .eq("id", sellOrderId)
+      .maybeSingle();
+    if (!order) return;
+
+    await insertNotification(admin, order.user_id, {
+      title: "Couldn't sell your USDT automatically",
+      body: "So it's in your USDT wallet. You can sell it from there.",
+      href: "/accounts/USDT",
+    });
+
+    const to = await emailFor(admin, order.user_id);
+    if (to) await sendSellOrderCreditedUsdtEmail({ to });
+  } catch (err) {
+    console.error("[notify.notifySellOrderCreditedUsdt] threw", {
+      sellOrderId,
       error: err instanceof Error ? err.message : err,
     });
   }

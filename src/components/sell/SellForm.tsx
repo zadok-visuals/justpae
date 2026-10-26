@@ -2,480 +2,478 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AmountInput, formatAmountInput, parseAmount } from "@/components/ui/AmountInput";
+import { AmountInput, parseAmount } from "@/components/ui/AmountInput";
 import { PinField } from "@/components/ui/PinField";
 import { Button } from "@/components/ui/Button";
 import { Banner, Card, DetailRow } from "@/components/ui/Primitives";
 import { ConfirmDialog, useConfirm } from "@/components/ui/ConfirmDialog";
 import { StepIndicator } from "@/components/ui/StepIndicator";
-import { DepositForm } from "@/components/deposit/DepositForm";
-import { NewRecipient } from "@/components/settings/RecipientCard";
-import { quoteConversion, executeConversion, type ConversionQuote } from "@/lib/actions/convert";
-import { requestWithdrawal } from "@/lib/actions/withdrawals";
+import { CurrencyPicker } from "@/components/ui/CurrencyPicker";
+import { CopyField } from "@/components/ui/CopyButton";
+import { DepositAddressQr, networkLabel } from "@/components/deposit/DepositAddressQr";
+import { sellTargetPickerOptions } from "@/lib/ui/currencyPicker";
+import { quoteConversion, type ConversionQuote } from "@/lib/actions/convert";
+import { beginSellOrder, pollSellOrder, type SellOrderView } from "@/lib/actions/sellOrders";
 import { useDebouncedQuote } from "@/lib/hooks/useDebouncedQuote";
+import { usePolling } from "@/lib/hooks/usePolling";
+import { useCountdown, formatCountdown } from "@/lib/hooks/useCountdown";
 import { getMinimumConversionAmount } from "@/lib/busha/limits";
 import { formatAmount, formatNumber, formatRate } from "@/lib/currencies";
-import type { Wallet, WithdrawalRecipient } from "@/lib/types/database";
-import type { DepositAvailability } from "@/lib/deposits/availability";
-import type { BushaBank } from "@/lib/busha/client";
+import type { Currency, Wallet } from "@/lib/types/database";
 
 /**
- * GROUP 3b — /sell, four steps over two existing server actions.
+ * GROUP — sell orders (migration 0046). USDT in, fiat credited to the
+ * customer's OWN wallet, never a bank. The three steps:
  *
- * 1. Your USDT       the balance, or the real deposit screen if it's empty.
- * 2. How much        a live quoteConversion(USDT → NGN) preview, same as /convert.
- * 3. Where it goes   the NGN wallet, or a saved/new bank destination.
- * 4. Confirm         one PIN. executeConversion, then — only if a bank was
- *                    picked — requestWithdrawal for exactly what the sale
- *                    delivered. Neither function is reimplemented here.
+ *   1. amount    how much USDT, which fiat wallet it lands in, a live quote.
+ *   2. confirm   the one PIN that authorises the whole order — everything
+ *                after this runs unattended, from a webhook or a cron.
+ *   3. status    send the USDT; a timeline that advances itself as the
+ *                deposit lands and the automated sale runs.
  *
- * NOTHING NEW MOVES MONEY. Every balance change below is the same RPC chain
- * /convert and /withdraw already call; this file only sequences two existing
- * calls behind one PIN and renders what came back.
+ * Nothing here moves money directly — beginSellOrder creates the order and
+ * starts the existing USDT deposit flow; everything after that is
+ * src/lib/sellOrders/settle.ts, triggered by the deposit actually landing.
  */
 
-type Destination = "wallet" | "bank";
+const POLL_INTERVAL_MS = 5000;
 
-interface SellOutcome {
-  error?: string;
-  sellTransactionId?: string;
-  payoutTransactionId?: string;
-  payoutAutomated?: boolean;
-  /** Set only when requestWithdrawal itself returned an error — nothing was
-   *  debited, so the naira is still sitting in the NGN wallet. */
-  payoutError?: string;
+function isSellOrderFinal(status: SellOrderView["status"]): boolean {
+  return status === "sold" || status === "credited_usdt" || status === "expired" || status === "failed";
 }
 
-export function SellForm({
-  usdtWallet,
-  usdtDepositAvailability,
-  recipient,
-  banks,
-  hasPin,
-  kycApproved,
-  kycStatus,
-  rejectionReason,
-}: {
-  usdtWallet?: Wallet;
-  usdtDepositAvailability: DepositAvailability;
-  recipient: WithdrawalRecipient | null;
-  banks: BushaBank[];
-  hasPin: boolean;
-  kycApproved: boolean;
-  kycStatus: string | null;
-  rejectionReason: string | null;
-}) {
+export function SellForm({ wallets, hasPin }: { wallets: Wallet[]; hasPin: boolean }) {
   const router = useRouter();
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step, setStep] = useState<"amount" | "confirm" | "status">("amount");
+
+  const usdtWallet = wallets.find((w) => w.currency === "USDT");
+  const usdtBalance = usdtWallet?.balance ?? 0;
+  const pickerOptions = sellTargetPickerOptions(wallets);
+
   const [amountText, setAmountText] = useState("");
-  const [destination, setDestination] = useState<Destination>("wallet");
+  const [targetCurrency, setTargetCurrency] = useState<Currency>(
+    () => pickerOptions.find((o) => !o.disabled)?.currency ?? "NGN",
+  );
   const [pin, setPin] = useState("");
   const [quote, setQuote] = useState<ConversionQuote | null>(null);
   const [unavailable, setUnavailable] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [outcome, setOutcome] = useState<SellOutcome | null>(null);
+  const [beginError, setBeginError] = useState<string | null>(null);
 
-  // Read fresh every render rather than copied into state, so a deposit
-  // completing elsewhere and refreshing this route (router.refresh(), inside
-  // DepositForm's own polling) shows the new balance with no extra plumbing.
-  const usdtBalance = usdtWallet?.balance ?? 0;
+  const [sellOrderId, setSellOrderId] = useState<string | null>(null);
+  const [cryptoAddress, setCryptoAddress] = useState<
+    { address: string; network: string; expiresAt: string } | undefined
+  >(undefined);
+  const [order, setOrder] = useState<SellOrderView | null>(null);
+
   const amount = parseAmount(amountText);
-
-  const confirm = useConfirm<{ amount: number; quote: ConversionQuote; destination: Destination }>();
+  const minimum = getMinimumConversionAmount("USDT");
+  const belowMinimum = amount > 0 && amount < minimum;
 
   const { pending: quoting } = useDebouncedQuote({
-    key: `${amount}`,
-    enabled: step === 2 && amount > 0,
-    request: () => quoteConversion({ from: "USDT", to: "NGN", amount, field: "source" }),
+    key: `${amount}|${targetCurrency}`,
+    enabled: step === "amount" && amount > 0 && !belowMinimum,
+    request: () => quoteConversion({ from: "USDT", to: targetCurrency, amount, field: "source" }),
     onResult: (result) => {
       setQuote(result.quote ?? null);
       setUnavailable(result.unavailableReason ?? result.error ?? null);
     },
   });
 
-  const insufficient = amount > usdtBalance;
-  const minimumSourceAmount = quote?.minimumSourceAmount ?? getMinimumConversionAmount("USDT");
-  const belowMinimum = quote?.belowMinimum ?? false;
+  const confirm = useConfirm<{ amount: number; targetCurrency: Currency; quote: ConversionQuote }>();
 
-  async function confirmSell(intent: { amount: number; quote: ConversionQuote; destination: Destination }) {
+  usePolling(
+    async () => {
+      if (!sellOrderId) return;
+      const fresh = await pollSellOrder(sellOrderId);
+      if (fresh) setOrder(fresh);
+    },
+    { active: step === "status" && order != null && !isSellOrderFinal(order.status), intervalMs: POLL_INTERVAL_MS },
+  );
+
+  async function handleConfirm(intent: { amount: number; targetCurrency: Currency }) {
     setBusy(true);
-    setOutcome(null);
+    setBeginError(null);
 
-    const sellForm = new FormData();
-    sellForm.set("from", "USDT");
-    sellForm.set("to", "NGN");
-    sellForm.set("amount", String(intent.amount));
-    sellForm.set("pin", pin);
-    const sellResult = await executeConversion({}, sellForm);
-
-    if (sellResult.error || !sellResult.transactionId) {
-      setOutcome({ error: sellResult.error ?? "Could not complete that sale." });
-      setBusy(false);
-      return;
-    }
-
-    if (intent.destination === "wallet") {
-      setOutcome({ sellTransactionId: sellResult.transactionId });
-      setBusy(false);
-      router.refresh();
-      return;
-    }
-
-    // "Send to my bank account" — the exact NGN amount the sale quoted,
-    // through the same requestWithdrawal /withdraw calls: PIN, suspension,
-    // balance, the automated-payout threshold and the recipient-change hold
-    // are all enforced inside it, unchanged.
-    const payoutForm = new FormData();
-    payoutForm.set("currency", "NGN");
-    payoutForm.set("amount", String(intent.quote.targetAmount));
-    payoutForm.set("pin", pin);
-    const payoutResult = await requestWithdrawal({}, payoutForm);
-
-    setOutcome({
-      sellTransactionId: sellResult.transactionId,
-      payoutTransactionId: payoutResult.transactionId,
-      payoutAutomated: payoutResult.automated,
-      payoutError: payoutResult.error,
-    });
+    const form = new FormData();
+    form.set("amount", String(intent.amount));
+    form.set("targetCurrency", intent.targetCurrency);
+    form.set("pin", pin);
+    const result = await beginSellOrder({}, form);
     setBusy(false);
-    router.refresh();
+
+    if (!result.sellOrderId) {
+      setBeginError(result.error ?? "Could not start that sale.");
+      return;
+    }
+
+    setSellOrderId(result.sellOrderId);
+    setCryptoAddress(result.cryptoAddress);
+    // The order is 'awaiting_deposit' the instant it exists — no need to
+    // wait for the first poll to show the send screen.
+    pollSellOrder(result.sellOrderId).then((fresh) => {
+      if (fresh) setOrder(fresh);
+    });
+    setStep("status");
+
+    if (result.error) setBeginError(result.error);
   }
 
-  // ── Status screen — once a sale has actually gone through ───────────────
-  if (outcome?.sellTransactionId) {
+  // ── Step 3 — status ──────────────────────────────────────────────────────
+  if (step === "status") {
+    return (
+      <SellOrderStatus
+        order={order}
+        cryptoAddress={cryptoAddress}
+        fallbackAmount={amount}
+        fallbackTargetCurrency={targetCurrency}
+        beginError={beginError}
+        onDone={() => router.push("/home")}
+      />
+    );
+  }
+
+  // ── Step 2 — confirm with the transaction PIN ───────────────────────────
+  if (step === "confirm" && quote) {
     return (
       <div className="space-y-4">
-        <Banner tone="success" title="Sold">
-          {formatAmount("USDT", amount)} converted to{" "}
-          {formatAmount("NGN", quote?.targetAmount ?? 0)}.
+        <StepIndicator step={2} total={2} />
+
+        <Card>
+          <DetailRow label="You sell">{formatAmount("USDT", amount)}</DetailRow>
+          <DetailRow label="You'll get about">
+            <strong>{formatAmount(targetCurrency, quote.targetAmount)}</strong>
+          </DetailRow>
+          <DetailRow label="Goes to">Your {targetCurrency} wallet</DetailRow>
+        </Card>
+
+        <Banner tone="info" title="Final amount uses the rate when your USDT arrives">
+          It goes to your {targetCurrency} wallet — you withdraw it from there, whenever
+          you&apos;re ready.
         </Banner>
 
-        {destination === "bank" &&
-          (outcome.payoutError ? (
-            <Banner tone="info" title="Your naira is safe in your wallet">
-              The payout to your bank didn&apos;t go through: {outcome.payoutError} Nothing was
-              lost — the naira from this sale is sitting in your NGN wallet, and you can send it
-              from there whenever you&apos;re ready.
-            </Banner>
-          ) : outcome.payoutAutomated ? (
-            <Banner tone="success" title="Paid out">
-              It&apos;s on its way to your bank — you&apos;ll get a notification when it lands.
-            </Banner>
-          ) : (
-            <Banner tone="info" title="Paid out — under review">
-              A person reviews this one before it leaves. The amount is already held off your
-              NGN wallet so it can&apos;t be spent twice.
-            </Banner>
-          ))}
-
-        {destination === "wallet" && (
-          <Banner tone="info" title="In your NGN wallet">
-            The naira is in your wallet — convert, withdraw or spend it whenever you like.
+        {!hasPin && (
+          <Banner
+            tone="warning"
+            title="Set a transaction PIN first"
+            action={{ href: "/profile", label: "Set up your PIN" }}
+          >
+            Every sale is confirmed with a 4-6 digit PIN.
           </Banner>
         )}
 
-        <Card>
-          <DetailRow label="Sold">{formatAmount("USDT", amount)}</DetailRow>
-          <DetailRow label="Received">{formatAmount("NGN", quote?.targetAmount ?? 0)}</DetailRow>
-          <DetailRow label="Sale reference" mono>
-            {outcome.sellTransactionId}
-          </DetailRow>
-          {outcome.payoutTransactionId && (
-            <DetailRow label="Payout reference" mono>
-              {outcome.payoutTransactionId}
-            </DetailRow>
-          )}
-        </Card>
+        {beginError && (
+          <Banner live tone="danger" title="Couldn't start that sale">
+            {beginError}
+          </Banner>
+        )}
 
-        <Button variant="secondary" fullWidth onClick={() => router.push("/home")}>
-          Back to home
-        </Button>
+        {hasPin && <PinField value={pin} onValueChange={setPin} />}
+
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => setStep("amount")} disabled={busy}>
+            Back
+          </Button>
+          <Button
+            fullWidth
+            loading={busy}
+            disabled={!hasPin || pin.length < 4}
+            onClick={() => confirm.ask({ amount, targetCurrency, quote })}
+          >
+            Sell {formatAmount("USDT", amount)}
+          </Button>
+        </div>
+
+        <ConfirmDialog
+          open={confirm.open}
+          title="Confirm this sale"
+          body="Once you confirm, we start the USDT deposit for this sale. The final amount is priced when it actually arrives."
+          rows={
+            confirm.intent
+              ? [
+                  { label: "You sell", value: formatAmount("USDT", confirm.intent.amount) },
+                  {
+                    label: "You'll get about",
+                    value: formatAmount(confirm.intent.targetCurrency, confirm.intent.quote.targetAmount),
+                    emphasis: true,
+                  },
+                  { label: "Goes to", value: `Your ${confirm.intent.targetCurrency} wallet` },
+                ]
+              : undefined
+          }
+          confirmLabel="Sell"
+          cancelLabel="Go back"
+          onCancel={confirm.cancel}
+          onConfirm={() => confirm.confirm((intent) => handleConfirm(intent))}
+        />
       </div>
     );
   }
 
+  // ── Step 1 — Sell your USDT ──────────────────────────────────────────────
   return (
     <div className="space-y-4">
-      <StepIndicator step={step} total={4} />
+      <StepIndicator step={1} total={2} />
 
-      {/* ── Step 1 — Your USDT ─────────────────────────────────────────── */}
-      {step === 1 && (
-        <div className="space-y-4">
-          <Card>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Your USDT
-            </h2>
-            <p className="mt-1 text-2xl text-foreground">{formatAmount("USDT", usdtBalance)}</p>
-          </Card>
+      <Card className="space-y-3">
+        <AmountInput
+          name="amount"
+          label="How much USDT do you want to sell?"
+          currency="USDT"
+          value={amountText}
+          onValueChange={setAmountText}
+          hint={usdtBalance > 0 ? `Already holding ${formatAmount("USDT", usdtBalance)}?` : undefined}
+          error={null}
+        />
 
-          {usdtBalance <= 0 && usdtWallet && (
+        <CurrencyPicker
+          label="Receive in"
+          title="Receive in"
+          value={targetCurrency}
+          options={pickerOptions}
+          onChange={setTargetCurrency}
+        />
+      </Card>
+
+      {belowMinimum && (
+        <Banner tone="warning" title="That's below the minimum">
+          Sell at least {formatAmount("USDT", minimum)}.
+        </Banner>
+      )}
+
+      {unavailable && (
+        <Banner tone="info" title="Can't price that right now">
+          {unavailable}
+        </Banner>
+      )}
+
+      {quote && !quoting && amount > 0 && !belowMinimum && (
+        <Card className="space-y-2">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-sm text-muted-foreground">You&apos;ll get about</span>
+            <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
+              {formatAmount(targetCurrency, quote.targetAmount)}
+            </span>
+          </div>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-sm text-muted-foreground">Sell USDT at</span>
+            <span className="font-mono text-sm font-medium tabular-nums text-foreground">
+              {quote.directionRates.sellPrice != null
+                ? `${formatAmount(targetCurrency, quote.directionRates.sellPrice)} per USDT`
+                : "—"}
+            </span>
+          </div>
+          <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
+            <span className="text-sm text-muted-foreground">Rate</span>
+            <span className="font-mono text-sm font-medium tabular-nums text-foreground">
+              {formatRate("USDT", targetCurrency, quote.customerRate)}
+            </span>
+          </div>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-sm text-muted-foreground">Fee</span>
+            <span className="text-sm font-medium text-foreground">
+              {formatNumber(quote.markupRate * 100, 2)}%
+            </span>
+          </div>
+          <p className="border-t border-border pt-2 text-xs text-muted-foreground">
+            Final amount uses the rate when your USDT arrives. It goes to your {targetCurrency}{" "}
+            wallet.
+          </p>
+        </Card>
+      )}
+
+      <Button
+        fullWidth
+        disabled={!quote || amount <= 0 || belowMinimum || quoting}
+        onClick={() => setStep("confirm")}
+      >
+        Continue
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * Step 3. The timeline and, while waiting, the real USDT deposit screen's
+ * essentials (address, QR, countdown) — not the whole DepositForm, because
+ * this screen also owns the estimate and the sell-specific copy the generic
+ * one knows nothing about.
+ */
+function SellOrderStatus({
+  order,
+  cryptoAddress,
+  fallbackAmount,
+  fallbackTargetCurrency,
+  beginError,
+  onDone,
+}: {
+  order: SellOrderView | null;
+  cryptoAddress?: { address: string; network: string; expiresAt: string };
+  fallbackAmount: number;
+  fallbackTargetCurrency: Currency;
+  beginError: string | null;
+  onDone: () => void;
+}) {
+  const router = useRouter();
+  const secondsLeft = useCountdown(cryptoAddress?.expiresAt);
+  const expired = cryptoAddress != null && secondsLeft === 0;
+
+  const targetCurrency = (order?.target_currency ?? fallbackTargetCurrency) as Currency;
+  const amount = order?.expected_usdt_amount ?? fallbackAmount;
+  const status = order?.status ?? "awaiting_deposit";
+
+  if (!order && beginError) {
+    return (
+      <Banner tone="danger" title="Couldn't start that sale">
+        {beginError}
+      </Banner>
+    );
+  }
+
+  const timelineStep =
+    status === "awaiting_deposit" ? 1 : status === "received" ? 2 : 3;
+  const timelineLabels = [
+    "Waiting for USDT",
+    "USDT received",
+    status === "credited_usdt"
+      ? "Couldn't sell — credited to USDT"
+      : status === "failed"
+        ? "Needs a look"
+        : status === "expired"
+          ? "Expired"
+          : "Sold",
+  ];
+
+  return (
+    <div className="space-y-4">
+      <ol className="flex items-center gap-2">
+        {timelineLabels.map((label, index) => {
+          const reached = index + 1 <= timelineStep;
+          return (
+            <li key={label} className="flex min-w-0 flex-1 items-center gap-2">
+              <span
+                className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                  reached ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+                }`}
+              >
+                {index + 1}
+              </span>
+              <span
+                className={`truncate text-xs font-medium ${reached ? "text-foreground" : "text-muted-foreground"}`}
+              >
+                {label}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+
+      {status === "awaiting_deposit" && cryptoAddress && (
+        <>
+          <Banner tone="info" title={`Send only USDT on ${networkLabel(cryptoAddress.network)}`}>
+            Anything sent on another network, or in any other token, can&apos;t be recovered.
+          </Banner>
+
+          {!expired ? (
             <>
-              <Banner tone="info" title="You don't have any USDT yet">
-                Send USDT on BSC (BEP20) only. The balance here updates itself the moment it
-                lands.
-              </Banner>
-              <DepositForm
-                wallets={[usdtWallet]}
-                availability={{ USDT: usdtDepositAvailability }}
-                initialCurrency="USDT"
+              <DepositAddressQr
+                address={cryptoAddress.address}
+                network={cryptoAddress.network}
+                currency="USDT"
               />
-            </>
-          )}
+              <CopyField label="USDT address" value={cryptoAddress.address} />
 
-          {usdtBalance <= 0 && !usdtWallet && (
-            <Banner tone="danger" title="No USDT wallet on this account">
-              Contact support — every account should have one.
-            </Banner>
-          )}
-
-          {usdtBalance > 0 && (
-            <Button fullWidth onClick={() => setStep(2)}>
-              Continue
-            </Button>
-          )}
-        </div>
-      )}
-
-      {/* ── Step 2 — How much ──────────────────────────────────────────── */}
-      {step === 2 && (
-        <div className="space-y-4">
-          <Card>
-            <AmountInput
-              name="amount"
-              label="How much do you want to sell?"
-              currency="USDT"
-              value={amountText}
-              onValueChange={setAmountText}
-              max={usdtBalance}
-              onMax={() => setAmountText(formatAmountInput(usdtBalance.toFixed(2)))}
-              hint={`Balance ${formatAmount("USDT", usdtBalance)}`}
-              error={insufficient ? "That's more than your USDT balance." : null}
-            />
-          </Card>
-
-          {unavailable && (
-            <Banner tone="info" title="Can't price that right now">
-              {unavailable}
-            </Banner>
-          )}
-
-          {quote && !quoting && amount > 0 && !insufficient && (
-            <Card className="space-y-2">
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="text-sm text-muted-foreground">You get</span>
-                <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
-                  {formatAmount("NGN", quote.targetAmount)}
-                </span>
-              </div>
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="text-sm text-muted-foreground">Sell USDT at</span>
+              <Card className="flex items-baseline justify-between gap-3">
+                <span className="text-sm text-muted-foreground">Details expire in</span>
                 <span className="font-mono text-sm font-medium tabular-nums text-foreground">
-                  {quote.directionRates.sellPrice != null
-                    ? `${formatAmount("NGN", quote.directionRates.sellPrice)} per USDT`
-                    : "—"}
+                  {formatCountdown(secondsLeft)}
                 </span>
-              </div>
-              <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
-                <span className="text-sm text-muted-foreground">Rate</span>
-                <span className="font-mono text-sm font-medium tabular-nums text-foreground">
-                  {formatRate("USDT", "NGN", quote.customerRate)}
-                </span>
-              </div>
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="text-sm text-muted-foreground">Our fee</span>
-                <span className="text-sm font-medium text-foreground">
-                  {formatNumber(quote.markupRate * 100, 2)}%
-                </span>
-              </div>
-            </Card>
-          )}
-
-          {belowMinimum && (
-            <Banner tone="warning" title="That's below the minimum">
-              Sell at least {formatAmount("USDT", minimumSourceAmount)}.
-            </Banner>
-          )}
-
-          <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => setStep(1)}>
-              Back
-            </Button>
-            <Button
-              fullWidth
-              disabled={!quote || amount <= 0 || insufficient || belowMinimum || quoting}
-              onClick={() => setStep(3)}
-            >
-              Continue
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Step 3 — Where should the naira go ─────────────────────────── */}
-      {step === 3 && (
-        <div className="space-y-4">
-          <Card className="space-y-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Where should the naira go?
-            </h2>
-
-            <label className="flex min-h-14 items-center gap-3 rounded-lg border border-border px-3">
-              <input
-                type="radio"
-                name="destination"
-                checked={destination === "wallet"}
-                onChange={() => setDestination("wallet")}
-                className="size-4 accent-primary"
-              />
-              <span className="text-sm text-foreground">Keep it in my NGN wallet</span>
-            </label>
-
-            <label className="flex min-h-14 items-center gap-3 rounded-lg border border-border px-3">
-              <input
-                type="radio"
-                name="destination"
-                checked={destination === "bank"}
-                onChange={() => setDestination("bank")}
-                className="size-4 accent-primary"
-              />
-              <span className="text-sm text-foreground">Send to my bank account</span>
-            </label>
-          </Card>
-
-          {destination === "bank" && !kycApproved && (
-            <Banner
-              tone={kycStatus === "rejected" ? "danger" : "warning"}
-              title={
-                kycStatus === "rejected"
-                  ? "We couldn't verify your details"
-                  : "Verify your identity to withdraw"
-              }
-              action={{
-                href: "/onboarding/kyc",
-                label: kycStatus === "rejected" ? "Resubmit" : "Continue setting up",
-              }}
-            >
-              {kycStatus === "rejected"
-                ? (rejectionReason ?? "Please review your documents and submit them again.")
-                : "A payout to your bank needs a verified identity. Keeping the naira in your wallet needs nothing extra."}
-            </Banner>
-          )}
-
-          {destination === "bank" && kycApproved && (
-            <>
-              {recipient ? (
-                <Card>
-                  <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    Going to
-                  </h2>
-                  <DetailRow label="Name">{recipient.account_holder_name}</DetailRow>
-                  {recipient.bank_name && <DetailRow label="Bank">{recipient.bank_name}</DetailRow>}
-                  {recipient.bank_account_number && (
-                    <DetailRow label="Account number" mono>
-                      {recipient.bank_account_number}
-                    </DetailRow>
-                  )}
-                </Card>
-              ) : (
-                <Card className="space-y-3">
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    Add a naira payout account
-                  </h2>
-                  <NewRecipient currency="NGN" banks={banks} onSaved={() => router.refresh()} />
-                </Card>
-              )}
+              </Card>
             </>
+          ) : (
+            <Banner tone="warning" title="These details have expired" action={{ href: "/sell", label: "Start a new sale" }}>
+              Don&apos;t send anything to them now. Start again and we&apos;ll generate a new
+              address for you.
+            </Banner>
           )}
 
-          <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => setStep(2)}>
-              Back
-            </Button>
-            <Button
-              fullWidth
-              disabled={
-                destination === "bank" && (!kycApproved || !recipient)
-              }
-              onClick={() => setStep(4)}
-            >
-              Continue
-            </Button>
-          </div>
-        </div>
+          <Card className="space-y-1">
+            <p className="text-sm text-muted-foreground">
+              You&apos;re selling <strong className="text-foreground">{formatAmount("USDT", amount)}</strong>
+            </p>
+            {order && (
+              <p className="text-sm text-muted-foreground">
+                Estimated{" "}
+                <strong className="text-foreground">
+                  {formatAmount(targetCurrency, order.estimated_target_amount)}
+                </strong>{" "}
+                — final amount uses the rate when your USDT arrives.
+              </p>
+            )}
+          </Card>
+        </>
       )}
 
-      {/* ── Step 4 — Confirm with PIN ───────────────────────────────────── */}
-      {step === 4 && quote && (
-        <div className="space-y-4">
+      {status === "received" && (
+        <Banner tone="info" title="Selling your USDT">
+          Your USDT has landed — we&apos;re converting it now. This page updates itself.
+        </Banner>
+      )}
+
+      {status === "sold" && (
+        <>
+          <Banner tone="success" title={`Sold. ${formatAmount(targetCurrency, order!.soldAmount ?? order!.estimated_target_amount)} added to your wallet`}>
+            It&apos;s in your {targetCurrency} wallet now.
+          </Banner>
+
           <Card>
-            <DetailRow label="You sell">{formatAmount("USDT", amount)}</DetailRow>
-            <DetailRow label="You get">
-              <strong>{formatAmount("NGN", quote.targetAmount)}</strong>
-            </DetailRow>
-            <DetailRow label="Going to">
-              {destination === "wallet" ? "Your NGN wallet" : "Your bank account"}
+            <DetailRow label="Sold">{formatAmount("USDT", amount)}</DetailRow>
+            <DetailRow label="Received">
+              {formatAmount(targetCurrency, order!.soldAmount ?? order!.estimated_target_amount)}
             </DetailRow>
           </Card>
 
-          {!hasPin && (
-            <Banner
-              tone="warning"
-              title="Set a transaction PIN first"
-              action={{ href: "/profile", label: "Set up your PIN" }}
-            >
-              Every sale is confirmed with a 4-6 digit PIN.
-            </Banner>
-          )}
-
-          {outcome?.error && (
-            <Banner live tone="danger" title="Couldn't complete that sale">
-              {outcome.error}
-            </Banner>
-          )}
-
-          {hasPin && <PinField value={pin} onValueChange={setPin} />}
-
-          <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => setStep(3)} disabled={busy}>
-              Back
-            </Button>
-            <Button
-              fullWidth
-              loading={busy}
-              disabled={!hasPin || pin.length < 4}
-              onClick={() => confirm.ask({ amount, quote, destination })}
-            >
-              Sell {formatAmount("USDT", amount)}
-            </Button>
-          </div>
-        </div>
+          <Button
+            fullWidth
+            onClick={() =>
+              router.push(
+                `/withdraw?currency=${targetCurrency}&amount=${order!.soldAmount ?? order!.estimated_target_amount}`,
+              )
+            }
+          >
+            Withdraw to bank
+          </Button>
+          <Button variant="secondary" fullWidth onClick={onDone}>
+            Done
+          </Button>
+        </>
       )}
 
-      <ConfirmDialog
-        open={confirm.open}
-        title="Confirm this sale"
-        body="Once you confirm, we convert at today's rate and (if you chose a bank) send the naira out."
-        rows={
-          confirm.intent
-            ? [
-                { label: "You sell", value: formatAmount("USDT", confirm.intent.amount) },
-                {
-                  label: "You get",
-                  value: formatAmount("NGN", confirm.intent.quote.targetAmount),
-                  emphasis: true,
-                },
-                {
-                  label: "Going to",
-                  value: confirm.intent.destination === "wallet" ? "Your NGN wallet" : "Your bank account",
-                },
-              ]
-            : undefined
-        }
-        confirmLabel="Sell"
-        cancelLabel="Go back"
-        onCancel={confirm.cancel}
-        onConfirm={() => confirm.confirm((intent) => confirmSell(intent))}
-      />
+      {status === "credited_usdt" && (
+        <>
+          <Banner tone="info" title="Couldn't sell your USDT automatically">
+            So it&apos;s in your USDT wallet instead. You can sell it from there.
+          </Banner>
+          <Button fullWidth onClick={() => router.push("/accounts/USDT")}>
+            Go to your USDT wallet
+          </Button>
+          <Button variant="secondary" fullWidth onClick={onDone}>
+            Done
+          </Button>
+        </>
+      )}
+
+      {status === "expired" && (
+        <Banner tone="warning" title="This sell order expired" action={{ href: "/sell", label: "Start again" }}>
+          No USDT arrived in time, so nothing happened — there is nothing to undo.
+        </Banner>
+      )}
+
+      {status === "failed" && (
+        <Banner tone="danger" title="Something needs a look">
+          Contact support with this reference: {order?.id}
+        </Banner>
+      )}
     </div>
   );
 }
