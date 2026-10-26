@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin } from "@/lib/auth/admin";
 import { loadActivityDetail, type ActivityDetail } from "@/lib/activity/detail";
 import { receiptTitle } from "@/lib/activity/receiptTitle";
+import { sanitizeReceiptText } from "@/lib/receipts/sanitizeText";
 import { formatAmount, formatRate } from "@/lib/currencies";
 import type { ActivitySource } from "@/lib/transactions";
 
@@ -453,14 +454,15 @@ function receiptRows(detail: ActivityDetail): { label: string; value: string }[]
       label: isWithdrawal ? "Sent to" : detail.source === "bill" ? "Paid to" : "Details",
       // Satori does not wrap a long unbroken string gracefully, and a USDT
       // address is exactly that. Truncated with the ends kept, which is the
-      // part a person checks.
-      value: truncateMiddle(detail.description, 52),
+      // part a person checks. Sanitized first: this is a recipient-entered
+      // field drawn as literal SVG text.
+      value: truncateMiddle(sanitizeReceiptText(detail.description), 52),
     });
   }
 
-  if (detail.token) rows.push({ label: "Token", value: detail.token });
+  if (detail.token) rows.push({ label: "Token", value: sanitizeReceiptText(detail.token) });
   if (detail.reference) {
-    rows.push({ label: "Reference", value: truncateMiddle(detail.reference, 46) });
+    rows.push({ label: "Reference", value: truncateMiddle(sanitizeReceiptText(detail.reference), 46) });
   }
 
   return rows;
