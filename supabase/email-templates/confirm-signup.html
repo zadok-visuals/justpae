@@ -33,26 +33,26 @@
      and others, which is why the light design above is the one that must
      stand on its own with no help from this block. */
   @media (prefers-color-scheme: dark) {
-    .email-outer-bg { background-color: #0b0d10 !important; }
-    .email-card-bg { background-color: #14171c !important; border-color: #232830 !important; }
-    .email-heading { color: #f3f5f7 !important; }
-    .email-body { color: #f3f5f7 !important; }
-    .email-muted { color: #98a2b3 !important; }
-    .email-panel-bg { background-color: #14171c !important; border-color: #232830 !important; }
-    .email-panel-text { color: #f3f5f7 !important; }
-    .email-footer-text { color: #98a2b3 !important; }
+    .email-outer-bg { background-color: hsl(var(--jp-background)) !important; }
+    .email-card-bg { background-color: hsl(var(--jp-card)) !important; border-color: hsl(var(--jp-border)) !important; }
+    .email-heading { color: hsl(var(--jp-foreground)) !important; }
+    .email-body { color: hsl(var(--jp-foreground)) !important; }
+    .email-muted { color: hsl(var(--jp-muted-foreground)) !important; }
+    .email-panel-bg { background-color: hsl(var(--jp-secondary)) !important; border-color: hsl(var(--jp-border)) !important; }
+    .email-panel-text { color: hsl(var(--jp-foreground)) !important; }
+    .email-footer-text { color: hsl(var(--jp-muted-foreground)) !important; }
   }
 </style>
 </head>
-<body style="margin:0;padding:0;background-color:#ffffff;">
+<body style="margin:0;padding:0;background-color:hsl(var(--jp-background));">
 <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;opacity:0;">Your verification code is inside — it expires in about an hour.&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>
 
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" class="email-outer-bg" style="background-color:#ffffff;margin:0;padding:32px 0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="hsl(var(--jp-background))" class="email-outer-bg" style="background-color:hsl(var(--jp-background));margin:0;padding:32px 0;">
   <tr>
     <td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
         <tr>
-          <td class="email-card-bg" bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #e6e8ec;border-radius:12px;overflow:hidden;">
+          <td class="email-card-bg" bgcolor="hsl(var(--jp-card))" style="background-color:hsl(var(--jp-card));border:1px solid hsl(var(--jp-border));border-radius:12px;overflow:hidden;">
 
             <!-- Header band: justpae's ink colour, wordmark hosted as a PNG
                  so it renders identically everywhere, incl. clients that
@@ -63,7 +63,7 @@
                  doesn't itself control. -->
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
-                <td bgcolor="#0b0d10" style="background-color:#0b0d10;padding:20px 28px;">
+                <td bgcolor="hsl(var(--jp-primary))" style="background-color:hsl(var(--jp-primary));padding:20px 28px;">
                   <img src="https://justpae.com/email/justpae-logo@2x.png" width="122" height="40" alt="justpae" style="display:block;border:0;outline:none;">
                 </td>
               </tr>
@@ -73,57 +73,39 @@
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
                 <td style="padding:28px 28px 0 28px;">
-                  <h1 class="email-heading" style="margin:0;font-family:'Clash Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:26px;font-weight:600;color:#0f1729;">Confirm your email</h1>
-                  <p class="email-body" style="margin:12px 0 0 0;font-family:'Clash Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#0f1729;">Use the code below to confirm your email and finish setting up your justpae account.</p>
-<p class="email-body" style="margin:12px 0 0 0;font-family:'Clash Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#0f1729;">It expires in about an hour.</p>
+                  <h1 class="email-heading" style="margin:0;font-family:'Clash Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:26px;font-weight:600;color:hsl(var(--jp-foreground));">Confirm your email</h1>
+                  <p class="email-body" style="margin:12px 0 0 0;font-family:'Clash Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:hsl(var(--jp-foreground));">Use the code below to confirm your email and finish setting up your justpae account.</p>
+<p class="email-body" style="margin:12px 0 0 0;font-family:'Clash Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:hsl(var(--jp-foreground));">It expires in about an hour.</p>
                 </td>
               </tr>
               <tr>
                 <td style="padding:20px 28px 0 28px;">
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="email-panel-bg" bgcolor="#f6f7f9" style="background-color:#f6f7f9;border:1px solid #eaecf0;border-radius:10px;">
   <tr>
-    <td align="center" style="padding:20px 0;">
+    <td align="center" style="padding:20px 0;display:flex;align-items:center;justify-content:center;gap:8px;">
       <span class="email-panel-text" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:32px;font-weight:700;letter-spacing:6px;color:#0b0d10;">{{ .Token }}</span>
+      <span style="font-size:24px;" aria-label="Copy code" role="img">📋</span>
     </td>
   </tr>
 </table>
                 </td>
               </tr>
-              <tr>
-                <td align="center" style="padding:28px 28px 0 28px;">
-                  <!--[if mso]>
-<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}&next=/home" style="height:48px;v-text-anchor:middle;width:240px;" arcsize="50%" strokecolor="#2f54eb" fillcolor="#2f54eb">
-<w:anchorlock/>
-<center style="color:#ffffff;font-family:sans-serif;font-size:16px;font-weight:600;">Confirm my email</center>
-</v:roundrect>
-<![endif]-->
-<!--[if !mso]><!-- -->
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="mso-hide:all;">
-  <tr>
-    <td align="center" bgcolor="#2f54eb" style="border-radius:24px;background-color:#2f54eb;">
-      <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}&next=/home" target="_blank" style="display:inline-block;height:48px;line-height:48px;padding:0 32px;font-family:'Clash Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:24px;">Confirm my email</a>
-    </td>
-  </tr>
-</table>
-<!--<![endif]-->
-                </td>
-              </tr>
+              
               <tr>
                 <td style="padding:20px 28px 0 28px;">
-                  <p class="email-muted" style="margin:0;font-family:'Clash Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#6b7a90;">Rather tap than type? If the button doesn't work, copy this address into your browser:</p>
-                  <p class="email-muted" style="margin:8px 0 0 0;font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:12px;line-height:1.5;color:#6b7a90;word-break:break-all;">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}&next=/home</p>
-                  <p class="email-muted" style="margin:18px 0 0 0;font-family:'Clash Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#6b7a90;">If you didn't request this, you can ignore this email — no account is created until the code or link is used.</p>
+                  
+                  <p class="email-muted" style="margin:0px 0 0 0;font-family:'Clash Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:hsl(var(--jp-muted-foreground));">If you didn't request this, you can ignore this email — no account is created until the code or link is used.</p>
                 </td>
               </tr>
               <tr>
                 <td style="padding:28px 28px 28px 28px;">
-                  <p class="email-footer-text" style="margin:0;font-family:'Clash Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;color:#6b7a90;">
+                  <p class="email-footer-text" style="margin:0;font-family:'Clash Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;color:hsl(var(--jp-muted-foreground));">
                     justpae &middot; Zadok Royal Limited<br>
-                    <a href="https://justpae.com/support" class="email-footer-text" style="color:#6b7a90;">Support</a>
+                    <a href="https://justpae.com/support" class="email-footer-text" style="color:hsl(var(--jp-muted-foreground));">Support</a>
                     &nbsp;&middot;&nbsp;
-                    <a href="https://justpae.com/terms" class="email-footer-text" style="color:#6b7a90;">Terms</a>
+                    <a href="https://justpae.com/terms" class="email-footer-text" style="color:hsl(var(--jp-muted-foreground));">Terms</a>
                     &nbsp;&middot;&nbsp;
-                    <a href="https://justpae.com/privacy" class="email-footer-text" style="color:#6b7a90;">Privacy</a>
+                    <a href="https://justpae.com/privacy" class="email-footer-text" style="color:hsl(var(--jp-muted-foreground));">Privacy</a>
                   </p>
                 </td>
               </tr>

@@ -24,8 +24,9 @@ const OUT_DIR = resolve(__dirname, "../supabase/email-templates");
 
 const CODE_PANEL = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="email-panel-bg" bgcolor="#f6f7f9" style="background-color:#f6f7f9;border:1px solid #eaecf0;border-radius:10px;">
   <tr>
-    <td align="center" style="padding:20px 0;">
+    <td align="center" style="padding:20px 0;display:flex;align-items:center;justify-content:center;gap:8px;">
       <span class="email-panel-text" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:32px;font-weight:700;letter-spacing:6px;color:#0b0d10;">{{ .Token }}</span>
+      <span style="font-size:24px;" aria-label="Copy code" role="img">📋</span>
     </td>
   </tr>
 </table>`;
@@ -58,14 +59,7 @@ const confirmSignup = withHeader(
       "It expires in about an hour.",
     ],
     panelHtml: CODE_PANEL,
-    button: {
-      label: "Confirm my email",
-      // Lands on the dashboard, matching verifySignupCode. The link and the
-      // typed code are two routes to the same place and must not disagree
-      // about where a newly confirmed user belongs.
-      href: "{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}&next=/home",
-    },
-    fallbackIntro: "Rather tap than type? If the button doesn't work, copy this address into your browser:",
+
     closingParagraphs: [
       "If you didn't request this, you can ignore this email — no account is created until the code or link is used.",
     ],
