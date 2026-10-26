@@ -72,6 +72,16 @@ export type ProviderFailure =
    * not to send it again — see queryDisbursement in src/lib/korapay/client.ts.
    */
   | "duplicate_reference"
+  /**
+   * GROUP 4. Korapay refused to issue a virtual account because the BVN it
+   * was given is invalid, or does not match the name on the account — never
+   * a retry with the same BVN. The caller (src/lib/korapay/virtualAccount.ts)
+   * deletes the saved BVN and sends the customer back to the BVN step rather
+   * than showing the generic "didn't check out" message every other
+   * `rejected` refusal gets, because this one specifically is self-correcting
+   * if they re-enter it.
+   */
+  | "bvn_mismatch"
   /** Not a recognisable provider failure at all. */
   | "unknown";
 
@@ -114,6 +124,12 @@ const PATTERNS: Array<{ failure: ProviderFailure; test: RegExp }> = [
     // text precisely so this line has something to match against), so it's
     // matched as its own alternative rather than folded into "restricted".
     test: /not\s+supported|unsupported|invalid\s+network|not\s+enabled|not\s+available|no\s+such\s+pair|unavailable\s+(pair|currency|corridor)|disabled|restricted/i,
+  },
+  // KORAPAY, virtual account issuance. Must precede `rejected`, which would
+  // otherwise swallow "Invalid BVN" via its own bare "invalid" alternative.
+  {
+    failure: "bvn_mismatch",
+    test: /\bbvn\b.{0,40}(invalid|incorrect|mismatch|does(?:n't| not)\s+match|not\s+valid)|(invalid|incorrect|mismatch).{0,40}\bbvn\b/i,
   },
   // The real shape of a Busha refusal on this account, and the least
   // informative. Deliberately last among the text patterns.
@@ -263,6 +279,9 @@ export function customerMessageFor(
     case "rejected":
       // Not "try again in a moment": the same request will be refused again.
       return "That request was refused. Check the amount and try again — or contact support if it keeps happening.";
+
+    case "bvn_mismatch":
+      return "That BVN didn't match the name on your account. Check it and try again.";
 
     case "duplicate_reference":
       // Says "already in progress", never "failed". The money may well be on

@@ -339,6 +339,25 @@ export async function sendKycRejectedEmail(params: {
   });
 }
 
+/**
+ * GROUP 3 — Dojah is down or its wallet is empty (402). Sent at most once per
+ * cooldown: the caller claims the right to send via claim_provider_alert
+ * (migration 0044) before calling this, so a provider outage that touches a
+ * hundred BVN saves emails the ops team once, not a hundred times.
+ */
+export async function sendAdminBvnValidationDownEmail(params: { to: string[] }): Promise<boolean> {
+  return sendEmail({
+    to: params.to,
+    subject: "BVN validation is unavailable",
+    preheader: "BVNs are being saved unverified while Dojah is unreachable.",
+    heading: "BVN validation is down",
+    bodyParagraphs: [
+      "Dojah is not responding, or its wallet is empty. New BVNs are still being saved — marked unverified — and Korapay's own check still runs when an account number is issued, so nobody is blocked.",
+      "Worth checking Dojah's status or account balance.",
+    ],
+  });
+}
+
 // ── Money movement ──────────────────────────────────────────────────────────
 // All four are statements of fact, so none carries a button. See the comment on
 // EmailOptions.button: an email about money whose only action is "sign in" is

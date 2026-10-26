@@ -6,6 +6,7 @@ import { TextField, FieldError } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Primitives";
 import { saveBvn } from "@/lib/actions/kyc";
 import { KYC_ID_FIELDS } from "@/lib/countries";
+import { FLAGS } from "@/lib/flags";
 
 /**
  * The one question an already-verified Nigerian user is asked the first time
@@ -67,6 +68,12 @@ export function BvnPrompt({
           not ours. You only do this once.
         </p>
       </div>
+
+      {FLAGS.bvnValidation && (
+        <p className="text-xs text-muted-foreground">
+          By continuing, you allow justpae to verify your BVN with our verification partner.
+        </p>
+      )}
 
       <form action={action} className="space-y-3">
         <TextField

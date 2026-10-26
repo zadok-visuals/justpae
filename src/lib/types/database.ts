@@ -201,6 +201,12 @@ export type KycDocument = {
   value: string | null;
   status: DocumentStatus;
   created_at: string;
+  /** GROUP 3 — set only for a BVN checked against Dojah; null otherwise.
+   *  Never the name, date of birth or photo a provider's response carries,
+   *  only the verdict. See migration 0044 and src/lib/actions/kyc.ts. */
+  verification_result: "matched" | "unverified" | null;
+  verification_provider: string | null;
+  verification_checked_at: string | null;
 };
 
 export type Transaction = {
@@ -1322,6 +1328,14 @@ export type Database = {
       /** Server-only. Increments the failed-PIN counter in its own transaction,
        *  after the money function's raise has rolled its own back. */
       record_pin_failure: { Args: { p_user_id: string }; Returns: PinFailureRow[] };
+
+      /** Server-only (0044). Atomically claims the right to send a
+       *  provider-down alert — true only for the caller that moves the
+       *  cooldown forward, so a Dojah outage emails the ops team once. */
+      claim_provider_alert: {
+        Args: { p_provider: string; p_cooldown_minutes?: number };
+        Returns: boolean;
+      };
 
       admin_approve_kyc: { Args: { p_user_id: string }; Returns: undefined };
       admin_reject_kyc: { Args: { p_user_id: string; p_reason: string }; Returns: undefined };

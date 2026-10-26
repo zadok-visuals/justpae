@@ -22,7 +22,14 @@ import {
   kycUploadMissingMessage,
   toKycError,
 } from "@/lib/kyc/errors";
-import { adminNotificationRecipients, sendKycSubmittedEmail } from "@/lib/email";
+import {
+  adminNotificationRecipients,
+  sendKycSubmittedEmail,
+  sendAdminBvnValidationDownEmail,
+} from "@/lib/email";
+import { BVN_VALIDATION_ENABLED } from "@/lib/flags";
+import { validateBvn, DojahError } from "@/lib/dojah/client";
+import { dojahMatchInput, evaluateDojahMatch, splitFullName, BVN_DOJAH_MISMATCH_MESSAGE } from "@/lib/kyc/bvnFlow";
 
 export interface KycActionState {
   error?: string;
@@ -495,7 +502,7 @@ export async function saveBvn(
   // Nigerian to reach a field its country does not have.
   const { data: profile } = await supabase
     .from("profiles")
-    .select("country, kyc_status")
+    .select("country, kyc_status, full_name")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -525,6 +532,38 @@ export async function saveBvn(
     return { ok: true, masked: maskBvn(existing.value) };
   }
 
+  // GROUP 3 — validated against Dojah before it is ever saved, when the flag
+  // is on. A name mismatch refuses the save outright; an unreachable Dojah
+  // (down, or its wallet is empty — 402) does NOT: the BVN is saved marked
+  // 'unverified' and Korapay's own check decides at account-issuance time
+  // regardless. Either way, only the verdict is kept — never the name, date
+  // of birth or photo Dojah's response may carry.
+  let verification: { result: "matched" | "unverified"; provider: string; checkedAt: string } | null =
+    null;
+
+  if (BVN_VALIDATION_ENABLED) {
+    const { firstName, lastName } = splitFullName(profile?.full_name ?? "");
+    try {
+      const response = await validateBvn({ bvn, firstName, lastName });
+      const outcome = evaluateDojahMatch(dojahMatchInput(response));
+      if (outcome === "mismatch") return { error: BVN_DOJAH_MISMATCH_MESSAGE };
+      verification = { result: "matched", provider: "dojah", checkedAt: new Date().toISOString() };
+    } catch (err) {
+      // Never block on a provider outage. status is the only thing logged —
+      // see src/lib/dojah/client.ts, which never attaches the BVN or the
+      // response body to its own error.
+      const status = err instanceof DojahError ? err.status : undefined;
+      console.error("[kyc.saveBvn] Dojah unavailable, saving unverified", { status: status ?? null });
+      verification = { result: "unverified", provider: "dojah", checkedAt: new Date().toISOString() };
+
+      const admins = adminNotificationRecipients();
+      if (admins.length > 0) {
+        const { data: claimed } = await admin.rpc("claim_provider_alert", { p_provider: "dojah" });
+        if (claimed) await sendAdminBvnValidationDownEmail({ to: admins });
+      }
+    }
+  }
+
   const { error } = await admin.from("kyc_documents").upsert(
     {
       user_id: user.id,
@@ -536,6 +575,9 @@ export async function saveBvn(
       // row here would put an approved user back in the review queue for a
       // number they were only asked for because the rail changed under them.
       status: "approved" as const,
+      verification_result: verification?.result ?? null,
+      verification_provider: verification?.provider ?? null,
+      verification_checked_at: verification?.checkedAt ?? null,
     },
     { onConflict: "user_id,document_type" },
   );

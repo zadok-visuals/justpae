@@ -151,6 +151,15 @@ export const KORAPAY_PAYOUTS = flag(process.env.NEXT_PUBLIC_FEATURE_KORAPAY_PAYO
  */
 export const KORAPAY_AUTO_SWEEP = flag(process.env.NEXT_PUBLIC_FEATURE_KORAPAY_AUTO_SWEEP);
 
+/**
+ * GROUP 3 — Dojah BVN validation ahead of saving one. Off by default, same
+ * convention as every flag above: a BVN save works exactly as it did before
+ * until this is explicitly turned on, and turning it off again falls back to
+ * saving unverified rather than refusing to save at all. See
+ * src/lib/actions/kyc.ts and src/lib/dojah/client.ts.
+ */
+export const BVN_VALIDATION_ENABLED = flag(process.env.NEXT_PUBLIC_FEATURE_BVN_VALIDATION);
+
 export const FLAGS = {
   usdWallet: USD_WALLET_ENABLED,
   korapayNgnDeposit: KORAPAY_NGN_DEPOSIT,
@@ -163,4 +172,5 @@ export const FLAGS = {
   flights: FLIGHTS_ENABLED,
   ngnBankDepositMaintenance: NGN_BANK_DEPOSIT_MAINTENANCE,
   kesBankDepositMaintenance: KES_BANK_DEPOSIT_MAINTENANCE,
+  bvnValidation: BVN_VALIDATION_ENABLED,
 } as const;

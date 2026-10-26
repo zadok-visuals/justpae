@@ -156,6 +156,7 @@ test("no message ever contains a stray undefined or a double space", () => {
     "not_configured",
     "rejected",
     "duplicate_reference",
+    "bvn_mismatch",
     "unknown",
   ];
   const contexts = [
@@ -298,6 +299,24 @@ test("a payout that never got an answer is an outage, not a failure", () => {
     classifyProviderFailure(undefined, "The operation was aborted"),
     "temporarily_unavailable",
   );
+});
+
+test("a BVN Korapay rejects as invalid or mismatched is its own category, so the BVN step can clear and retry", () => {
+  // GROUP 4: this is what makes the caller delete the saved BVN and send the
+  // customer back to the BVN step, instead of the generic "didn't check out"
+  // message every other `rejected` refusal gets.
+  for (const message of [
+    "Invalid BVN",
+    "The BVN provided does not match the customer name",
+    "BVN mismatch",
+    "Incorrect BVN for this customer",
+  ]) {
+    assert.equal(classifyProviderFailure(400, message), "bvn_mismatch", message);
+  }
+  assert.equal(isTransientFailure("bvn_mismatch"), false);
+
+  const shown = customerMessageFor("bvn_mismatch");
+  assert.equal(shown, "That BVN didn't match the name on your account. Check it and try again.");
 });
 
 test("Korapay's own refusals do not leak its name either", () => {
