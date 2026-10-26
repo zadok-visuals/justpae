@@ -8,20 +8,15 @@ import type { Currency, Wallet } from "@/lib/types/database";
 /**
  * Wallet balances, on /accounts.
  *
- * GROUP 3i — THEY LEFT HOME, AND THEY LOST THEIR WASHES.
+ * GROUP — A SQUARE GRID, so wallets read as a set of accounts rather than a
+ * continuation of the list below them. A single-column row of cards and a
+ * single-column list of recent transactions, stacked, were the same shape
+ * twice in a row; nothing told the eye where one question ("what do I hold")
+ * ended and the next ("what happened recently") began.
  *
- * These used to be a swipeable rail on Home, each card in its own currency
- * tint. Two things were wrong with that. Home already showed a total of the
- * same money directly above them, so the rail was the same information a
- * second time; and six pastel grounds in one viewport is a palette, not a
- * hierarchy — the page had no single thing to look at first.
- *
- * So they live here, where "which wallets do I have, and how much is in
- * each" is the actual question, as plain bordered cards on the card surface.
- * The flag is a round chip rather than a bare emoji so every row starts at
- * the same x whatever the glyph's width, and the full currency NAME leads
- * with the code beneath it: "Nigerian Naira" is what someone scans for, and
- * "NGN" is already repeated by the amount beside it.
+ * The flag leads, on its own line, because a flag is the fastest thing to
+ * recognise in a grid read at a glance — the full currency name underneath
+ * it is what someone reads second, to confirm.
  */
 function WalletCard({ wallet }: { wallet: Wallet }) {
   const meta = currencyMeta(wallet.currency);
@@ -32,32 +27,31 @@ function WalletCard({ wallet }: { wallet: Wallet }) {
 
   const content = (
     <>
-      <span className="flex min-w-0 items-center gap-3">
-        <span
-          aria-hidden="true"
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-lg leading-none"
-        >
-          {meta.flag}
-        </span>
-        <span className="min-w-0">
-          <span className="block truncate text-sm font-semibold text-foreground">{meta.label}</span>
-          <span className="block text-xs text-muted-foreground">{wallet.currency}</span>
-        </span>
-        {lockLabel && (
-          <Pill tone="neutral" className="shrink-0">
-            {lockLabel}
-          </Pill>
-        )}
+      {lockLabel && (
+        <Pill tone="neutral" className="absolute right-2 top-2">
+          {lockLabel}
+        </Pill>
+      )}
+
+      <span
+        aria-hidden="true"
+        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-lg leading-none"
+      >
+        {meta.flag}
       </span>
 
-      <span className="shrink-0 text-base text-foreground">
-        <Amount currency={wallet.currency} amount={wallet.balance} />
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-semibold text-foreground">{meta.label}</span>
+        <span className="block text-xs text-muted-foreground">{wallet.currency}</span>
+        <span className="mt-1 block text-sm text-foreground">
+          <Amount currency={wallet.currency} amount={wallet.balance} />
+        </span>
       </span>
     </>
   );
 
   const className =
-    "flex min-h-16 items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3";
+    "relative flex aspect-square flex-col justify-between gap-3 rounded-2xl border border-border bg-card p-4";
 
   // GROUP 2b. A locked wallet (USD, GHS while their flag is off) shows the
   // same card but is not a link — there is nowhere useful to send a tap, and
@@ -91,7 +85,7 @@ export function WalletCards({ wallets }: { wallets: Wallet[] }) {
   const ordered = [...wallets].sort((a, b) => orderIndex(a.currency) - orderIndex(b.currency));
 
   return (
-    <ul className="grid gap-2 sm:grid-cols-2">
+    <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
       {ordered.map((wallet) => (
         <li key={wallet.currency}>
           <WalletCard wallet={wallet} />

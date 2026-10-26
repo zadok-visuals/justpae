@@ -87,6 +87,22 @@ export function depositAvailability(currency: Currency): DepositAvailability {
     return { available: true, provider: "manual" };
   }
 
+  /**
+   * Neither naira rail is on. This must NOT fall through to the generic
+   * Busha branch below: that would report NGN as available through a
+   * provider whose own temporary naira accounts are the rail Korapay and
+   * the manual flow both exist to replace — reviving exactly the broken
+   * state this file's history is about. "Soon" rather than "Maintenance":
+   * there is no outage to come back from, only a rail that has not opened.
+   */
+  if (currency === "NGN") {
+    return {
+      available: false,
+      kind: "soon",
+      reason: "Naira deposits are coming soon. You can deposit USDT in the meantime.",
+    };
+  }
+
   if (BUSHA_DEPOSIT_CURRENCIES.includes(currency)) {
     if (BANK_DEPOSIT_MAINTENANCE[currency]) {
       return {

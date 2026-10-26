@@ -651,42 +651,34 @@
     }
   }
 
-  .jp-sheet-in {
-    animation: jp-sheet-in 220ms cubic-bezier(0.32, 0.72, 0, 1);
+  /*
+   * The sheet/drawer scrim and panel, GROUP 3 — kept mounted and toggled by
+   * class rather than mounted fresh on every open. A keyframe `animation`
+   * plays once from a hardcoded `from`; it is the wrong tool once the panel
+   * already exists in the DOM and just needs to move between two states, so
+   * this is `transition`, triggered by adding/removing a class, not
+   * `animation` triggered by a fresh mount.
+   *
+   * No backdrop-filter on the scrim: a blur is a per-frame compositing cost
+   * for every pixel behind it, and on a mid-range phone under load that cost
+   * is exactly the "visible delay before it fully opens" this replaces. A
+   * flat rgba tint costs nothing to paint.
+   *
+   * transform and opacity ONLY — the two properties a browser can animate on
+   * the compositor thread without a layout or paint pass — and will-change
+   * hints that to the browser ahead of time rather than after the first
+   * frame. The global prefers-reduced-motion rule above already zeroes every
+   * transition-duration on the page, so nothing extra is needed here for it.
+   */
+  .jp-sheet-scrim {
+    background-color: rgba(15, 23, 41, 0.4);
+    transition: opacity 200ms ease-out;
   }
 
-  @keyframes jp-sheet-in {
-    from {
-      transform: translateY(100%);
-    }
-    to {
-      transform: translateY(0);
-    }
-  }
-
-  .jp-panel-in {
-    animation: jp-panel-in 220ms cubic-bezier(0.32, 0.72, 0, 1);
-  }
-
-  @keyframes jp-panel-in {
-    from {
-      transform: translateX(100%);
-    }
-    to {
-      transform: translateX(0);
-    }
-  }
-
-  .jp-fade-in {
-    animation: jp-fade-in 160ms ease-out;
-  }
-
-  @keyframes jp-fade-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
+  .jp-sheet-panel {
+    will-change: transform;
+    transition:
+      transform 200ms ease-out,
+      opacity 200ms ease-out;
   }
 }

@@ -15,6 +15,16 @@ import { useEffect, useRef } from "react";
  *
  * The two layouts are CSS only — one DOM tree, no viewport branching in JS, so
  * there is no hydration mismatch and no resize listener.
+ *
+ * GROUP 3 — KEPT MOUNTED, ALWAYS. A sheet that returns null while closed pays
+ * a fresh-mount cost — component init, effect setup, a first layout pass for
+ * brand-new DOM — on the exact frame it is supposed to be sliding into view,
+ * which is what read as lag. This renders every time `open` changes, and
+ * only the transform/opacity toggle: see .jp-sheet-scrim/.jp-sheet-panel in
+ * globals.css. `inert` takes the closed panel out of tab order and the
+ * accessibility tree without unmounting it, and the wrapper's
+ * `pointer-events-none` stops a closed sheet from intercepting clicks on the
+ * page behind it.
  */
 export function SheetPanel({
   open,
@@ -62,17 +72,22 @@ export function SheetPanel({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-stretch sm:justify-end">
+    <div
+      className={`fixed inset-0 z-50 flex items-end sm:items-stretch sm:justify-end ${
+        open ? "" : "pointer-events-none"
+      }`}
+    >
       {/* Scrim. A button, not a div with onClick, so it is reachable and
-          announced rather than being an invisible trap for a keyboard user. */}
+          announced rather than being an invisible trap for a keyboard user.
+          A flat tint, not a blur — see the class comment in globals.css for
+          why a backdrop-filter is the thing this file exists to remove. */}
       <button
         type="button"
         aria-label="Close"
         onClick={onClose}
-        className="jp-fade-in absolute inset-0 bg-ink/70 backdrop-blur-sm"
+        tabIndex={open ? 0 : -1}
+        className={`jp-sheet-scrim absolute inset-0 ${open ? "opacity-100" : "opacity-0"}`}
       />
 
       <div
@@ -80,15 +95,19 @@ export function SheetPanel({
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        aria-hidden={!open}
+        inert={!open}
         tabIndex={-1}
         className={[
-          "relative flex w-full flex-col bg-card",
+          "jp-sheet-panel relative flex w-full flex-col bg-card",
           // Mobile: a sheet from the bottom, rounded at the top, never taller
           // than most of the screen so the page behind stays visible as
           // context for where it came from.
-          "max-h-[88dvh] rounded-t-2xl border-t border-border jp-sheet-in",
+          "max-h-[88dvh] rounded-t-2xl border-t border-border",
+          open ? "translate-y-0 opacity-100" : "translate-y-full opacity-0",
           // Desktop: a full-height panel on the right.
-          "sm:h-full sm:max-h-none sm:w-[26rem] sm:rounded-none sm:border-l sm:border-t-0 sm:jp-panel-in",
+          "sm:h-full sm:max-h-none sm:w-[26rem] sm:rounded-none sm:border-l sm:border-t-0",
+          open ? "sm:translate-x-0" : "sm:translate-x-full sm:translate-y-0",
         ].join(" ")}
       >
         <header className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
@@ -103,6 +122,7 @@ export function SheetPanel({
             type="button"
             onClick={onClose}
             aria-label="Close"
+            tabIndex={open ? 0 : -1}
             // size-11 is 44px. An ✕ glyph makes a small visual target look
             // adequate; the negative margins keep the box from pushing the
             // header taller than the title line it sits on.

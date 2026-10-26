@@ -28,10 +28,25 @@ test("every currency either deposits or says specifically why not", () => {
   }
 });
 
-test("the three rails that work are not described as broken", () => {
-  for (const currency of ["NGN", "KES", "USDT"] as const) {
+test("the two rails that work by default are not described as broken", () => {
+  for (const currency of ["KES", "USDT"] as const) {
     assert.equal(depositAvailability(currency).available, true, `${currency} should deposit`);
   }
+});
+
+/**
+ * With both naira flags off — the ambient default this file runs under, and
+ * the state production is in until Korapay goes live — NGN is neither
+ * "maintenance" (there is no outage to come back from) nor silently routed
+ * through Busha's own broken temporary-account rail. See
+ * availability.korapayFlag.test.ts and availability.manualFlag.test.ts for
+ * the two flags that change this.
+ */
+test("naira is 'soon' with both naira flags off, not routed through the broken rail", () => {
+  const ngn = depositAvailability("NGN");
+  assert.equal(ngn.available, false);
+  assert.equal(ngn.available === false && ngn.kind, "soon");
+  assert.match(ngn.available === false ? ngn.reason : "", /USDT/);
 });
 
 /**

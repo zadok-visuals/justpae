@@ -113,12 +113,15 @@ test("the preview never shows a negative credit", () => {
 
 // ── The rail swap ──────────────────────────────────────────────────────────
 
-test("naira deposits go through the manual rail while the flag is on", () => {
-  // NGN_MANUAL_DEPOSIT defaults to ON — unset means on, because the provider
-  // rail it replaces is down and "off" would ship no naira deposit at all.
+test("naira is 'soon' for customers with both naira flags at their default off", () => {
+  // NGN_MANUAL_DEPOSIT now defaults to OFF, same as every other flag in this
+  // file — the manual rail stays built but hidden from customers unless it
+  // is explicitly turned back on. See availability.manualFlag.test.ts for
+  // the ON state, which needs its own process: flags.ts reads process.env
+  // once, at import time.
   const ngnState = depositAvailability("NGN");
-  assert.equal(ngnState.available, true);
-  assert.equal(ngnState.available === true && ngnState.provider, "manual");
+  assert.equal(ngnState.available, false);
+  assert.equal(ngnState.available === false && ngnState.kind, "soon");
 });
 
 test("the manual rail is naira only — it does not leak onto the other currencies", () => {

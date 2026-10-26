@@ -71,15 +71,18 @@ test("USD says Soon and GHS says Maintenance — never the other way round", () 
 test("deposit drops yuan entirely rather than listing a reason", () => {
   const options = depositPickerOptions(wallets({ NGN: 1000 }));
   assert.ok(!codesOf(options).includes("CNY"), "yuan is bought, not deposited");
-  assert.deepEqual(codesOf(options), ["NGN", "KES", "USDT", "GHS", "USD"]);
+  // NGN sorts below the two live rails here: with neither naira flag on, the
+  // picker's own availability check disables it, and a disabled row sorts
+  // below every available one regardless of picker rank.
+  assert.deepEqual(codesOf(options), ["KES", "USDT", "NGN", "GHS", "USD"]);
 });
 
-test("deposit marks USD Soon, not Receive, and GHS Maintenance", () => {
+test("deposit marks USD Soon, GHS Maintenance, and NGN Soon with both naira flags off", () => {
   const options = depositPickerOptions(wallets({}));
   assert.equal(pillOf(options, "USD"), "Soon");
   assert.equal(pillOf(options, "GHS"), "Maintenance");
-  assert.equal(pillOf(options, "NGN"), undefined, "naira deposits are live");
-  for (const code of ["USD", "GHS"] as Currency[]) {
+  assert.equal(pillOf(options, "NGN"), "Soon");
+  for (const code of ["USD", "GHS", "NGN"] as Currency[]) {
     assert.equal(options.find((o) => o.currency === code)?.disabled, true);
   }
 });

@@ -15,6 +15,7 @@ import {
 } from "@/lib/korapay/virtualAccount";
 import type { Wallet } from "@/lib/types/database";
 import { requireSessionUser } from "@/lib/auth/session";
+import { isAdmin } from "@/lib/auth/admin";
 
 export const metadata = { title: "Deposit" };
 export const dynamic = "force-dynamic";
@@ -28,11 +29,12 @@ export default async function DepositPage(props: PageProps<"/deposit">) {
   // account, both read server-side: the gate must not be a client-side
   // decision, and the account number shown must be one the server chose.
   // In parallel with the wallets read — none of the four needs another.
-  const [{ data: wallets }, params, { data: profile }, manualConfig] = await Promise.all([
+  const [{ data: wallets }, params, { data: profile }, manualConfig, admin] = await Promise.all([
     supabase.from("wallets").select("*").eq("user_id", user.id),
     props.searchParams,
     supabase.from("profiles").select("kyc_status").eq("id", user.id).maybeSingle(),
     getManualDepositConfig(),
+    isAdmin(user.id, user.email),
   ]);
   const list = (wallets ?? []) as Wallet[];
 
@@ -101,6 +103,7 @@ export default async function DepositPage(props: PageProps<"/deposit">) {
           config: manualConfig,
         }}
         ngnAccount={ngnAccount}
+        isAdmin={admin}
       />
     </PageShell>
   );

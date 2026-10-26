@@ -23,6 +23,7 @@ import { DepositAddressQr, networkLabel } from "@/components/deposit/DepositAddr
 import { MoneyFormLayout, WhatHappensNext } from "@/components/money/MoneyFormLayout";
 import { ManualNgnDeposit } from "@/components/deposit/ManualNgnDeposit";
 import { NgnAccountNumber } from "@/components/deposit/NgnAccountNumber";
+import { NgnDepositSoon } from "@/components/deposit/NgnDepositSoon";
 import type { VirtualAccountState } from "@/lib/korapay/virtualAccount";
 import type { ManualDepositConfig } from "@/lib/deposits/manualDeposit";
 import type { KycStatus } from "@/lib/types/database";
@@ -42,6 +43,8 @@ function depositUnavailableTitle(currency: Currency, kind: UnavailableKind): str
       return `${currency} arrives by being sent to you`;
     case "convert":
       return `${currency} is bought, not deposited`;
+    case "soon":
+      return `${currency} deposits are coming soon`;
     default:
       return `${currency} deposits aren't available yet`;
   }
@@ -73,6 +76,7 @@ export function DepositForm({
   initialCurrency,
   manualDeposit,
   ngnAccount,
+  isAdmin = false,
 }: {
   wallets: Wallet[];
   availability: Record<string, DepositAvailability>;
@@ -93,6 +97,9 @@ export function DepositForm({
    * when the flag is off and in the component gallery.
    */
   ngnAccount?: { state: VirtualAccountState; depositFee: number };
+  /** Display-only, read server-side. Shows the extra line on the "naira
+   *  deposits are coming soon" screen that only an operator needs. */
+  isAdmin?: boolean;
 }) {
   const router = useRouter();
 
@@ -193,6 +200,14 @@ export function DepositForm({
         picker={picker}
       />
     );
+  }
+
+  /**
+   * Neither naira rail is on. Its own branch for the same reason as the two
+   * above: no amount, no quote, nothing the rest of this form does.
+   */
+  if (current && !current.available && current.kind === "soon" && currency === "NGN") {
+    return <NgnDepositSoon picker={picker} isAdmin={isAdmin} />;
   }
 
   const instructions = depositState.bankDetails ?? depositState.cryptoAddress;

@@ -1,5 +1,9 @@
-import type { Currency } from "@/lib/types/database";
-import { isCurrency } from "@/lib/currencies";
+// Relative, with extensions: preselect.test.ts runs under `node --test` with
+// no bundler and therefore no "@/" alias resolution, same rule as
+// currencyPicker.ts.
+import type { Currency } from "../types/database.ts";
+import { currencyMeta, isCurrency } from "../currencies.ts";
+import { currencyPickerRank } from "../ui/currencyPicker.ts";
 
 /**
  * Reading `?currency=` off a money screen's URL, safely.
@@ -36,6 +40,30 @@ export function parseCurrencyParam(
 }
 
 /**
+ * The default when nothing was asked for: the first available FIAT wallet,
+ * in the shared CurrencyPicker order (NGN, then KES), never USDT.
+ *
+ * WHY NOT JUST `list[0]`. The list arrives in whatever order the wallets
+ * query returned, which is database order, not the order a customer should
+ * be offered things in — and for some signups that happened to be USDT.
+ * Opening Home's Deposit tile onto a USDT amount field, for a naira holder
+ * who has never touched crypto, is the wrong first screen to show someone
+ * who has not asked for one yet.
+ *
+ * USDT is still the answer when it is the only thing in the list — a user
+ * holding only USDT is not shown an empty state over a currency they don't
+ * have — which is why this falls through to the picker's own order rather
+ * than refusing to return anything for a fiat-less list.
+ */
+function firstByPickerOrder(list: Currency[]): Currency | undefined {
+  if (list.length === 0) return undefined;
+  const sorted = [...list].sort(
+    (a, b) => currencyPickerRank(a) - currencyPickerRank(b),
+  );
+  return sorted.find((c) => currencyMeta(c).kind === "fiat") ?? sorted[0];
+}
+
+/**
  * The currency a screen should open on.
  *
  * `usable` is the list this particular screen can actually act on — wallets
@@ -55,5 +83,5 @@ export function preselectCurrency(
   // then about the currency they asked about, which is the question they
   // came with.
   if (requested && all.includes(requested)) return requested;
-  return usable[0] ?? all[0];
+  return firstByPickerOrder(usable) ?? firstByPickerOrder(all);
 }

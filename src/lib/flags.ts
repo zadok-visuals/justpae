@@ -95,30 +95,18 @@ export const NGN_BANK_DEPOSIT_MAINTENANCE = flag(process.env.NEXT_PUBLIC_MAINTEN
 export const KES_BANK_DEPOSIT_MAINTENANCE = flag(process.env.NEXT_PUBLIC_MAINTENANCE_KES_BANK_DEPOSIT);
 
 /**
- * GROUP 4 — NGN deposits by manual bank transfer. ON BY DEFAULT, which makes
- * it the third export in this file that reads backwards from the convention
- * at the top, and for the same reason the two kill switches above do.
+ * GROUP 4, then revisited once Korapay's naira rail existed to replace it.
+ * OFF BY DEFAULT now, back to this file's usual convention.
  *
- * The provider's temporary bank accounts are unavailable, so the naira rail
- * this replaces is DOWN. A flag following the usual "off unless explicitly
- * set" rule would mean that deploying with
- * NEXT_PUBLIC_FEATURE_NGN_MANUAL_DEPOSIT unset in Vercel — which is the state
- * production is in right now — ships the maintenance notice and no way to
- * deposit naira at all. Off is not the safe default when the thing it falls
- * back to is also broken.
- *
- * So unset means ON, and ops sets it to "false" to deliberately take manual
- * naira deposits down. It gates the customer flow; the admin queue stays
- * reachable either way, because requests already in it still need answering
- * after the flag goes off.
+ * The manual rail stays fully built — the customer flow, the admin settings
+ * card and the admin Deposits queue are all exactly as they were — but it no
+ * longer ships to customers by default while Korapay's permanent account
+ * numbers are the intended naira path. Setting this to "true" turns the
+ * manual flow back on for customers if Korapay ever needs a fallback again;
+ * the admin queue stays reachable either way, since requests already in it
+ * still need answering regardless of which rail is currently offered.
  */
-function enabledUnlessDisabled(value: string | undefined): boolean {
-  return !(value === "false" || value === "0");
-}
-
-export const NGN_MANUAL_DEPOSIT = enabledUnlessDisabled(
-  process.env.NEXT_PUBLIC_FEATURE_NGN_MANUAL_DEPOSIT,
-);
+export const NGN_MANUAL_DEPOSIT = flag(process.env.NEXT_PUBLIC_FEATURE_NGN_MANUAL_DEPOSIT);
 
 /**
  * KORAPAY — three flags, all OFF by default, back to this file's original

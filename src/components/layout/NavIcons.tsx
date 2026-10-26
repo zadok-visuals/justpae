@@ -142,12 +142,14 @@ export function BellIcon(props: IconProps) {
   );
 }
 
+/** A customer-service headset: headband, two earcups, a boom mic. */
 export function SupportIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d="M20 12a8 8 0 1 0-3.2 6.4L21 20l-1.1-3.4A7.9 7.9 0 0 0 20 12Z" />
-      <path d="M9.6 9.6a2.5 2.5 0 1 1 3.6 2.3c-.7.4-1.2 1-1.2 1.8" />
-      <path d="M12 16.2h.01" />
+      <path d="M4 13v-1a8 8 0 0 1 16 0v1" />
+      <rect x="2.5" y="13" width="4" height="6" rx="1.5" />
+      <rect x="17.5" y="13" width="4" height="6" rx="1.5" />
+      <path d="M19.5 19v1a3 3 0 0 1-3 3h-2.5" />
     </Icon>
   );
 }
