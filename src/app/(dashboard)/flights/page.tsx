@@ -58,7 +58,7 @@ export default async function FlightsPage() {
     >
       <div className="space-y-5">
         {!FLIGHTS_ENABLED && (
-          <Banner tone="info" title="Flight booking is under maintenance">
+          <Banner tone="info" title="Flight booking is coming soon">
             We&apos;ll notify you when it opens.
           </Banner>
         )}

@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { SheetPanel } from "@/components/ui/SheetPanel";
 import { FIELD_SHELL, fieldBorderClass } from "@/components/ui/Field";
 import { Pill } from "@/components/ui/Primitives";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Amount } from "@/components/ui/Amount";
 import { currencyMeta, isCurrency } from "@/lib/currencies";
 import { sortCurrencyOptions, type CurrencyOptionData } from "@/lib/ui/currencyPicker";
+import { SOON_LABEL } from "@/lib/ui/unavailability";
 import type { Currency } from "@/lib/types/database";
 
 /**
@@ -259,9 +261,9 @@ function CurrencyRow({
         </span>
       )}
 
-      {/* Neutral grey for every state, whatever it is. An orange or red chip
-          over a currency would read as something the user has done wrong. */}
-      {row.pill && <Pill tone="neutral">{row.pill}</Pill>}
+      {/* Neutral grey for every state except "Soon", which carries the same
+          orange StatusBadge it does everywhere else that word appears. */}
+      {row.pill && (row.pill === SOON_LABEL ? <StatusBadge /> : <Pill tone="neutral">{row.pill}</Pill>)}
 
       {selected && !row.disabled && (
         <span aria-hidden="true" className="shrink-0 text-primary">

@@ -7,5 +7,5 @@ import { toast } from "sonner";
  * of navigating to a page that would just redirect it straight back.
  */
 export function maintenanceToastFor(label: string): void {
-  toast(`${label} is under maintenance. We'll let you know when it's back.`);
+  toast(`${label} is coming soon. We'll let you know when it's ready.`);
 }

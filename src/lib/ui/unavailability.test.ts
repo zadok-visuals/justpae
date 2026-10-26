@@ -57,22 +57,22 @@ test("every label is a single word", () => {
   }
 });
 
-test("exactly one kind is called Maintenance", () => {
-  const maintenanceLabelled = ALL_KINDS.filter(
+test("exactly one kind in ALL_KINDS is labelled Soon", () => {
+  const soonLabelled = ALL_KINDS.filter(
     (kind) => UNAVAILABLE_LABEL[kind] === MAINTENANCE_LABEL,
   );
-  assert.deepEqual(maintenanceLabelled, ["maintenance"]);
+  assert.deepEqual(soonLabelled, ["maintenance"]);
 });
 
-test("MAINTENANCE_LABEL is the word the badge shows", () => {
-  // MaintenanceBadge renders the literal "Maintenance". If these ever differ,
-  // the same state reads as two states depending on which surface you are on,
-  // which is the whole defect Group 4f was opened for.
-  assert.equal(MAINTENANCE_LABEL, "Maintenance");
+test("MAINTENANCE_LABEL is the word StatusBadge shows", () => {
+  // MaintenanceBadge and UnavailableBadge both render StatusBadge's literal
+  // "Soon" for `maintenance` now — the product decision to stop telling "down,
+  // coming back" apart from "never opened" in the one word a customer sees.
+  assert.equal(MAINTENANCE_LABEL, "Soon");
 });
 
 test("the suffix is the separator the pickers already use, plus the word", () => {
-  assert.equal(unavailableSuffix("maintenance"), " · Maintenance");
+  assert.equal(unavailableSuffix("maintenance"), " · Soon");
   assert.equal(unavailableSuffix("setup"), " · Setup");
 });
 

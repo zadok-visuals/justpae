@@ -52,12 +52,8 @@ export default async function BillsPage() {
       }
     >
       <div className="space-y-6">
-        {/* GROUP 4f — "Maintenance", not "coming soon". Paying a bill is a
-            thing this product does and cannot do today; "coming soon" reads
-            as a feature that was never promised, which is the wrong
-            expectation to set for somebody standing at a meter. */}
         {!available && (
-          <Banner tone="info" title="Bill payments are under maintenance">
+          <Banner tone="info" title="Bill payments are coming soon">
             We&apos;re finishing setup with our biller partner. Everything here is ready — you
             just can&apos;t pay yet. We&apos;ll let you know the moment it&apos;s back.
           </Banner>

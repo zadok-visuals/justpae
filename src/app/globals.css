@@ -5,8 +5,9 @@
    ----------------------------------------------------------------------------
    ROYAL BLUE IS THE BRAND, AND THE ONLY BRAND COLOUR. There is no gold, amber
    or yellow anywhere in this product — not an accent, not a badge, not a
-   "Soon" tag, not an icon tint. Warning is ORANGE (#F97316). A "Soon" or
-   "Maintenance" pill is neutral grey.
+   "Soon" tag, not an icon tint. Warning is ORANGE (#F97316). The "Soon"
+   status pill (StatusBadge, --jp-soon-bg/--jp-soon-text) is also orange, one
+   step softer than warning — never yellow or gold either.
 
    FLAT. Nothing has a shadow except the floating mobile bottom nav, which
    owns --jp-shadow-nav below and is the single exception in the whole app.
@@ -86,6 +87,13 @@
   --jp-warning: 22 90% 34%; /* orange, deep enough to read — 4.82:1 */
   --jp-warning-solid: 24.6 95% 53.1%; /* #F97316 */
   --jp-warning-soft: 28 100% 95%;
+
+  /* The "Soon" pill — StatusBadge's own colours, distinct from -warning
+     above so a product decision about one status word never drags the
+     whole warning palette with it. Literal, not an HSL triple: see
+     --color-arrow-green below for the same pattern. */
+  --jp-soon-bg: #fff1e6;
+  --jp-soon-text: #c2410c;
 
   --jp-border: 220 13.6% 91.4%; /* #E6E8EC */
   --jp-border-strong: 218 15.1% 85.7%; /* #D5D9E0 */
@@ -182,6 +190,8 @@
   --jp-warning: 27.1 96% 61%; /* #FB923C */
   --jp-warning-solid: 27.1 96% 61%;
   --jp-warning-soft: 25 30% 15%;
+  --jp-soon-bg: rgba(249, 115, 22, 0.16);
+  --jp-soon-text: #fdba74;
 
   --jp-border: 216.9 15.7% 16.3%; /* #232830 */
   --jp-border-strong: 216 14% 21%; /* #2E343D */
@@ -269,6 +279,8 @@
     --jp-warning: 27.1 96% 61%; /* #FB923C */
     --jp-warning-solid: 27.1 96% 61%;
     --jp-warning-soft: 25 30% 15%;
+    --jp-soon-bg: rgba(249, 115, 22, 0.16);
+    --jp-soon-text: #fdba74;
 
     --jp-border: 216.9 15.7% 16.3%; /* #232830 */
     --jp-border-strong: 216 14% 21%; /* #2E343D */
@@ -332,6 +344,8 @@
   --color-destructive-soft: hsl(var(--jp-destructive-soft));
   --color-warning: hsl(var(--jp-warning));
   --color-warning-soft: hsl(var(--jp-warning-soft));
+  --color-soon-bg: var(--jp-soon-bg);
+  --color-soon-text: var(--jp-soon-text);
   --color-border: hsl(var(--jp-border));
   --color-input: hsl(var(--jp-input));
   --color-input-fill: hsl(var(--jp-input-fill));

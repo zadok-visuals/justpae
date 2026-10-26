@@ -124,10 +124,15 @@ test("naira is 'soon' for customers with both naira flags at their default off",
   assert.equal(ngnState.available === false && ngnState.kind, "soon");
 });
 
-test("the manual rail is naira only — it does not leak onto the other currencies", () => {
-  for (const currency of ["KES", "USDT"] as const) {
-    const state = depositAvailability(currency);
-    assert.equal(state.available, true);
-    assert.equal(state.available === true && state.provider, "busha");
-  }
+test("the manual rail is naira only — it does not leak onto USDT", () => {
+  const state = depositAvailability("USDT");
+  assert.equal(state.available, true);
+  assert.equal(state.available === true && state.provider, "busha");
+});
+
+test("KES stays 'soon' regardless of the naira manual flag — it has its own gate", () => {
+  // GROUP 1c. KES_DEPOSIT_ENABLED, not NGN_MANUAL_DEPOSIT, decides this one.
+  const state = depositAvailability("KES");
+  assert.equal(state.available, false);
+  assert.equal(state.available === false && state.kind, "soon");
 });

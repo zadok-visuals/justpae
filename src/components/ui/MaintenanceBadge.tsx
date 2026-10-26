@@ -1,4 +1,5 @@
 import { Pill } from "@/components/ui/Primitives";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   MAINTENANCE_LABEL,
   UNAVAILABLE_LABEL,
@@ -6,36 +7,15 @@ import {
 } from "@/lib/ui/unavailability";
 
 /**
- * GROUP 4e / 4f — the one word this product uses for a feature that is
- * temporarily down.
- *
- * ──────────────────────────────────────────────────────────────────────────
- * WHY ONE COMPONENT AND NOT A STRING IN EACH PLACE
- *
- * The state was being described three different ways depending on which
- * screen you were on: "coming soon" on /bills and the USD account page,
- * "· unavailable" in the deposit and convert pickers, and "under
- * maintenance" in the GHS deposit reason. Those are three different
- * promises:
- *
- *   "coming soon"   — a feature that was never offered and might arrive.
- *   "unavailable"   — no information at all. Broken? Not for me? Never?
- *   "maintenance"   — a thing this product does, which is down, and will be
- *                     back.
- *
- * For somebody holding cedis right now, only the third is true, and it is
- * the only one of the three that does not cost their trust. Centralising it
- * is what stops the next copy edit reintroducing one of the other two.
- *
- * The badge carries no tone of alarm — `neutral`, not `failed`. A feature
- * under maintenance is not an error the user caused or needs to act on.
+ * GROUP 4e/4f, then the "one Soon state" rewrite — the badge for a feature
+ * that is not open yet, whether it is down-and-coming-back (`maintenance`)
+ * or never opened (`soon`). Both render the same orange StatusBadge now: the
+ * `kind` stays distinct internally (the reason sentence next to the badge
+ * still says which one it is), but the one word on the badge no longer
+ * tries to carry that distinction too.
  */
 export function MaintenanceBadge({ className = "" }: { className?: string }) {
-  return (
-    <Pill tone="neutral" className={className}>
-      Maintenance
-    </Pill>
-  );
+  return <StatusBadge className={className} />;
 }
 
 /**
@@ -49,15 +29,12 @@ export function MaintenanceBadge({ className = "" }: { className?: string }) {
 export { MAINTENANCE_LABEL };
 
 /**
- * GROUP 4f — the same badge for the OTHER closed states.
- *
- * Maintenance is not the only reason a thing is shut, and a badge that says
- * "Maintenance" over a currency that is simply not supported is the generic
- * "unavailable" problem again with a friendlier face. See the enum's own file
- * for why each of these is a separate word.
- *
- * `maintenance` routes through MaintenanceBadge so there is exactly one
- * definition of how that state looks.
+ * The same badge for the OTHER closed states, each still routed through
+ * UNAVAILABLE_LABEL so the enum stays the one source of truth for the word.
+ * `maintenance` and `soon` both land on StatusBadge; every other kind keeps
+ * the neutral grey Pill, because those are standing facts about an account
+ * rather than a "not yet" — see the enum's own file for why each is a
+ * separate word.
  */
 export function UnavailableBadge({
   kind,
@@ -66,7 +43,9 @@ export function UnavailableBadge({
   kind: UnavailableKind;
   className?: string;
 }) {
-  if (kind === "maintenance") return <MaintenanceBadge className={className} />;
+  if (kind === "maintenance" || kind === "soon") {
+    return <StatusBadge className={className} />;
+  }
   return (
     <Pill tone="neutral" className={className}>
       {UNAVAILABLE_LABEL[kind]}

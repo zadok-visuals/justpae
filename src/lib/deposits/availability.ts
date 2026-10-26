@@ -8,6 +8,7 @@ import {
   GHS_WALLET_ENABLED,
   NGN_BANK_DEPOSIT_MAINTENANCE,
   KES_BANK_DEPOSIT_MAINTENANCE,
+  KES_DEPOSIT_ENABLED,
   NGN_MANUAL_DEPOSIT,
   KORAPAY_NGN_DEPOSIT,
 } from "../flags.ts";
@@ -23,10 +24,14 @@ import type { UnavailableKind } from "../ui/unavailability.ts";
  * would force every caller to await a pure lookup.
  *
  * The mapping is the result of live testing, not preference:
- *   NGN, KES, USDT  primary provider, confirmed working — NGN and KES each
- *                   carry their own kill switch (GROUP 7, see flags.ts) so
- *                   ops can take one rail down without the other or without
- *                   touching USDT.
+ *   NGN, USDT       primary provider, confirmed working — NGN also carries
+ *                   its own kill switch (GROUP 7, see flags.ts) so ops can
+ *                   take the rail down without touching USDT.
+ *   KES             the primary provider's temporary bank accounts and
+ *                   Korapay mobile money are both unconfirmed on this
+ *                   account, so deposit stays "soon" behind
+ *                   KES_DEPOSIT_ENABLED (GROUP 1c) until one of them is.
+ *                   Convert and withdraw are unaffected.
  *   GHS             secondary provider, because the primary rejects GHS
  *                   outright on this account. Behind a flag that ships OFF.
  *   USD             not depositable. Dollars arrive via /receive.
@@ -100,6 +105,22 @@ export function depositAvailability(currency: Currency): DepositAvailability {
       available: false,
       kind: "soon",
       reason: "Naira deposits are coming soon. You can deposit USDT in the meantime.",
+    };
+  }
+
+  /**
+   * GROUP 1c — KES, before the generic Busha branch, for the same reason NGN
+   * is handled above it: neither of KES's two candidate rails (Busha's
+   * temporary bank accounts, Korapay mobile money) is enabled on this
+   * account, so falling through would report KES as live through a Busha
+   * rail that does not actually work for it. "Soon", not "Maintenance" —
+   * there is no outage to come back from, only a rail that has not opened.
+   */
+  if (currency === "KES" && !KES_DEPOSIT_ENABLED) {
+    return {
+      available: false,
+      kind: "soon",
+      reason: "Shilling deposits are coming soon. You can deposit USDT in the meantime.",
     };
   }
 

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { maintenanceToastFor } from "@/components/ui/maintenanceToast";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { TONE_CLASS, type ServiceTone } from "@/lib/home/serviceCatalogue";
 
 /**
@@ -11,9 +12,10 @@ import { TONE_CLASS, type ServiceTone } from "@/lib/home/serviceCatalogue";
  * why the circle is fixed at 3rem and the label is clamped to two lines
  * beneath it rather than the whole cell being sized by its content.
  *
- * A service under maintenance stays VISIBLE, carries a "Soon" tag and shows
- * the same toast the nav already uses — the page behind it redirects straight
- * back (proxy.ts), so linking there is a tap that silently bounces.
+ * A service not open yet stays VISIBLE, carries the same orange StatusBadge
+ * every other "Soon" state does and shows the same toast the nav already
+ * uses — the page behind it redirects straight back (proxy.ts), so linking
+ * there is a tap that silently bounces.
  */
 export function ServiceCircle({
   label,
@@ -37,14 +39,7 @@ export function ServiceCircle({
         }`}
       >
         {icon}
-        {/* NEUTRAL GREY, not orange. "Soon" is a state, not a warning —
-            nothing is wrong and nothing needs attention — and an orange chip
-            on six circles made the card read as six problems. */}
-        {!live && (
-          <span className="absolute -right-1 -top-1 rounded-full border border-border bg-muted px-1 text-[0.5625rem] font-semibold leading-4 text-muted-foreground">
-            Soon
-          </span>
-        )}
+        {!live && <StatusBadge className="absolute -right-1 -top-1" />}
       </span>
       <span className="line-clamp-2 text-center text-[0.6875rem] font-medium leading-tight text-foreground">
         {label}

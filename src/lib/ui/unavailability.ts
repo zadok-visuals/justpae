@@ -59,8 +59,11 @@
  * second line), and these labels are deliberately chosen so the one word
  * tells the user which of those to read.
  *
- * `Maintenance` matches MaintenanceBadge exactly. It has to: the same state
- * must not read as a badge in one place and a different word in another.
+ * `maintenance` and `soon` now share one label, "Soon" — a product decision
+ * to stop distinguishing "down, coming back" from "never opened" in the
+ * WORD a customer sees, even though the two stay different `kind` values
+ * internally (the reason sentence and the rest of this file's logic still
+ * tell them apart). StatusBadge is what renders it, everywhere.
  */
 
 /** The reasons an option, a pair or an action can be closed to a user. */
@@ -78,7 +81,10 @@ export type UnavailableKind =
  * never drift apart) and by every picker suffix.
  */
 export const UNAVAILABLE_LABEL: Record<UnavailableKind, string> = {
-  maintenance: "Maintenance",
+  // "Soon", not "Maintenance" — see the file header. The reason sentence at
+  // the call site still says "under maintenance" where that is literally
+  // true; this is only the one word on the badge.
+  maintenance: "Soon",
   receive: "Receive",
   convert: "Convert",
   unsupported: "Unsupported",

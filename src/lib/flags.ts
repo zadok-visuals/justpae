@@ -75,6 +75,16 @@ export const FLIGHTS_ENABLED = flag(process.env.NEXT_PUBLIC_FEATURE_FLIGHTS);
 export const USD_WALLET_ENABLED = flag(process.env.NEXT_PUBLIC_FEATURE_USD_WALLET);
 
 /**
+ * GROUP 1c — KES deposit specifically, not the shilling wallet as a whole.
+ * Waiting on: Busha's temporary bank accounts for KES and Korapay mobile
+ * money, neither of which is enabled on this account yet. Off by default
+ * like every other feature flag here; while off, depositAvailability()
+ * answers "soon" for KES rather than routing it through the generic Busha
+ * branch. Convert and withdraw are unaffected — this gates deposit only.
+ */
+export const KES_DEPOSIT_ENABLED = flag(process.env.NEXT_PUBLIC_FEATURE_KES_DEPOSIT);
+
+/**
  * GROUP 7 — kill switches, not feature flags, and the one pair in this file
  * that reads backwards from every other export above.
  *
@@ -162,6 +172,7 @@ export const BVN_VALIDATION_ENABLED = flag(process.env.NEXT_PUBLIC_FEATURE_BVN_V
 
 export const FLAGS = {
   usdWallet: USD_WALLET_ENABLED,
+  kesDeposit: KES_DEPOSIT_ENABLED,
   korapayNgnDeposit: KORAPAY_NGN_DEPOSIT,
   korapayPayouts: KORAPAY_PAYOUTS,
   korapayAutoSweep: KORAPAY_AUTO_SWEEP,

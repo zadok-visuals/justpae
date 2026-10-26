@@ -37,7 +37,7 @@ test.describe("public pages render", () => {
    * wallet must be advertised AND marked, because hiding it says the product
    * does not do cedis and advertising it bare mis-sells the account.
    */
-  test("the landing page marks a wallet that is under maintenance", async ({ page }) => {
+  test("the landing page marks a wallet that is not open yet", async ({ page }) => {
     await page.goto("/");
 
     const ghsPill = page.getByRole("listitem").filter({ hasText: "GHS" });
@@ -45,12 +45,13 @@ test.describe("public pages render", () => {
 
     // Both halves. The flag ships off, so this is the state under test; the
     // assertion is written so that turning the flag ON is what moves it,
-    // rather than a copy edit silently dropping the marker.
+    // rather than a copy edit silently dropping the marker. "Soon", not
+    // "Maintenance" — the one Soon state, see src/lib/ui/unavailability.ts.
     const ghsDepositOn = process.env.NEXT_PUBLIC_FEATURE_KLASHA_GHS_DEPOSIT === "true";
     if (ghsDepositOn) {
-      await expect(ghsPill).not.toContainText(/maintenance/i);
+      await expect(ghsPill).not.toContainText(/soon/i);
     } else {
-      await expect(ghsPill).toContainText(/maintenance/i);
+      await expect(ghsPill).toContainText(/soon/i);
       // And the word is never the vague one Group 4f replaced.
       await expect(page.locator("main")).not.toContainText(/·\s*unavailable/i);
     }

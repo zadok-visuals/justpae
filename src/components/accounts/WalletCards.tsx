@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Amount } from "@/components/ui/Amount";
 import { CURRENCIES, currencyMeta, formatAmount } from "@/lib/currencies";
 import { walletLockLabel } from "@/lib/ui/currencyPicker";
-import { Pill } from "@/components/ui/Primitives";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { Currency, Wallet } from "@/lib/types/database";
 
 /**
@@ -20,18 +20,14 @@ import type { Currency, Wallet } from "@/lib/types/database";
  */
 function WalletCard({ wallet }: { wallet: Wallet }) {
   const meta = currencyMeta(wallet.currency);
-  // GROUP 1c. "Soon" for the dollar wallet, which has never opened;
-  // "Maintenance" for cedis, whose rails exist and are down.
+  // GROUP 1c. "Soon" for every locked wallet now — the dollar wallet, which
+  // has never opened, and cedis, whose rails exist and are down.
   const lockLabel = walletLockLabel(wallet.currency);
   const locked = lockLabel !== null;
 
   const content = (
     <>
-      {lockLabel && (
-        <Pill tone="neutral" className="absolute right-2 top-2">
-          {lockLabel}
-        </Pill>
-      )}
+      {lockLabel && <StatusBadge className="absolute right-2 top-2" />}
 
       <span
         aria-hidden="true"

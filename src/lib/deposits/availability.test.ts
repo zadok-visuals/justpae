@@ -7,12 +7,12 @@ import { CURRENCY_CODES } from "../currencies.ts";
 /**
  * GROUP 4f — the deposit picker's one word per currency.
  *
- * These tests assume the GHS flag is OFF, which is how it ships and how every
- * environment this has ever run in is configured (see src/lib/flags.ts). If
- * NEXT_PUBLIC_FEATURE_GHS_WALLET is ever turned on in a test
- * environment, the cedi assertion below is the one that should be updated
- * rather than deleted — a flipped flag means a REAL deposit path, and the
- * picker should then carry no suffix at all.
+ * These tests assume the GHS and KES_DEPOSIT flags are OFF, which is how they
+ * ship and how every environment this has ever run in is configured (see
+ * src/lib/flags.ts). If either is ever turned on in a test environment, the
+ * assertion below for that currency is the one that should be updated rather
+ * than deleted — a flipped flag means a REAL deposit path, and the picker
+ * should then carry no suffix at all.
  */
 
 test("every currency either deposits or says specifically why not", () => {
@@ -28,10 +28,20 @@ test("every currency either deposits or says specifically why not", () => {
   }
 });
 
-test("the two rails that work by default are not described as broken", () => {
-  for (const currency of ["KES", "USDT"] as const) {
-    assert.equal(depositAvailability(currency).available, true, `${currency} should deposit`);
-  }
+test("the rail that works by default is not described as broken", () => {
+  assert.equal(depositAvailability("USDT").available, true, "USDT should deposit");
+});
+
+/**
+ * GROUP 1c. Neither of KES's two candidate rails is enabled on this account,
+ * so deposit stays "soon" behind KES_DEPOSIT_ENABLED — not routed through
+ * Busha's generic branch, which would report it as live when it is not.
+ */
+test("shillings are 'soon' with the KES deposit flag off, not routed through Busha", () => {
+  const kes = depositAvailability("KES");
+  assert.equal(kes.available, false);
+  assert.equal(kes.available === false && kes.kind, "soon");
+  assert.match(kes.available === false ? kes.reason : "", /USDT/);
 });
 
 /**

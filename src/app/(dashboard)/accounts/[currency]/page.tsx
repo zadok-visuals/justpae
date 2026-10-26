@@ -187,7 +187,7 @@ export default async function AccountPage(props: PageProps<"/accounts/[currency]
           )}
 
           {maintenanceReason && (
-            <Banner tone="info" title={`Adding ${meta.label} is under maintenance`}>
+            <Banner tone="info" title={`Adding ${meta.label} is coming soon`}>
               <span className="flex flex-wrap items-center gap-2">
                 <MaintenanceBadge />
                 <span>{maintenanceReason}</span>

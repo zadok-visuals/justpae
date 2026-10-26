@@ -58,11 +58,11 @@ test("rank covers every currency, so nothing falls off the end by accident", () 
   }
 });
 
-test("USD says Soon and GHS says Maintenance — never the other way round", () => {
-  // The dollar wallet has never opened, so there is no outage to come back
-  // from; cedi rails exist and are down.
+test("USD and GHS both say Soon while locked", () => {
+  // The dollar wallet has never opened; cedi rails exist and are down. Both
+  // render the same word now — the distinction stays in `kind`, not the label.
   assert.equal(walletLockLabel("USD"), "Soon");
-  assert.equal(walletLockLabel("GHS"), "Maintenance");
+  assert.equal(walletLockLabel("GHS"), "Soon");
   assert.equal(walletLockLabel("NGN"), null);
   assert.equal(walletLockLabel("USDT"), null);
   assert.equal(walletLockLabel("CNY"), null);
@@ -71,18 +71,19 @@ test("USD says Soon and GHS says Maintenance — never the other way round", () 
 test("deposit drops yuan entirely rather than listing a reason", () => {
   const options = depositPickerOptions(wallets({ NGN: 1000 }));
   assert.ok(!codesOf(options).includes("CNY"), "yuan is bought, not deposited");
-  // NGN sorts below the two live rails here: with neither naira flag on, the
-  // picker's own availability check disables it, and a disabled row sorts
-  // below every available one regardless of picker rank.
-  assert.deepEqual(codesOf(options), ["KES", "USDT", "NGN", "GHS", "USD"]);
+  // USDT is the only live rail here: with neither naira flag on and
+  // KES_DEPOSIT_ENABLED off, NGN and KES are both disabled and sort below
+  // every available row regardless of picker rank.
+  assert.deepEqual(codesOf(options), ["USDT", "NGN", "KES", "GHS", "USD"]);
 });
 
-test("deposit marks USD Soon, GHS Maintenance, and NGN Soon with both naira flags off", () => {
+test("deposit marks USD, GHS, NGN and KES all Soon by default", () => {
   const options = depositPickerOptions(wallets({}));
   assert.equal(pillOf(options, "USD"), "Soon");
-  assert.equal(pillOf(options, "GHS"), "Maintenance");
+  assert.equal(pillOf(options, "GHS"), "Soon");
   assert.equal(pillOf(options, "NGN"), "Soon");
-  for (const code of ["USD", "GHS", "NGN"] as Currency[]) {
+  assert.equal(pillOf(options, "KES"), "Soon");
+  for (const code of ["USD", "GHS", "NGN", "KES"] as Currency[]) {
     assert.equal(options.find((o) => o.currency === code)?.disabled, true);
   }
 });

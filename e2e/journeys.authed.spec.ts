@@ -240,7 +240,7 @@ test.describe("a verified account", () => {
     });
   });
 
-  test("a cedi wallet is marked Maintenance rather than left blank", async ({ page }) => {
+  test("a cedi wallet is marked Soon rather than left blank", async ({ page }) => {
     // Skipped if the GHS rail is ever switched on — at which point there is
     // nothing to badge and this assertion should be rewritten, not deleted.
     test.skip(
@@ -249,9 +249,10 @@ test.describe("a verified account", () => {
     );
 
     await page.goto("/accounts/GHS");
-    await expect(page.locator("main")).toContainText(/maintenance/i);
-    // The old wording, which this is specifically not allowed to be.
-    await expect(page.locator("main")).not.toContainText(/coming soon/i);
+    await expect(page.locator("main")).toContainText(/soon/i);
+    // The vague wording Group 4f replaced, which this is specifically not
+    // allowed to be.
+    await expect(page.locator("main")).not.toContainText(/·\s*unavailable/i);
   });
 
   /**

@@ -40,7 +40,7 @@ export default async function ReceivePage() {
               maintenance" — and the least honest of them, because it implies a
               date nobody has. The badge is the same one the account row, the
               rate board and the Bills tiles carry. */}
-          <Banner tone="info" title="Dollar receiving details are under maintenance">
+          <Banner tone="info" title="Dollar receiving details are coming soon">
             <span className="flex flex-wrap items-center gap-2">
               <MaintenanceBadge />
               <span>{state.reason}</span>
