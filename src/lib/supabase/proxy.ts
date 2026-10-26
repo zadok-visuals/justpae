@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/types/database";
 import { requireEnv } from "@/lib/supabase/env";
-import { isProtectedPath, isPublicPath } from "@/lib/routes/access";
+import { isProtectedPath, isPublicPath, shouldBounceToHome } from "@/lib/routes/access";
 import { maintenanceRedirect } from "@/lib/routes/maintenance";
 
 export async function updateSession(request: NextRequest) {
@@ -140,7 +140,8 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  if (signedIn && (pathname === "/login" || pathname === "/signup" || pathname === "/")) {
+  const expired = request.nextUrl.searchParams.get("expired") === "1";
+  if (shouldBounceToHome(pathname, signedIn, expired)) {
     const url = request.nextUrl.clone();
     url.pathname = "/home";
     url.search = "";

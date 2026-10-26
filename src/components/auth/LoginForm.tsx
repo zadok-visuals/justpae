@@ -17,9 +17,15 @@ export function LoginForm({ notice }: { notice?: string }) {
         <p className="mt-1 text-sm text-muted-foreground">Sign in to your justpae account.</p>
       </div>
 
-      {notice && (
+      {notice === "reset" && (
         <Banner tone="success" title="Password updated">
           Sign in with your new password.
+        </Banner>
+      )}
+
+      {notice === "expired" && (
+        <Banner tone="info" title="Session ended">
+          Your session ended. Please sign in again.
         </Banner>
       )}
 

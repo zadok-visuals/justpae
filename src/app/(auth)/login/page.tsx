@@ -6,6 +6,9 @@ export default async function LoginPage(props: PageProps<"/login">) {
   // Next.js 16: searchParams is a Promise — synchronous access was removed.
   const params = await props.searchParams;
   const reset = Array.isArray(params.reset) ? params.reset[0] : params.reset;
+  const expired = Array.isArray(params.expired) ? params.expired[0] : params.expired;
 
-  return <LoginForm notice={reset === "success" ? "reset" : undefined} />;
+  return (
+    <LoginForm notice={reset === "success" ? "reset" : expired === "1" ? "expired" : undefined} />
+  );
 }

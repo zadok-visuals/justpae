@@ -117,3 +117,16 @@ export function isPublicPath(pathname: string, isDevelopment = false): boolean {
 export function isProtectedPath(pathname: string): boolean {
   return PROTECTED_PREFIXES.some((prefix) => matchesPrefix(pathname, prefix));
 }
+
+/**
+ * Whether a signed-in visitor hitting /login, /signup or / should bounce to
+ * /home. `expired` exempts this: it is set only by /auth/signout's redirect,
+ * for the instant right after a revoked-but-unexpired session's cookies were
+ * cleared, where a stale claim could otherwise read as signed-in and send
+ * /login straight back to /home — recreating the loop that redirect exists
+ * to end. See src/lib/supabase/proxy.ts and src/lib/auth/signout.ts.
+ */
+export function shouldBounceToHome(pathname: string, signedIn: boolean, expired: boolean): boolean {
+  if (!signedIn || expired) return false;
+  return pathname === "/login" || pathname === "/signup" || pathname === "/";
+}

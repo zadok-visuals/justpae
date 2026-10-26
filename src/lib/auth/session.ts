@@ -72,7 +72,13 @@ export const getSessionUser = cache(async (): Promise<User | null> => {
  */
 export const requireSessionUser = cache(async (): Promise<User> => {
   const user = await getSessionUser();
-  if (!user) redirect("/login");
+  // Not /login directly: getUser() returning null here means the proxy's
+  // cheaper getClaims() still saw a JWT that has not expired, even though the
+  // Auth server has revoked the session (signed out elsewhere, banned, failed
+  // refresh). Redirecting straight to /login would send the still-valid
+  // claim right back to /home, forever. /auth/signout clears the session for
+  // real before handing back to /login. See src/lib/supabase/proxy.ts.
+  if (!user) redirect("/auth/signout?next=/login");
   // No email in the URL — /auth/verify resolves the address from this very
   // session. Carrying it as a query parameter leaked it into history and any
   // referrer for no benefit.
