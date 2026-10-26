@@ -57,17 +57,17 @@ export interface EmailOptions {
 }
 
 const LIGHT = {
-  outerBg: "#ffffff",
-  cardBg: "#ffffff",
-  cardBorder: "#e6e8ec",
-  headerBg: "#0b0d10",
-  heading: "#0f1729",
-  body: "#0f1729",
-  muted: "#6b7a90",
-  panelBg: "#f5f6f8",
-  panelBorder: "#e6e8ec",
-  panelText: "#0f1729",
-  footerText: "#6b7a90",
+  outerBg: "hsl(var(--jp-background))",
+  cardBg: "hsl(var(--jp-card))",
+  cardBorder: "hsl(var(--jp-border))",
+  headerBg: "hsl(var(--jp-primary))",
+  heading: "hsl(var(--jp-foreground))",
+  body: "hsl(var(--jp-foreground))",
+  muted: "hsl(var(--jp-muted-foreground))",
+  panelBg: "hsl(var(--jp-secondary))",
+  panelBorder: "hsl(var(--jp-border))",
+  panelText: "hsl(var(--jp-foreground))",
+  footerText: "hsl(var(--jp-muted-foreground))",
 };
 
 // justpae's own dark theme, reused as the email's dark-mode palette — for the
@@ -75,17 +75,17 @@ const LIGHT = {
 // webmail strips the <style> block below and simply stays on the light
 // design, which is why that one is the one built to stand on its own).
 const DARK = {
-  outerBg: "#0b0d10",
-  cardBg: "#14171c",
-  cardBorder: "#232830",
-  headerBg: "#0b0d10",
-  heading: "#f3f5f7",
-  body: "#f3f5f7",
-  muted: "#98a2b3",
-  panelBg: "#14171c",
-  panelBorder: "#232830",
-  panelText: "#f3f5f7",
-  footerText: "#98a2b3",
+  outerBg: "hsl(var(--jp-background))",
+  cardBg: "hsl(var(--jp-card))",
+  cardBorder: "hsl(var(--jp-border))",
+  headerBg: "hsl(var(--jp-primary))",
+  heading: "hsl(var(--jp-foreground))",
+  body: "hsl(var(--jp-foreground))",
+  muted: "hsl(var(--jp-muted-foreground))",
+  panelBg: "hsl(var(--jp-secondary))",
+  panelBorder: "hsl(var(--jp-border))",
+  panelText: "hsl(var(--jp-foreground))",
+  footerText: "hsl(var(--jp-muted-foreground))",
 };
 
 // Royal blue, with white on it: 5.85:1, and the same button a customer sees

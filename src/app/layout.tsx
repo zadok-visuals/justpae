@@ -34,13 +34,13 @@ export const metadata: Metadata = {
    */
   metadataBase: new URL(siteUrl()),
   title: {
-    default: "justpae",
-    template: "%s · justpae",
+    default: "JustPae",
+    template: "%s · JustPae",
   },
   description:
     "Hold dollars, naira, cedis, shillings and USDT in one place. Convert at live rates, withdraw to your bank or mobile money, and pay your bills.",
-  applicationName: "justpae",
-  appleWebApp: { capable: true, title: "justpae", statusBarStyle: "black-translucent" },
+  applicationName: "JustPae",
+  appleWebApp: { capable: true, title: "JustPae", statusBarStyle: "black-translucent" },
 };
 
 /**

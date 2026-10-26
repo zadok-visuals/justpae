@@ -53,7 +53,7 @@ export function TransactionPinCard({ hasPin }: { hasPin: boolean }) {
         <div>
           <h2 className="text-base font-semibold text-foreground">Transaction PIN</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            A 4-6 digit PIN, separate from your password, confirms every conversion, withdrawal
+            A 6-digit PIN, separate from your password, confirms every conversion, withdrawal
             and bill payment.
           </p>
         </div>
@@ -69,7 +69,7 @@ export function TransactionPinCard({ hasPin }: { hasPin: boolean }) {
             onValueChange={setConfirmPin}
             error={setState.error}
           />
-          <SubmitButton disabled={pin.length < 4 || pin !== confirmPin} pendingLabel="Saving…">
+          <SubmitButton disabled={pin.length < 6 || pin !== confirmPin} pendingLabel="Saving…">
             Set PIN
           </SubmitButton>
         </form>
@@ -122,7 +122,7 @@ export function TransactionPinCard({ hasPin }: { hasPin: boolean }) {
             required
             error={changeState.error}
           />
-          <SubmitButton disabled={pin.length < 4 || pin !== confirmPin} pendingLabel="Saving…">
+          <SubmitButton disabled={pin.length < 6 || pin !== confirmPin} pendingLabel="Saving…">
             Change PIN
           </SubmitButton>
         </form>

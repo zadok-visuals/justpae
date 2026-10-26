@@ -68,7 +68,7 @@ import { PublicSupportButton } from "@/components/support/PublicSupportButton";
  * the app, applied to the page where somebody is still deciding.
  */
 
-const TITLE = "justpae — hold, convert and send money across borders";
+const TITLE = "JustPae — hold, convert and send money across borders";
 
 // Subject to the same flag rule as the page body: a search result or a shared
 // link that promises bill payments is the first thing a visitor reads, and it
