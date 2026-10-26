@@ -23,7 +23,7 @@ import { DepositAddressQr, networkLabel } from "@/components/deposit/DepositAddr
 import { MoneyFormLayout, WhatHappensNext } from "@/components/money/MoneyFormLayout";
 import { ManualNgnDeposit } from "@/components/deposit/ManualNgnDeposit";
 import { NgnAccountNumber } from "@/components/deposit/NgnAccountNumber";
-import { NgnDepositSoon } from "@/components/deposit/NgnDepositSoon";
+import { DepositSoon } from "@/components/deposit/DepositSoon";
 import type { VirtualAccountState } from "@/lib/korapay/virtualAccount";
 import type { ManualDepositConfig } from "@/lib/deposits/manualDeposit";
 import type { KycStatus } from "@/lib/types/database";
@@ -31,20 +31,19 @@ import type { KycStatus } from "@/lib/types/database";
 /**
  * GROUP 4f — the heading over the reason, matched to the reason.
  *
- * One title for all three states read as "we haven't built this", which is
- * true of none of them: cedi deposits exist and are down, dollars are
- * received rather than deposited, and yuan is bought.
+ * One title for all states read as "we haven't built this", which is true of
+ * none of them: cedi deposits exist and are down, dollars are received
+ * rather than deposited, and yuan is bought. `soon` never reaches here — see
+ * the dedicated DepositSoon branch below, which has its own one-line copy.
  */
 function depositUnavailableTitle(currency: Currency, kind: UnavailableKind): string {
   switch (kind) {
     case "maintenance":
-      return `${currency} deposits are under maintenance`;
+      return `${currency} deposits are coming soon`;
     case "receive":
       return `${currency} arrives by being sent to you`;
     case "convert":
       return `${currency} is bought, not deposited`;
-    case "soon":
-      return `${currency} deposits are coming soon`;
     default:
       return `${currency} deposits aren't available yet`;
   }
@@ -187,7 +186,10 @@ export function DepositForm({
         onChange={setCurrency}
       />
 
-      {current && !current.available && (
+      {/* GROUP 2 — "soon" currencies skip this banner: they return their own
+          one-line message and "Deposit USDT instead" button below instead of
+          saying the same sentence twice. */}
+      {current && !current.available && current.kind !== "soon" && (
         // The title names the STATE, not a generic absence. "aren't available
         // yet" was printed over cedis — a rail that exists and is down — and
         // over dollars, which are not deposited at all.
@@ -235,11 +237,19 @@ export function DepositForm({
   }
 
   /**
-   * Neither naira rail is on. Its own branch for the same reason as the two
-   * above: no amount, no quote, nothing the rest of this form does.
+   * GROUP 2 — any currency that is not open yet (no outage to come back
+   * from — NGN with both naira flags off, KES with KES_DEPOSIT_ENABLED off).
+   * Its own branch for the same reason as the two above: no amount, no
+   * quote, nothing the rest of this form does.
    */
-  if (current && !current.available && current.kind === "soon" && currency === "NGN") {
-    return <NgnDepositSoon picker={picker} isAdmin={isAdmin} />;
+  if (current && !current.available && current.kind === "soon") {
+    return (
+      <DepositSoon
+        reason={current.reason}
+        picker={picker}
+        showAdminNote={isAdmin && currency === "NGN"}
+      />
+    );
   }
 
   const instructions = depositState.bankDetails ?? depositState.cryptoAddress;
