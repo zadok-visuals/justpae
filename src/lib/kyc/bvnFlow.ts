@@ -112,3 +112,39 @@ export function precheckChangeBvn(input: {
     attemptsInWindow: input.attemptsInWindow,
   });
 }
+
+export interface BvnVerificationOutcome {
+  /** "mismatch" refuses the save outright; "matched" and "unverified" both
+   *  proceed to save, differing only in what gets recorded next to the BVN. */
+  outcome: "matched" | "mismatch" | "unverified";
+  /** True only when the provider itself did not answer (down, timed out, or
+   *  402 — its wallet is empty) — the signal the caller uses to decide
+   *  whether to alert admins. False for a clean "matched"/"mismatch"
+   *  verdict, which is the provider working as intended. */
+  providerDown: boolean;
+}
+
+/**
+ * Calls Dojah (via the injected `validate`, so this is testable with no
+ * network and no real client) and turns its answer, or its absence, into one
+ * of three outcomes. NEVER THROWS: a provider outage is not a save failure,
+ * it is a reason to save as 'unverified' and let Korapay's own check decide
+ * later — see src/lib/actions/kyc.ts, the only real caller.
+ */
+export async function resolveBvnVerification(params: {
+  bvn: string;
+  fullName: string;
+  validate: (args: {
+    bvn: string;
+    firstName: string;
+    lastName: string;
+  }) => Promise<DojahBvnResponse>;
+}): Promise<BvnVerificationOutcome> {
+  const { firstName, lastName } = splitFullName(params.fullName);
+  try {
+    const response = await params.validate({ bvn: params.bvn, firstName, lastName });
+    return { outcome: evaluateDojahMatch(dojahMatchInput(response)), providerDown: false };
+  } catch {
+    return { outcome: "unverified", providerDown: true };
+  }
+}

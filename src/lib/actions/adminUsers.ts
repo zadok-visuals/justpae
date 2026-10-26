@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { AdminRole, KycStatus } from "@/lib/types/database";
 import { toRpcError } from "@/lib/provider-error";
 import { fetchAllRows } from "@/lib/supabase/paging";
+import { deleteBvn } from "@/lib/kyc/bvnRecord";
 
 /**
  * How many search matches are shown before the admin is told to narrow instead.
@@ -359,6 +360,36 @@ export async function revokeAdminRole(
   });
 
   if (error) return { error: toRpcError(error, "adminUsers") };
+
+  revalidatePath("/admin/users");
+  return { ok: true };
+}
+
+/**
+ * GROUP 4 — the escape hatch for a BVN that is wrong, belongs to someone
+ * else, or that support needs cleared for any other reason, once the
+ * customer's own "Change BVN" is locked (an account has been issued) or the
+ * customer cannot act themselves. requireAdminUser() alone, not
+ * `{ role: "superadmin" }` — unlike granting admin access, this does not
+ * create a new privilege, and it is exactly the kind of correction the KYC
+ * queue's reviewers already make day to day.
+ *
+ * Deleting rather than clearing a column: a BVN row with no value is not a
+ * state anything else in this app expects (bvnOnFile and
+ * readBvnForProviderCall both treat "no row" and "empty value" as the same
+ * answer, but kyc_documents_has_content — migration 0001 — refuses a row
+ * with neither a file nor a value in the first place).
+ */
+export async function clearUserBvn(
+  _prevState: AdminUserActionState,
+  formData: FormData,
+): Promise<AdminUserActionState> {
+  const actor = await requireAdminUser();
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return { error: "Missing the account." };
+
+  await deleteBvn(userId);
+  await logAdminActivity({ adminId: actor.id, action: "user.clear_bvn", targetType: "user", targetId: userId });
 
   revalidatePath("/admin/users");
   return { ok: true };

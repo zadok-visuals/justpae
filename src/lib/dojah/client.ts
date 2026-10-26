@@ -12,7 +12,11 @@
  * is a body one `console.error` away from a log line.
  */
 
-import { timed } from "@/lib/perf/timing";
+// Relative, with extension: bvnFlow.test.ts imports DojahError from this file
+// directly (to prove the "Dojah is down" path without a network call), which
+// runs it under `node --test` with no bundler — see src/lib/email.ts for the
+// same note.
+import { timed } from "../perf/timing.ts";
 
 function baseUrl(): string {
   return process.env.DOJAH_BASE_URL ?? "https://sandbox.dojah.io";
@@ -21,15 +25,16 @@ function baseUrl(): string {
 const TIMEOUT_MS = 15_000;
 
 export class DojahError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-    /** True for a timeout or dead socket — Dojah never answered at all,
-     *  rather than answering with a refusal. */
-    public indeterminate = false,
-  ) {
+  status: number;
+  /** True for a timeout or dead socket — Dojah never answered at all, rather
+   *  than answering with a refusal. */
+  indeterminate: boolean;
+
+  constructor(message: string, status: number, indeterminate = false) {
     super(message);
     this.name = "DojahError";
+    this.status = status;
+    this.indeterminate = indeterminate;
   }
 }
 

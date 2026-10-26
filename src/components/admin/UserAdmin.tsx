@@ -11,6 +11,7 @@ import {
   reinstateUser,
   grantAdminRole,
   revokeAdminRole,
+  clearUserBvn,
   type AdminUserSearchResult,
   type AdminUserActionState,
 } from "@/lib/actions/adminUsers";
@@ -203,15 +204,20 @@ function UserRow({
     revokeAdminRole,
     {},
   );
+  const [clearBvnState, clearBvnAction] = useActionState<AdminUserActionState, FormData>(
+    clearUserBvn,
+    {},
+  );
 
   useEffect(() => {
-    for (const s of [suspendState, reinstateState, revokeState]) {
+    for (const s of [suspendState, reinstateState, revokeState, clearBvnState]) {
       if (s.error) toast.error(s.error);
     }
     if (suspendState.ok) toast.success("Account suspended.");
     if (reinstateState.ok) toast.success("Account reinstated.");
     if (revokeState.ok) toast.success("Admin access revoked.");
-  }, [suspendState, reinstateState, revokeState]);
+    if (clearBvnState.ok) toast.success("BVN cleared.");
+  }, [suspendState, reinstateState, revokeState, clearBvnState]);
 
   // Derived, not reset in the effect above: the reason form is open while the
   // admin asked for it AND the suspension has not yet gone through. A
@@ -301,6 +307,24 @@ function UserRow({
                 pendingLabel="Revoking…"
               >
                 Revoke admin
+              </SubmitButton>
+            </form>
+          )}
+
+          {/* GROUP 4 — the escape hatch for a BVN the customer cannot fix
+              themselves (locked because an account was already issued, or
+              they cannot reach their own account). Nigerian accounts only —
+              it is the only country that asks for one. */}
+          {user.country === "NG" && (
+            <form action={clearBvnAction}>
+              <input type="hidden" name="userId" value={user.id} />
+              <SubmitButton
+                variant="secondary"
+                size="sm"
+                fullWidth={false}
+                pendingLabel="Clearing…"
+              >
+                Clear BVN
               </SubmitButton>
             </form>
           )}

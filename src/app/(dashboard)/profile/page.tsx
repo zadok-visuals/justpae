@@ -12,11 +12,14 @@ import { logOut } from "@/lib/actions/auth";
 import { isAdmin } from "@/lib/auth/admin";
 import { getBanks, type BushaBank } from "@/lib/busha/client";
 import { withoutCny } from "@/lib/ui/currencyPicker";
-import { countryName } from "@/lib/countries";
+import { countryName, usesBvnOrNin } from "@/lib/countries";
 import { startRouteTiming } from "@/lib/perf/timing";
 import { getThemePreference } from "@/lib/theme";
 import type { Currency, Wallet, WithdrawalRecipient } from "@/lib/types/database";
 import { requireSessionUser } from "@/lib/auth/session";
+import { bvnOnFile } from "@/lib/kyc/bvnRecord";
+import { hasIssuedNgnVirtualAccount } from "@/lib/korapay/virtualAccount";
+import { BvnPrompt } from "@/components/deposit/BvnPrompt";
 
 export const metadata = { title: "Profile" };
 export const dynamic = "force-dynamic";
@@ -40,6 +43,8 @@ export default async function ProfilePage() {
     { data: hasPin },
     showAdmin,
     themePreference,
+    bvn,
+    hasIssuedAccount,
   ] = await Promise.all([
       supabase
         .from("profiles")
@@ -58,6 +63,10 @@ export default async function ProfilePage() {
       // GROUP 9. Cookie-backed, not a column — nothing here is per-account,
       // so there is no row to join and no reason to add one.
       getThemePreference(),
+      // GROUP 4 — cheap for every account (a single maybeSingle each), and
+      // only rendered below for a Nigerian one that actually has a BVN.
+      bvnOnFile(user.id),
+      hasIssuedNgnVirtualAccount(user.id),
     ]);
 
   endRouteTiming();
@@ -134,6 +143,10 @@ export default async function ProfilePage() {
               ? "You can deposit and convert in the meantime."
               : "Required before money can leave your account."}
           </Banner>
+        )}
+
+        {usesBvnOrNin(profile?.country) && kycStatus === "approved" && bvn.present && (
+          <BvnPrompt masked={bvn.masked} hasIssuedAccount={hasIssuedAccount} />
         )}
 
         <TransactionPinCard hasPin={hasPin === true} />

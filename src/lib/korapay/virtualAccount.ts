@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createVirtualBankAccount, KorapayError } from "@/lib/korapay/client";
-import { readBvnForProviderCall, bvnOnFile } from "@/lib/kyc/bvnRecord";
+import { readBvnForProviderCall, bvnOnFile, deleteBvn } from "@/lib/kyc/bvnRecord";
 import { classifyProviderFailure, customerMessageFor } from "@/lib/providers/failure";
 import { virtualAccountGate } from "@/lib/korapay/accountGate";
 import type { VirtualAccount } from "@/lib/types/database";
@@ -40,13 +40,33 @@ import type { VirtualAccount } from "@/lib/types/database";
 export type VirtualAccountState =
   | { state: "ready"; account: VirtualAccount }
   | { state: "needs_kyc"; kycStatus: string }
-  | { state: "needs_bvn" }
+  /** GROUP 4 — `error` is set only when this is reached because Korapay just
+   *  rejected a BVN as invalid or mismatched: the BVN was deleted (see the
+   *  catch below) and this is what tells the BVN step to show why it is
+   *  being asked again instead of rendering as a fresh, unexplained prompt. */
+  | { state: "needs_bvn"; error?: string }
   /** Everything checks out and no account has been issued yet. Only ever
    *  returned by the READ-ONLY lookup; getNgnVirtualAccount issues one. */
   | { state: "none" }
   | { state: "unavailable"; message: string };
 
 const NGN_PROVIDER = "korapay" as const;
+
+/** GROUP 4 — the lock: once an account exists, the BVN it was issued against
+ *  may not change. Exported for changeBvn (src/lib/actions/kyc.ts) and the
+ *  BVN display on Profile and the deposit step, which both need to know
+ *  whether to offer "Change BVN" or the locked message instead. */
+export async function hasIssuedNgnVirtualAccount(userId: string): Promise<boolean> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("virtual_accounts")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("currency", "NGN")
+    .eq("provider", NGN_PROVIDER)
+    .maybeSingle();
+  return Boolean(data);
+}
 
 /** The account_reference we hand the provider. Stable per user, so looking an
  *  account up again never depends on a value we might have lost. */
@@ -199,6 +219,18 @@ export async function createNgnVirtualAccount(
       status,
       err instanceof Error ? err.message : undefined,
     );
+
+    // GROUP 4 — Korapay rejected THIS BVN specifically (invalid, or does not
+    // match the name on the account). Unlike every other failure here, that
+    // is self-correcting: delete it and send the customer back to the BVN
+    // step rather than leaving a number on file that is never going to work.
+    // Any other failure (feature not enabled, a 5xx, …) keeps the BVN —
+    // there is nothing wrong with the number in those cases.
+    if (failure === "bvn_mismatch") {
+      await deleteBvn(userId);
+      return { state: "needs_bvn", error: customerMessageFor(failure) };
+    }
+
     return {
       state: "unavailable",
       // Our copy, never the provider's, and the provider is never named —

@@ -9,10 +9,12 @@ import {
   canChangeBvn,
   precheckSaveBvn,
   precheckChangeBvn,
+  resolveBvnVerification,
   BVN_CONFIRM_MISMATCH,
   BVN_LOCKED_MESSAGE,
   BVN_TOO_MANY_ATTEMPTS,
 } from "./bvnFlow.ts";
+import { DojahError } from "../dojah/client.ts";
 
 test("splitFullName takes the first and last word", () => {
   assert.deepEqual(splitFullName("Chidi Musa Okafor"), { firstName: "Chidi", lastName: "Okafor" });
@@ -92,6 +94,46 @@ test("precheckChangeBvn is allowed before an account is issued", () => {
     attemptsInWindow: 0,
   });
   assert.deepEqual(result, { ok: true });
+});
+
+test("resolveBvnVerification refuses on a Dojah mismatch, without touching the provider-down flag", async () => {
+  const result = await resolveBvnVerification({
+    bvn: "12345678901",
+    fullName: "Chidi Okafor",
+    validate: async () => ({ entity: { last_name: { status: false }, first_name: { confidence_value: 100 } } }),
+  });
+  assert.deepEqual(result, { outcome: "mismatch", providerDown: false });
+});
+
+test("resolveBvnVerification accepts a Dojah match", async () => {
+  const result = await resolveBvnVerification({
+    bvn: "12345678901",
+    fullName: "Chidi Okafor",
+    validate: async () => ({ entity: { last_name: { status: true }, first_name: { confidence_value: 95 } } }),
+  });
+  assert.deepEqual(result, { outcome: "matched", providerDown: false });
+});
+
+test("resolveBvnVerification saves as unverified, never blocking, when Dojah is down", async () => {
+  const result = await resolveBvnVerification({
+    bvn: "12345678901",
+    fullName: "Chidi Okafor",
+    validate: async () => {
+      throw new DojahError("Dojah request did not complete", 0, true);
+    },
+  });
+  assert.deepEqual(result, { outcome: "unverified", providerDown: true });
+});
+
+test("resolveBvnVerification also saves as unverified on a 402 (wallet empty)", async () => {
+  const result = await resolveBvnVerification({
+    bvn: "12345678901",
+    fullName: "Chidi Okafor",
+    validate: async () => {
+      throw new DojahError("Dojah request failed (402)", 402);
+    },
+  });
+  assert.deepEqual(result, { outcome: "unverified", providerDown: true });
 });
 
 test("precheckChangeBvn requires a PIN", () => {

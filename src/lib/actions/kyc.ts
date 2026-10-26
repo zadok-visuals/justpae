@@ -11,7 +11,7 @@ import {
   usesBvnOrNin,
   NIGERIA_NIN_FIELD,
 } from "@/lib/countries";
-import { BVN_DOCUMENT_TYPE, isValidBvn, isValidNin, maskBvn } from "@/lib/kyc/bvn";
+import { BVN_DOCUMENT_TYPE, isValidNin, maskBvn } from "@/lib/kyc/bvn";
 import { verifyOwnedUpload } from "@/lib/storage/verifyUpload";
 import { KYC_BUCKET } from "@/lib/kyc/constants";
 import {
@@ -28,8 +28,15 @@ import {
   sendAdminBvnValidationDownEmail,
 } from "@/lib/email";
 import { BVN_VALIDATION_ENABLED } from "@/lib/flags";
-import { validateBvn, DojahError } from "@/lib/dojah/client";
-import { dojahMatchInput, evaluateDojahMatch, splitFullName, BVN_DOJAH_MISMATCH_MESSAGE } from "@/lib/kyc/bvnFlow";
+import { validateBvn } from "@/lib/dojah/client";
+import {
+  resolveBvnVerification,
+  precheckSaveBvn,
+  precheckChangeBvn,
+  BVN_DOJAH_MISMATCH_MESSAGE,
+} from "@/lib/kyc/bvnFlow";
+import { resolvePinError } from "@/lib/pin";
+import { hasIssuedNgnVirtualAccount } from "@/lib/korapay/virtualAccount";
 
 export interface KycActionState {
   error?: string;
@@ -465,6 +472,57 @@ export interface SaveBvnState {
   masked?: string;
 }
 
+type BvnVerificationColumns = {
+  verification_result: "matched" | "unverified" | null;
+  verification_provider: string | null;
+  verification_checked_at: string | null;
+};
+
+/**
+ * Runs the Dojah check (when the flag is on) and turns the outcome into
+ * either a refusal or the three columns to save alongside the BVN. Shared by
+ * saveBvn and changeBvn so the two have exactly one definition of "verified
+ * enough to save" between them.
+ *
+ * Alerts admins AT MOST ONCE PER COOLDOWN when Dojah does not answer —
+ * claim_provider_alert (migration 0044) is the thing that makes "once"
+ * true across however many saves hit the same outage.
+ */
+async function verifyBvnForSave(
+  admin: ReturnType<typeof createAdminClient>,
+  bvn: string,
+  fullName: string | null | undefined,
+): Promise<{ error: string } | { columns: BvnVerificationColumns }> {
+  if (!BVN_VALIDATION_ENABLED) {
+    return { columns: { verification_result: null, verification_provider: null, verification_checked_at: null } };
+  }
+
+  const { outcome, providerDown } = await resolveBvnVerification({
+    bvn,
+    fullName: fullName ?? "",
+    validate: validateBvn,
+  });
+
+  if (outcome === "mismatch") return { error: BVN_DOJAH_MISMATCH_MESSAGE };
+
+  if (providerDown) {
+    console.error("[kyc.verifyBvnForSave] Dojah unavailable, saving unverified");
+    const admins = adminNotificationRecipients();
+    if (admins.length > 0) {
+      const { data: claimed } = await admin.rpc("claim_provider_alert", { p_provider: "dojah" });
+      if (claimed) await sendAdminBvnValidationDownEmail({ to: admins });
+    }
+  }
+
+  return {
+    columns: {
+      verification_result: outcome,
+      verification_provider: "dojah",
+      verification_checked_at: new Date().toISOString(),
+    },
+  };
+}
+
 /**
  * The one-question form shown to an already-verified Nigerian user the first
  * time they open naira deposit without a BVN on file.
@@ -483,9 +541,10 @@ export interface SaveBvnState {
  *     the browser in full, and NEVER put in a redirect. The success state
  *     carries the mask only.
  *
- * It refuses to overwrite a BVN that is already there. A saved BVN changing is
- * either a mistake or an attempt to attach a different person's identity to an
- * approved account; either way it is support's problem, not a form's.
+ * GROUP 4 — a confirm field (refused if it differs), an attempt limit of 5
+ * per 24 hours, and a Dojah check ahead of saving (see verifyBvnForSave). It
+ * still refuses to overwrite a BVN that is already there — that is what
+ * changeBvn below is for, and it has a PIN and a lock this form does not.
  */
 export async function saveBvn(
   _prevState: SaveBvnState,
@@ -514,8 +573,7 @@ export async function saveBvn(
   }
 
   const bvn = String(formData.get("bvn") ?? "").trim();
-  if (!bvn) return { error: "Enter your BVN to continue." };
-  if (!isValidBvn(bvn)) return { error: "A BVN is exactly 11 digits. Dial *565*0# to get it." };
+  const confirmBvn = String(formData.get("confirmBvn") ?? "").trim();
 
   const admin = createAdminClient();
 
@@ -532,37 +590,22 @@ export async function saveBvn(
     return { ok: true, masked: maskBvn(existing.value) };
   }
 
-  // GROUP 3 — validated against Dojah before it is ever saved, when the flag
-  // is on. A name mismatch refuses the save outright; an unreachable Dojah
-  // (down, or its wallet is empty — 402) does NOT: the BVN is saved marked
-  // 'unverified' and Korapay's own check decides at account-issuance time
-  // regardless. Either way, only the verdict is kept — never the name, date
-  // of birth or photo Dojah's response may carry.
-  let verification: { result: "matched" | "unverified"; provider: string; checkedAt: string } | null =
-    null;
-
-  if (BVN_VALIDATION_ENABLED) {
-    const { firstName, lastName } = splitFullName(profile?.full_name ?? "");
-    try {
-      const response = await validateBvn({ bvn, firstName, lastName });
-      const outcome = evaluateDojahMatch(dojahMatchInput(response));
-      if (outcome === "mismatch") return { error: BVN_DOJAH_MISMATCH_MESSAGE };
-      verification = { result: "matched", provider: "dojah", checkedAt: new Date().toISOString() };
-    } catch (err) {
-      // Never block on a provider outage. status is the only thing logged —
-      // see src/lib/dojah/client.ts, which never attaches the BVN or the
-      // response body to its own error.
-      const status = err instanceof DojahError ? err.status : undefined;
-      console.error("[kyc.saveBvn] Dojah unavailable, saving unverified", { status: status ?? null });
-      verification = { result: "unverified", provider: "dojah", checkedAt: new Date().toISOString() };
-
-      const admins = adminNotificationRecipients();
-      if (admins.length > 0) {
-        const { data: claimed } = await admin.rpc("claim_provider_alert", { p_provider: "dojah" });
-        if (claimed) await sendAdminBvnValidationDownEmail({ to: admins });
-      }
-    }
+  // Recorded before the format/confirm checks: an attempt is an attempt
+  // whatever is wrong with it, and this is also what stops a locked-out user
+  // from probing the format checker for free.
+  const { data: attemptsInWindow, error: attemptError } = await admin.rpc("record_bvn_attempt", {
+    p_user_id: user.id,
+  });
+  if (attemptError) {
+    console.error("[kyc.saveBvn] record_bvn_attempt failed", describeSupabaseError(attemptError));
+    return { error: "We couldn't save that. Please try again." };
   }
+
+  const precheck = precheckSaveBvn({ bvn, confirmBvn, attemptsInWindow: attemptsInWindow ?? 0 });
+  if (!precheck.ok) return { error: precheck.error };
+
+  const verified = await verifyBvnForSave(admin, bvn, profile?.full_name);
+  if ("error" in verified) return { error: verified.error };
 
   const { error } = await admin.from("kyc_documents").upsert(
     {
@@ -575,9 +618,7 @@ export async function saveBvn(
       // row here would put an approved user back in the review queue for a
       // number they were only asked for because the rail changed under them.
       status: "approved" as const,
-      verification_result: verification?.result ?? null,
-      verification_provider: verification?.provider ?? null,
-      verification_checked_at: verification?.checkedAt ?? null,
+      ...verified.columns,
     },
     { onConflict: "user_id,document_type" },
   );
@@ -590,5 +631,102 @@ export async function saveBvn(
   }
 
   revalidatePath("/deposit");
+  revalidatePath("/profile");
+  return { ok: true, masked: maskBvn(bvn) };
+}
+
+/**
+ * GROUP 4 — changing an already-saved BVN. Unlike saveBvn above, this:
+ *   - requires the transaction PIN, verified the same way a withdrawal does
+ *     (verify_transaction_pin), because it rewrites the number a virtual
+ *     account would otherwise be issued against;
+ *   - is locked out entirely once a naira virtual account has been issued —
+ *     canChangeBvn / precheckChangeBvn is the rule, hasIssuedNgnVirtualAccount
+ *     the read;
+ *   - re-runs the same Dojah check and attempt limit saveBvn does, via the
+ *     same two shared functions.
+ *
+ * Logged (never with the BVN itself) because it rewrites an identity number
+ * on an already-approved account — exactly the kind of change that should
+ * leave a trail even though it is the account owner making it, not an admin.
+ */
+export async function changeBvn(
+  _prevState: SaveBvnState,
+  formData: FormData,
+): Promise<SaveBvnState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("country, kyc_status, full_name")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!usesBvnOrNin(profile?.country)) {
+    return { error: "A BVN is only asked for on Nigerian accounts." };
+  }
+
+  const pin = String(formData.get("pin") ?? "");
+  const bvn = String(formData.get("bvn") ?? "").trim();
+  const confirmBvn = String(formData.get("confirmBvn") ?? "").trim();
+
+  const admin = createAdminClient();
+
+  const hasIssuedAccount = await hasIssuedNgnVirtualAccount(user.id);
+
+  const { data: attemptsInWindow, error: attemptError } = await admin.rpc("record_bvn_attempt", {
+    p_user_id: user.id,
+  });
+  if (attemptError) {
+    console.error("[kyc.changeBvn] record_bvn_attempt failed", describeSupabaseError(attemptError));
+    return { error: "We couldn't save that. Please try again." };
+  }
+
+  const precheck = precheckChangeBvn({
+    pin,
+    bvn,
+    confirmBvn,
+    hasIssuedAccount,
+    attemptsInWindow: attemptsInWindow ?? 0,
+  });
+  if (!precheck.ok) return { error: precheck.error };
+
+  const { error: pinError } = await admin.rpc("verify_transaction_pin", {
+    p_user_id: user.id,
+    p_pin: pin,
+  });
+  if (pinError) {
+    return { error: await resolvePinError({ userId: user.id, email: user.email, error: pinError }) };
+  }
+
+  const verified = await verifyBvnForSave(admin, bvn, profile?.full_name);
+  if ("error" in verified) return { error: verified.error };
+
+  const { error } = await admin.from("kyc_documents").upsert(
+    {
+      user_id: user.id,
+      tier: "individual_tier_2" as const,
+      document_type: BVN_DOCUMENT_TYPE,
+      value: bvn,
+      status: "approved" as const,
+      ...verified.columns,
+    },
+    { onConflict: "user_id,document_type" },
+  );
+
+  if (error) {
+    console.error("[kyc.changeBvn] failed", describeSupabaseError(error));
+    return { error: "We couldn't save that. Please try again." };
+  }
+
+  // Never the BVN itself — see the module comment on src/lib/kyc/bvn.ts.
+  console.warn("[kyc.changeBvn] BVN changed", { userId: user.id });
+
+  revalidatePath("/deposit");
+  revalidatePath("/profile");
   return { ok: true, masked: maskBvn(bvn) };
 }

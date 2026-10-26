@@ -48,3 +48,25 @@ export async function readBvnForProviderCall(userId: string): Promise<string | n
     .maybeSingle();
   return data?.value ?? null;
 }
+
+/**
+ * GROUP 4. Deletes the stored BVN outright — never an update, because a wrong
+ * BVN has no "fix it in place" that doesn't risk leaving the old, provider-
+ * rejected number half-overwritten. Two callers:
+ *   - src/lib/korapay/virtualAccount.ts, when Korapay itself rejects a BVN at
+ *     account-issuance time, so the customer lands back on a clean BVN step;
+ *   - src/lib/actions/adminUsers.ts, for an admin override.
+ *
+ * Never logs the value — there is none in this call to log.
+ */
+export async function deleteBvn(userId: string): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("kyc_documents")
+    .delete()
+    .eq("user_id", userId)
+    .eq("document_type", BVN_DOCUMENT_TYPE);
+  if (error) {
+    console.error("[bvnRecord.deleteBvn] failed", { userId, error: error.message });
+  }
+}

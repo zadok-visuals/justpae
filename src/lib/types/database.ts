@@ -1328,6 +1328,14 @@ export type Database = {
       /** Server-only. Increments the failed-PIN counter in its own transaction,
        *  after the money function's raise has rolled its own back. */
       record_pin_failure: { Args: { p_user_id: string }; Returns: PinFailureRow[] };
+      /** Server-only (0003/0012). Called directly from TS by changeBvn
+       *  (src/lib/actions/kyc.ts) ahead of a BVN change — there is no money
+       *  RPC wrapping it for that action the way there is for withdrawals. */
+      verify_transaction_pin: { Args: { p_user_id: string; p_pin: string }; Returns: undefined };
+
+      /** Server-only (0045). Records one BVN save/change attempt and returns
+       *  this user's count in the trailing 24 hours, this one included. */
+      record_bvn_attempt: { Args: { p_user_id: string }; Returns: number };
 
       /** Server-only (0044). Atomically claims the right to send a
        *  provider-down alert — true only for the caller that moves the

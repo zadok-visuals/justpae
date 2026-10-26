@@ -110,7 +110,7 @@ export function NgnAccountNumber({
   // them press a second button for something they have just enabled is the
   // kind of step that reads as the form not having worked.
   if (state.state === "needs_bvn") {
-    return shell(<BvnPrompt masked={null} onSaved={issue} />);
+    return shell(<BvnPrompt masked={null} initialError={state.error} onSaved={issue} />);
   }
 
   if (state.state === "unavailable") {
