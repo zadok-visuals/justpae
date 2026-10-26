@@ -106,6 +106,55 @@ test.describe("a verified account", () => {
   });
 
   /**
+   * The regression this guards: the amount step's form used to stay
+   * rendered once a quote existed, so the review step appeared ON TOP of
+   * it rather than instead of it — two primary buttons ("Continue" and
+   * "Generate account details") and two "By continuing you agree…" Terms
+   * lines on screen together. Each assertion below checks the earlier
+   * step's button and its Terms line are actually GONE, not merely
+   * scrolled past or covered — `toHaveCount(0)`, not `not.toBeVisible()`.
+   */
+  test("the deposit flow shows exactly one primary button and one Terms line per step", async ({
+    page,
+  }) => {
+    await page.goto("/deposit?currency=NGN");
+
+    const continueButton = page.getByRole("button", { name: "Continue" });
+    const generateButton = page.getByRole("button", { name: "Generate account details" });
+    const legalLine = page.getByText(/by continuing you agree/i);
+
+    // Step 1: only Continue, and the Terms line appears once.
+    if (!(await continueButton.count())) return; // this environment routes NGN through a different rail
+    await expect(continueButton).toBeVisible();
+    await expect(generateButton).toHaveCount(0);
+    await expect(legalLine).toHaveCount(1);
+
+    await page.getByLabel(/how much are you sending/i).first().fill("5000");
+    await continueButton.click();
+
+    // Step 2: Continue must be gone — not covered, not still submittable —
+    // and Generate is the only primary button, with its own single Terms line.
+    await expect(generateButton).toBeVisible();
+    await expect(continueButton).toHaveCount(0);
+    await expect(legalLine).toHaveCount(1);
+
+    // "Edit amount" goes back to step 1 WITHOUT losing the typed amount.
+    await page.getByRole("button", { name: /edit amount/i }).click();
+    await expect(continueButton).toBeVisible();
+    await expect(generateButton).toHaveCount(0);
+    await expect(page.getByLabel(/how much are you sending/i).first()).toHaveValue("5,000");
+
+    await continueButton.click();
+    await expect(generateButton).toBeVisible();
+    await generateButton.click();
+
+    // Step 3: the details screen. Neither earlier step's button survives.
+    await expect(page.getByRole("heading", { name: /send your transfer/i })).toBeVisible();
+    await expect(continueButton).toHaveCount(0);
+    await expect(generateButton).toHaveCount(0);
+  });
+
+  /**
    * GROUP 4f. The suffix this replaced was a string literal in three
    * components, which is exactly the kind of thing a later copy edit
    * reintroduces without anybody re-reading the picker.

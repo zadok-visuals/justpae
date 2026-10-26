@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AmountInput, parseAmount } from "@/components/ui/AmountInput";
@@ -121,6 +121,38 @@ export function DepositForm({
 
   const [quoteState, quoteAction] = useActionState(getDepositQuote, {});
   const [depositState, depositAction] = useActionState(initiateDeposit, {});
+
+  // ONE STEP AT A TIME. Driven by this, not by `quoteState.quoteId` directly:
+  // a quote that already exists must not force step 2 back onto the screen
+  // the moment "Edit amount" sets this to 1 — only a FRESH quoteId (a new
+  // Continue) should advance it. See the render-time check below.
+  const [step, setStep] = useState<1 | 2>(1);
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const mountedRef = useRef(false);
+
+  // Adjusted during render, not in an effect — this IS the pattern React's
+  // own docs give for "state that should reset/advance when a value changes,
+  // but also needs to be overridable" (https://react.dev/learn/you-might-not-need-an-effect).
+  // An effect here would mean committing step 1's render first and only
+  // flipping to step 2 a tick later; comparing against the last seen quoteId
+  // during render advances it in the very same render a fresh quote arrives in.
+  const [lastQuoteId, setLastQuoteId] = useState(quoteState.quoteId);
+  if (quoteState.quoteId !== lastQuoteId) {
+    setLastQuoteId(quoteState.quoteId);
+    if (quoteState.quoteId) setStep(2);
+  }
+
+  // Scrolls and moves focus to the new step's heading — but not on the very
+  // first render, where the page has just loaded and nothing has "changed"
+  // yet from the user's point of view.
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
+    stepHeadingRef.current?.scrollIntoView({ block: "start" });
+    stepHeadingRef.current?.focus();
+  }, [step]);
 
   const current = availability[currency];
   const amount = parseAmount(amountText);
@@ -283,10 +315,16 @@ export function DepositForm({
 
   const summary = (
     <>
-      {/* `hidden lg:block`: the mirror of the inline `lg:hidden` copy below.
-          See MoneyFormLayout — the review belongs above the commit button on
-          a phone and beside it on a desktop. */}
-      <div className="hidden lg:block">{quoteCard}</div>
+      {/* Tied to `step`, not to whether a quote merely exists: once "Edit
+          amount" sends the user back to step 1, the stale quote from before
+          must not keep a "Review" card sitting in the aside for a figure
+          that is no longer what is about to be submitted. */}
+      {step === 2 && (
+        // `hidden lg:block`: the mirror of the inline `lg:hidden` copy below.
+        // See MoneyFormLayout — the review belongs above the commit button on
+        // a phone and beside it on a desktop.
+        <div className="hidden lg:block">{quoteCard}</div>
+      )}
       {nextSteps}
     </>
   );
@@ -294,13 +332,22 @@ export function DepositForm({
   return (
     <MoneyFormLayout summary={summary}>
     <div className="space-y-4">
-      <StepIndicator step={quoteState.quoteId ? 2 : 1} total={3} />
+      <StepIndicator step={step} total={3} />
 
       {picker}
 
-      {current?.available && (
+      {/* ONE STEP AT A TIME. `step === 1` / `step === 2` are mutually
+          exclusive, so there is never more than one primary button and
+          never more than one Terms line on screen — see the bug this
+          replaced, where both forms rendered together because the amount
+          step's visibility never checked whether a quote already existed. */}
+      {step === 1 && current?.available && (
         <form action={quoteAction} className="space-y-4">
           <input type="hidden" name="currency" value={currency} />
+
+          <h2 ref={stepHeadingRef} tabIndex={-1} className="text-base font-semibold text-foreground">
+            Enter an amount
+          </h2>
 
           <Card>
             <AmountInput
@@ -337,11 +384,31 @@ export function DepositForm({
         </form>
       )}
 
-      {quoteState.quoteId && (
+      {step === 2 && quoteState.quoteId && (
         <form action={depositAction} className="space-y-4">
           <input type="hidden" name="currency" value={quoteState.currency ?? currency} />
           <input type="hidden" name="quoteId" value={quoteState.quoteId} />
           <input type="hidden" name="amount" value={quoteState.amount ?? ""} />
+
+          <div className="flex items-baseline justify-between gap-3">
+            <h2
+              ref={stepHeadingRef}
+              tabIndex={-1}
+              className="text-base font-semibold text-foreground"
+            >
+              Review your deposit
+            </h2>
+            {/* Text button, not a second primary action — it goes back to
+                step 1 with the typed amount exactly as it was, which is
+                still sitting in `amountText` since nothing here clears it. */}
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              className="inline-flex min-h-11 items-center text-sm font-medium text-primary"
+            >
+              Edit amount
+            </button>
+          </div>
 
           {/* The review, inline, BELOW 1024px only — on a phone it has to be
               above the button that commits to it. The identical card is in
@@ -366,9 +433,6 @@ export function DepositForm({
           <LegalReminder />
         </form>
       )}
-
-      {/* The same panel inline on a phone, where there is no second column to
-          put it in. `lg:hidden` is the mirror of MoneyFormLayout's aside. */}
     </div>
     </MoneyFormLayout>
   );
@@ -422,6 +486,16 @@ function DepositInstructions({
   const expired = (hasExpiry && secondsLeft === 0) || status === "expired";
   const settled = status === "completed" || status === "failed" || status === "expired";
 
+  // This component only ever mounts AS the transition into step 3 — there is
+  // no earlier render of it at a different step to compare against — so
+  // unlike DepositForm's step 1/2 toggle, scrolling and focusing here happens
+  // unconditionally on mount rather than being skipped the first time.
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    stepHeadingRef.current?.scrollIntoView({ block: "start" });
+    stepHeadingRef.current?.focus();
+  }, []);
+
   // Every poll re-checks the provider server-side and credits immediately if
   // funds have landed. Shared with the withdrawal and conversion detail views
   // through usePolling, so all three stop on a final status by the same rule
@@ -452,6 +526,10 @@ function DepositInstructions({
   return (
     <div className="space-y-4">
       <StepIndicator step={3} total={3} />
+
+      <h2 ref={stepHeadingRef} tabIndex={-1} className="text-base font-semibold text-foreground">
+        Send your transfer
+      </h2>
 
       {status === "completed" ? (
         <Banner tone="success" title="Money received">
