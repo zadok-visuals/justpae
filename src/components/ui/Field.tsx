@@ -40,10 +40,21 @@ export function FieldError({ children }: { children?: string | null }) {
   );
 }
 
-// Subtle-surface fill with NO border at rest; the focus ring in globals.css
-// (.jp-field:focus-within) is the only outline this ever draws.
-const FIELD_SHELL =
-  "jp-field flex items-center gap-2 rounded-lg border border-transparent bg-secondary px-3";
+// The one field shell every control in the app shares — Field's own five,
+// PinField, OtpField, AmountInput and the CurrencyPicker trigger. bg-input-fill
+// and border-input are dedicated tokens, distinct from the card/secondary
+// surface a field usually sits on; using bg-secondary here was the bug that
+// made an empty dark-mode field disappear into its card. The focus ring in
+// globals.css (.jp-field:focus-within) draws over this border on focus.
+export const FIELD_SHELL = "jp-field flex items-center gap-2 rounded-lg border bg-input-fill px-3";
+
+/** border-destructive on error, the shared border-input token otherwise. */
+export function fieldBorderClass(error?: string | null): string {
+  return error ? "border-destructive" : "border-input";
+}
+
+/** The placeholder colour every field shares — see --jp-input-placeholder. */
+export const FIELD_PLACEHOLDER = "placeholder:text-input-placeholder";
 
 interface TextFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -73,13 +84,13 @@ export function TextField({
       <Label htmlFor={id} hint={hint}>
         {label}
       </Label>
-      <div className={`${FIELD_SHELL} h-12`}>
+      <div className={`${FIELD_SHELL} ${fieldBorderClass(error)} h-12`}>
         {leading && <span className="shrink-0 text-muted-foreground">{leading}</span>}
         <input
           {...props}
           id={id}
           aria-invalid={error ? true : undefined}
-          className="min-w-0 flex-1 border-0 bg-transparent py-0 text-foreground placeholder:text-muted-foreground"
+          className={`min-w-0 flex-1 border-0 bg-transparent py-0 text-foreground ${FIELD_PLACEHOLDER}`}
         />
         {trailing && <span className="shrink-0 text-muted-foreground">{trailing}</span>}
       </div>
@@ -104,13 +115,13 @@ export function PasswordField({
       <Label htmlFor={id} hint={hint}>
         {label}
       </Label>
-      <div className={`${FIELD_SHELL} h-12`}>
+      <div className={`${FIELD_SHELL} ${fieldBorderClass(error)} h-12`}>
         <input
           {...props}
           id={id}
           type={visible ? "text" : "password"}
           aria-invalid={error ? true : undefined}
-          className="min-w-0 flex-1 border-0 bg-transparent py-0 text-foreground placeholder:text-muted-foreground"
+          className={`min-w-0 flex-1 border-0 bg-transparent py-0 text-foreground ${FIELD_PLACEHOLDER}`}
         />
         <button
           type="button"
@@ -155,7 +166,7 @@ export function SelectField({
       <Label htmlFor={id} hint={hint}>
         {label}
       </Label>
-      <div className={`${FIELD_SHELL} h-12`}>
+      <div className={`${FIELD_SHELL} ${fieldBorderClass(error)} h-12`}>
         <select
           {...props}
           id={id}
@@ -192,12 +203,12 @@ export function TextAreaField({
       <Label htmlFor={id} hint={hint}>
         {label}
       </Label>
-      <div className={`${FIELD_SHELL} py-2.5`}>
+      <div className={`${FIELD_SHELL} ${fieldBorderClass(error)} py-2.5`}>
         <textarea
           {...props}
           id={id}
           aria-invalid={error ? true : undefined}
-          className="min-h-20 min-w-0 flex-1 resize-y border-0 bg-transparent text-foreground placeholder:text-muted-foreground"
+          className={`min-h-20 min-w-0 flex-1 resize-y border-0 bg-transparent text-foreground ${FIELD_PLACEHOLDER}`}
         />
       </div>
       <FieldError>{error}</FieldError>

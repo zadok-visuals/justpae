@@ -160,7 +160,7 @@ function GrantForm() {
           id="grant-role"
           name="role"
           defaultValue="admin"
-          className="jp-field h-12 w-full rounded-lg border border-input bg-secondary px-3 text-sm text-foreground"
+          className="jp-field h-12 w-full rounded-lg border border-input bg-input-fill px-3 text-sm text-foreground"
         >
           <option value="admin">admin — the queues, rates, support</option>
           <option value="superadmin">superadmin — also grants and revokes access</option>

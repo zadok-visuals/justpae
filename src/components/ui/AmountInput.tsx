@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { Label } from "@/components/ui/Field";
+import { Label, FIELD_SHELL, FIELD_PLACEHOLDER, fieldBorderClass } from "@/components/ui/Field";
 import { currencyMeta } from "@/lib/currencies";
 import type { Currency } from "@/lib/types/database";
 
@@ -95,7 +95,7 @@ export function AmountInput({
       {/* min-h-14 instead of vertical padding: padding would be dead space
           the input can't stretch into, and this is the field people tap most
           often in the whole app. */}
-      <div className="jp-field flex min-h-14 items-center gap-2 rounded-lg border border-transparent bg-secondary px-3">
+      <div className={`${FIELD_SHELL} ${fieldBorderClass(error)} min-h-14`}>
         {/* The ISO code as the prefix, never a symbol. */}
         <span className="shrink-0 text-base font-medium text-muted-foreground">{meta.code}</span>
 
@@ -112,7 +112,7 @@ export function AmountInput({
           onChange={(e) => onValueChange(formatAmountInput(e.target.value))}
           placeholder="0.00"
           aria-invalid={error ? true : undefined}
-          className="min-w-0 flex-1 border-0 bg-transparent font-display text-2xl tabular-nums text-foreground placeholder:text-muted-foreground"
+          className={`min-w-0 flex-1 border-0 bg-transparent font-display text-2xl tabular-nums text-foreground ${FIELD_PLACEHOLDER}`}
         />
 
         {max != null && onMax && (

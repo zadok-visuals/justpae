@@ -89,7 +89,9 @@
 
   --jp-border: 220 13.6% 91.4%; /* #E6E8EC */
   --jp-border-strong: 218 15.1% 85.7%; /* #D5D9E0 */
-  --jp-input: 220 13.6% 91.4%;
+  --jp-input: 220 13.6% 91.4%; /* #E6E8EC — the 1px border every field now draws */
+  --jp-input-fill: 220 17.6% 96.7%; /* #F5F6F8 — unchanged in light */
+  --jp-input-placeholder: var(--jp-muted-foreground);
   --jp-ring: var(--jp-primary);
 
   /* ── Sidebar (desktop chrome) — LIGHT ──────────────────────────────────── */
@@ -183,7 +185,19 @@
 
   --jp-border: 216.9 15.7% 16.3%; /* #232830 */
   --jp-border-strong: 216 14% 21%; /* #2E343D */
-  --jp-input: 216.9 15.7% 16.3%;
+  /* Was 216.9 15.7% 16.3% — the border token and the card token are visually
+     one step apart, which read fine for a divider but left an empty field's
+     border nearly invisible against its own fill once the fill below was
+     corrected. #2E343D (the existing border-strong step) is the field
+     border everywhere now. */
+  --jp-input: 216 14% 21%; /* #2E343D */
+  /* NOT --jp-card (#14171C). That was the bug: every empty field used
+     bg-secondary, which in dark equals the card colour, so a field sitting on
+     a card had no visible fill at all. #1C2027 is one step lighter than the
+     card — distinct enough to read as a field, dark enough to stay out of
+     the way of its text. */
+  --jp-input-fill: 218.2 16.4% 13.1%; /* #1C2027 */
+  --jp-input-placeholder: var(--jp-tertiary-foreground); /* #667085 */
   --jp-ring: var(--jp-primary);
 
   --jp-sidebar: 217.5 16.7% 9.4%;
@@ -258,7 +272,9 @@
 
     --jp-border: 216.9 15.7% 16.3%; /* #232830 */
     --jp-border-strong: 216 14% 21%; /* #2E343D */
-    --jp-input: 216.9 15.7% 16.3%;
+    --jp-input: 216 14% 21%; /* #2E343D — see the attribute block above */
+    --jp-input-fill: 218.2 16.4% 13.1%; /* #1C2027 */
+    --jp-input-placeholder: var(--jp-tertiary-foreground); /* #667085 */
     --jp-ring: var(--jp-primary);
 
     --jp-sidebar: 217.5 16.7% 9.4%;
@@ -318,6 +334,8 @@
   --color-warning-soft: hsl(var(--jp-warning-soft));
   --color-border: hsl(var(--jp-border));
   --color-input: hsl(var(--jp-input));
+  --color-input-fill: hsl(var(--jp-input-fill));
+  --color-input-placeholder: hsl(var(--jp-input-placeholder));
   --color-ring: hsl(var(--jp-ring));
 
   --color-sidebar: hsl(var(--jp-sidebar));

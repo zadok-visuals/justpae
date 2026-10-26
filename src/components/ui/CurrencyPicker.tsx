@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SheetPanel } from "@/components/ui/SheetPanel";
+import { FIELD_SHELL, fieldBorderClass } from "@/components/ui/Field";
 import { Pill } from "@/components/ui/Primitives";
 import { Amount } from "@/components/ui/Amount";
 import { currencyMeta, isCurrency } from "@/lib/currencies";
@@ -106,7 +107,7 @@ export function CurrencyPicker<V extends string = Currency>({
         aria-expanded={open}
         aria-label={`${label}: ${picked ? current : (anyLabel ?? current)}. Choose a currency`}
         // Same shell as every other field — see .jp-field in globals.css.
-        className="jp-field flex h-12 w-full items-center gap-2 rounded-lg border border-transparent bg-secondary px-3 text-left"
+        className={`${FIELD_SHELL} ${fieldBorderClass()} h-12 w-full text-left`}
       >
         {picked && <CurrencyGlyph currency={current} className="size-7 text-base" />}
         <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">

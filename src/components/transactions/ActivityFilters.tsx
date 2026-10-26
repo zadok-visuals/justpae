@@ -99,7 +99,7 @@ export function ActivityFilters() {
             update({ search: search.trim() || null });
           }}
         >
-          <div className="jp-field flex h-11 items-center gap-2 rounded-lg border border-input bg-secondary px-3">
+          <div className="jp-field flex h-11 items-center gap-2 rounded-lg border border-input bg-input-fill px-3">
             <input
               id="activity-search"
               value={search}
@@ -109,7 +109,7 @@ export function ActivityFilters() {
               enterKeyHint="search"
               autoCapitalize="none"
               autoCorrect="off"
-              className="min-w-0 flex-1 border-0 bg-transparent py-0 text-foreground placeholder:text-muted-foreground"
+              className="min-w-0 flex-1 border-0 bg-transparent py-0 text-foreground placeholder:text-input-placeholder"
             />
             {search && (
               <button
@@ -129,7 +129,7 @@ export function ActivityFilters() {
           </div>
         </form>
 
-        <div className="jp-field flex h-11 items-center gap-2 rounded-lg border border-input bg-secondary px-3">
+        <div className="jp-field flex h-11 items-center gap-2 rounded-lg border border-input bg-input-fill px-3">
           <label className="sr-only" htmlFor="activity-status">
             Status
           </label>
@@ -163,7 +163,7 @@ export function ActivityFilters() {
                 type="date"
                 value={params.get("from") ?? ""}
                 onChange={(e) => update({ from: e.target.value || null })}
-                className="mt-1 min-h-11 w-full rounded-md border border-input bg-secondary px-2 text-foreground"
+                className="mt-1 min-h-11 w-full rounded-md border border-input bg-input-fill px-2 text-foreground"
               />
             </label>
             <label className="block text-xs text-muted-foreground">
@@ -172,7 +172,7 @@ export function ActivityFilters() {
                 type="date"
                 value={params.get("to") ?? ""}
                 onChange={(e) => update({ to: e.target.value || null })}
-                className="mt-1 min-h-11 w-full rounded-md border border-input bg-secondary px-2 text-foreground"
+                className="mt-1 min-h-11 w-full rounded-md border border-input bg-input-fill px-2 text-foreground"
               />
             </label>
           </div>

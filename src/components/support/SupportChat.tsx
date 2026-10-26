@@ -380,7 +380,7 @@ export function SupportChat({
             rows={2}
             maxLength={SUPPORT_MESSAGE_MAX_LENGTH}
             placeholder="Write a message…"
-            className="jp-field min-h-11 w-full resize-none rounded-lg border border-input bg-secondary px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+            className="jp-field min-h-11 w-full resize-none rounded-lg border border-input bg-input-fill px-3 py-2.5 text-sm text-foreground placeholder:text-input-placeholder"
           />
 
           <SendButton disabled={!canSend} />

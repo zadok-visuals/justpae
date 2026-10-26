@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { Label } from "@/components/ui/Field";
+import { Label, FIELD_SHELL, FIELD_PLACEHOLDER, fieldBorderClass } from "@/components/ui/Field";
 
 /**
  * The transaction PIN entry.
@@ -38,7 +38,7 @@ export function PinField({
       <Label htmlFor={id} hint={hint}>
         {label}
       </Label>
-      <div className="jp-field flex h-12 items-center rounded-lg border border-input bg-secondary px-3">
+      <div className={`${FIELD_SHELL} ${fieldBorderClass(error)} h-12`}>
         <input
           id={id}
           name={name}
@@ -53,7 +53,7 @@ export function PinField({
           // submit — the PIN is numeric and a letter is always a mistake.
           onChange={(e) => onValueChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
           aria-invalid={error ? true : undefined}
-          className="min-w-0 flex-1 border-0 bg-transparent py-0 font-mono text-lg tracking-[0.4em] text-foreground placeholder:tracking-normal placeholder:text-muted-foreground"
+          className={`min-w-0 flex-1 border-0 bg-transparent py-0 font-mono text-lg tracking-[0.4em] text-foreground placeholder:tracking-normal ${FIELD_PLACEHOLDER}`}
         />
       </div>
       {error && (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { Label } from "@/components/ui/Field";
+import { Label, FIELD_SHELL, FIELD_PLACEHOLDER, fieldBorderClass } from "@/components/ui/Field";
 
 /**
  * An email/SMS verification code. Unlike PinField (the transaction PIN),
@@ -37,7 +37,7 @@ export function OtpField({
   return (
     <div>
       <Label htmlFor={id}>{label}</Label>
-      <div className="jp-field flex h-14 items-center rounded-lg border border-input bg-secondary px-3">
+      <div className={`${FIELD_SHELL} ${fieldBorderClass(error)} h-14`}>
         <input
           id={id}
           name={name}
@@ -52,7 +52,7 @@ export function OtpField({
           // to a maxLength that assumed a shorter code.
           onChange={(e) => onValueChange(e.target.value.replace(/\D/g, "").slice(0, 10))}
           aria-invalid={error ? true : undefined}
-          className="w-full min-w-0 border-0 bg-transparent py-0 text-center font-mono text-2xl tracking-[0.5em] text-foreground placeholder:tracking-[0.5em] placeholder:text-muted-foreground"
+          className={`w-full min-w-0 border-0 bg-transparent py-0 text-center font-mono text-2xl tracking-[0.5em] text-foreground placeholder:tracking-[0.5em] ${FIELD_PLACEHOLDER}`}
         />
       </div>
       {error && (
