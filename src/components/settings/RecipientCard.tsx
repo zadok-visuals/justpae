@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { TextField, PasswordField, SelectField } from "@/components/ui/Field";
 import { SubmitButton } from "@/components/ui/Button";
 import { Banner, Card, DetailRow } from "@/components/ui/Primitives";
@@ -245,9 +245,31 @@ function useRecipientConfirm(currency: Currency) {
   };
 }
 
-function NewRecipient({ currency, banks }: { currency: Currency; banks: BushaBank[] }) {
+/**
+ * Exported so /sell (GROUP 3) can embed the exact same add-destination form
+ * when a customer chooses to send their sold naira to a bank with no saved
+ * NGN recipient yet — rather than a second implementation of this form.
+ * `onSaved` is new and optional: /profile's own usage below passes nothing
+ * and is unaffected; /sell uses it to advance once the destination exists.
+ */
+export function NewRecipient({
+  currency,
+  banks,
+  onSaved,
+}: {
+  currency: Currency;
+  banks: BushaBank[];
+  onSaved?: () => void;
+}) {
   const [state, formAction] = useActionState(setWithdrawalRecipient, {});
   const { confirm, formRef, onSubmit, fieldError, runConfirmed } = useRecipientConfirm(currency);
+
+  useEffect(() => {
+    if (state.ok) onSaved?.();
+    // Only re-run when a save actually completes, not on every re-render —
+    // onSaved itself is not guaranteed to be referentially stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.ok]);
 
   return (
     <>

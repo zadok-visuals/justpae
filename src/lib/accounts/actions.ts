@@ -30,7 +30,7 @@ import type { UnavailableKind } from "@/lib/ui/unavailability";
  * is used verbatim rather than paraphrased.
  */
 
-export type AccountActionKey = "add" | "convert" | "withdraw" | "payToChina";
+export type AccountActionKey = "add" | "convert" | "withdraw" | "payToChina" | "sell";
 
 export interface AccountAction {
   key: AccountActionKey;
@@ -245,6 +245,21 @@ export function accountActions(
     disabledKind: withdraw.mode === "never" ? "unsupported" : null,
     note: withdraw.mode === "manual" ? withdraw.reason : null,
   });
+
+  // ── Sell (GROUP 3) ───────────────────────────────────────────────────────
+  // USDT only, and a fifth action rather than a variant of Convert/Withdraw:
+  // /sell is its own guided flow (quote, then where the naira goes, then one
+  // PIN), not a different label over the same two forms.
+  if (currency === "USDT") {
+    actions.push({
+      key: "sell",
+      label: "Sell USDT",
+      href: "/sell",
+      disabledReason: null,
+      disabledKind: null,
+      note: null,
+    });
+  }
 
   return actions;
 }

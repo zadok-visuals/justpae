@@ -10,6 +10,10 @@
 
 export type TileTone = "green" | "violet" | "coral" | "sky";
 
+/** The promo banners' own two tints — blue for the first, green for the
+ *  second. Not TileTone: a banner is full-width and only ever these two. */
+export type BannerTone = "blue" | "green";
+
 export interface HomeBannerConfig {
   title: string;
   subtitle: string;
@@ -18,14 +22,44 @@ export interface HomeBannerConfig {
   illustration: string;
   /** Read by screen readers in place of the artwork. */
   alt: string;
+  tone: BannerTone;
 }
 
-export const HOME_BANNER: HomeBannerConfig = {
-  title: "Pay suppliers in China",
-  subtitle: "Fast payments to Chinese bank accounts and Alipay",
-  href: "/pay-to-china",
-  illustration: "banner.png",
-  alt: "",
+/**
+ * GROUP 3a — both of Home's promo banners, same config object, same style,
+ * different tint. The first pays a Chinese supplier; the second turns USDT
+ * into naira — opposite directions of money, so distinct tones are the
+ * point rather than decoration.
+ */
+export const HOME_BANNERS: HomeBannerConfig[] = [
+  {
+    title: "Pay suppliers in China",
+    subtitle: "Fast payments to Chinese bank accounts and Alipay",
+    href: "/pay-to-china",
+    illustration: "banner.png",
+    alt: "",
+    tone: "blue",
+  },
+  {
+    title: "Sell your USDT",
+    subtitle: "Get naira in your bank at today's rate",
+    href: "/sell",
+    illustration: "sell-usdt.png",
+    alt: "",
+    tone: "green",
+  },
+];
+
+/** The soft ground each banner sits on. */
+export const BANNER_GROUND: Record<BannerTone, string> = {
+  blue: "bg-primary-soft",
+  green: "bg-icon-green-soft",
+};
+
+/** The fallback icon's tint, when the illustration file is not there. */
+export const BANNER_ICON: Record<BannerTone, string> = {
+  blue: "bg-icon-blue-soft text-icon-blue",
+  green: "bg-icon-green-soft text-icon-green",
 };
 
 export interface HomeTileConfig {

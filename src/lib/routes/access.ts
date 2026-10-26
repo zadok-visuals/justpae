@@ -80,6 +80,7 @@ export const PROTECTED_PREFIXES = [
   "/deposit",
   "/withdraw",
   "/pay-to-china",
+  "/sell",
   "/receive",
   "/transactions",
   "/bills",

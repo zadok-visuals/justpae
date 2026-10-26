@@ -1,24 +1,30 @@
 import Link from "next/link";
-import { ChevronRightIcon, SendIcon } from "@/components/layout/NavIcons";
+import { ChevronRightIcon, SendIcon, WithdrawIcon } from "@/components/layout/NavIcons";
 import { TileArt } from "@/components/home/TileArt";
-import { HOME_BANNER } from "@/lib/home/homeConfig";
+import {
+  HOME_BANNERS,
+  BANNER_GROUND,
+  BANNER_ICON,
+  type BannerTone,
+  type HomeBannerConfig,
+} from "@/lib/home/homeConfig";
 import { illustrationExists } from "@/lib/home/illustrations";
 
 /**
- * GROUP 3c — the one promotional surface on Home.
- *
- * Its copy, destination and artwork live in HOME_BANNER (src/lib/home/
- * homeConfig.ts) so changing the campaign is a data edit, not a JSX one.
- * Primary soft in both themes — the dark palette already defines that token
- * as the same blue at about 16%.
+ * GROUP 3c, then 3a — Home's promo banners. Blue pays a Chinese supplier;
+ * green sells USDT for naira. Both read from HOME_BANNERS (src/lib/home/
+ * homeConfig.ts) so changing a campaign is a data edit, not a JSX one.
  */
-export function PromoBanner() {
-  const { title, subtitle, href, illustration, alt } = HOME_BANNER;
+const FALLBACK_ICON: Record<BannerTone, React.ReactNode> = {
+  blue: <SendIcon className="size-6" />,
+  green: <WithdrawIcon className="size-6" />,
+};
 
+function Banner({ title, subtitle, href, illustration, alt, tone }: HomeBannerConfig) {
   return (
     <Link
       href={href}
-      className="flex items-center gap-2 overflow-hidden rounded-xl bg-primary-soft py-3 pl-4 pr-3 transition-opacity active:opacity-90"
+      className={`flex items-center gap-2 overflow-hidden rounded-xl ${BANNER_GROUND[tone]} py-3 pl-4 pr-3 transition-opacity active:opacity-90`}
     >
       <span className="min-w-0 flex-1">
         <span className="block text-[0.9375rem] font-semibold leading-tight text-foreground">
@@ -35,10 +41,20 @@ export function PromoBanner() {
         size={120}
         exists={illustrationExists(illustration)}
         eager
-        fallback={<SendIcon className="size-6" />}
-        fallbackClassName="bg-icon-blue-soft text-icon-blue"
+        fallback={FALLBACK_ICON[tone]}
+        fallbackClassName={BANNER_ICON[tone]}
         className="shrink-0"
       />
     </Link>
+  );
+}
+
+export function PromoBanner() {
+  return (
+    <div className="space-y-2">
+      {HOME_BANNERS.map((banner) => (
+        <Banner key={banner.href} {...banner} />
+      ))}
+    </div>
   );
 }

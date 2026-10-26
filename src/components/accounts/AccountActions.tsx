@@ -53,14 +53,20 @@ const ICONS: Record<AccountActionKey, (props: { className?: string }) => React.R
   convert: ConvertIcon,
   payToChina: SendIcon,
   withdraw: WithdrawIcon,
+  // GROUP 3 — USDT only. Reuses Convert's glyph rather than inventing a
+  // sixth icon: selling is a conversion with a payout attached, not a
+  // visually distinct journey.
+  sell: ConvertIcon,
 };
 
 /**
  * The row's own order, independent of the order the rules module happens to
  * build them in. Add money first because it is what most people arrive for;
- * Withdraw last because it is the one with consequences.
+ * Withdraw last because it is the one with consequences. Sell, where it
+ * exists at all (USDT only), comes after it — a deliberate extra step, not
+ * a default.
  */
-const ORDER: AccountActionKey[] = ["add", "convert", "payToChina", "withdraw"];
+const ORDER: AccountActionKey[] = ["add", "convert", "payToChina", "withdraw", "sell"];
 
 /**
  * Short labels. The row has four columns on a 375px screen, so "Convert NGN"
@@ -74,6 +80,7 @@ const SHORT_LABEL: Record<AccountActionKey, string> = {
   convert: "Convert",
   payToChina: "Pay to China",
   withdraw: "Withdraw",
+  sell: "Sell USDT",
 };
 
 export function AccountActions({ actions }: { actions: AccountAction[] }) {
