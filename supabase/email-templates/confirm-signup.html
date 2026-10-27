@@ -41,9 +41,6 @@
     .email-panel-bg { background-color: #1e2029 !important; border-color: #2a2d36 !important; }
     .email-panel-text { color: #f0f1f3 !important; }
     .email-footer-text { color: #6b7280 !important; }
-    /* Swap wordmark: hide the black one, reveal the white one. */
-    .email-wordmark-light { display: none !important; max-height: 0 !important; overflow: hidden !important; }
-    .email-wordmark-dark  { display: block !important; max-height: none !important; overflow: visible !important; }
   }
 </style>
 </head>
@@ -66,15 +63,9 @@
                  doesn't itself control. -->
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
-                <td bgcolor="#ffffff" style="background-color:#ffffff;padding:20px 28px;">
-                  <!-- Black wordmark: default (light mode). Hidden in dark mode via CSS. -->
-                  <img src="https://justpae.com/email/wordmark-dark.png" width="120" height="36" alt="JustPae"
-                       class="email-wordmark-light"
+                <td bgcolor="#2f54eb" style="background-color:#2f54eb;padding:20px 28px;">
+                  <img src="https://justpae.com/email/wordmark.png" width="120" height="36" alt="JustPae"
                        style="display:block;border:0;outline:none;height:36px;width:auto;">
-                  <!-- White wordmark: hidden by default, revealed in dark mode via CSS. -->
-                  <img src="https://justpae.com/email/wordmark.png" width="120" height="36" alt=""
-                       class="email-wordmark-dark"
-                       style="display:none;border:0;outline:none;height:36px;width:auto;max-height:0;overflow:hidden;">
                 </td>
               </tr>
             </table>

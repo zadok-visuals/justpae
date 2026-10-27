@@ -195,9 +195,6 @@ export function renderEmail(options: EmailOptions): string {
     .email-panel-bg { background-color: ${DARK.panelBg} !important; border-color: ${DARK.panelBorder} !important; }
     .email-panel-text { color: ${DARK.panelText} !important; }
     .email-footer-text { color: ${DARK.footerText} !important; }
-    /* Swap wordmark: hide the black one, reveal the white one. */
-    .email-wordmark-light { display: none !important; max-height: 0 !important; overflow: hidden !important; }
-    .email-wordmark-dark  { display: block !important; max-height: none !important; overflow: visible !important; }
   }
 </style>
 </head>
@@ -220,15 +217,9 @@ export function renderEmail(options: EmailOptions): string {
                  doesn't itself control. -->
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
-                <td bgcolor="${LIGHT.headerBg}" style="background-color:${LIGHT.headerBg};padding:20px 28px;">
-                  <!-- Black wordmark: default (light mode). Hidden in dark mode via CSS. -->
-                  <img src="https://justpae.com/email/wordmark-dark.png" width="120" height="36" alt="JustPae"
-                       class="email-wordmark-light"
+                <td bgcolor="${BRAND}" style="background-color:${BRAND};padding:20px 28px;">
+                  <img src="https://justpae.com/email/wordmark.png" width="120" height="36" alt="JustPae"
                        style="display:block;border:0;outline:none;height:36px;width:auto;">
-                  <!-- White wordmark: hidden by default, revealed in dark mode via CSS. -->
-                  <img src="https://justpae.com/email/wordmark.png" width="120" height="36" alt=""
-                       class="email-wordmark-dark"
-                       style="display:none;border:0;outline:none;height:36px;width:auto;max-height:0;overflow:hidden;">
                 </td>
               </tr>
             </table>
