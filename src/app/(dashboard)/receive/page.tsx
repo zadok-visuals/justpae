@@ -51,7 +51,7 @@ export default async function ReceivePage() {
             <h2 className="text-sm font-semibold text-foreground">What you&apos;ll get</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               An account number and routing number in your name, plus a reference code. Anyone
-              can send dollars to it from their bank, and the money lands in your justpae dollar
+              can send dollars to it from their bank, and the money lands in your JustPae dollar
               wallet.
             </p>
             <p className="mt-3 text-sm text-muted-foreground">

@@ -34,7 +34,7 @@ const SAMPLES: { name: string; options: EmailOptions }[] = [
       preheader: "Your verification code is inside — it expires in about an hour.",
       heading: "Confirm your email",
       bodyParagraphs: [
-        "Use the code below to confirm your email and finish setting up your justpae account.",
+        "Use the code below to confirm your email and finish setting up your JustPae account.",
         "It expires in about an hour.",
       ],
       panelHtml: CODE_PANEL,

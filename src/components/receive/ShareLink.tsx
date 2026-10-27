@@ -53,7 +53,7 @@ export function ShareLink({ url, referenceCode }: { url: string; referenceCode: 
       try {
         await navigator.share({
           title: "My justpae dollar details",
-          text: `Send dollars to me on justpae. Reference: ${referenceCode}`,
+          text: `Send dollars to me on JustPae. Reference: ${referenceCode}`,
           url,
         });
         return;

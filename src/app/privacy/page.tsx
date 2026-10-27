@@ -21,7 +21,7 @@ import { Analytics } from "@/components/analytics/Analytics";
 
 export const metadata = {
   title: "Privacy Policy",
-  description: "What justpae collects, why, who sees it, and how to get it deleted.",
+  description: "What JustPae collects, why, who sees it, and how to get it deleted.",
 };
 
 export default function PrivacyPage() {
@@ -32,7 +32,7 @@ export default function PrivacyPage() {
       <p>
         justpae is operated by <strong>Zadok Royal Limited</strong>. This policy explains what we
         collect, why we have to, who else sees it, and what you can ask us to do with it. It covers
-        the justpae app and website.
+        the JustPae app and website.
       </p>
 
       <h2>What we collect</h2>

@@ -14,8 +14,8 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "justpae",
-    short_name: "justpae",
+    name: "JustPae",
+    short_name: "JustPae",
     description: "Hold, convert and send money across borders.",
     start_url: "/home",
     display: "standalone",

@@ -227,7 +227,7 @@ export async function sendPinLockedEmail(params: {
   const { to, minutes } = params;
   return sendEmail({
     to,
-    subject: "Your justpae transaction PIN is temporarily locked",
+    subject: "Your JustPae transaction PIN is temporarily locked",
     preheader: `Too many incorrect attempts. You can try again in ${minutes} minutes.`,
     heading: "Your transaction PIN is locked",
     bodyParagraphs: [
@@ -263,7 +263,7 @@ export async function sendSupportMessageEmail(params: {
     to,
     subject: forAdmin
       ? `New support message from ${fromName}`
-      : "justpae support replied to you",
+      : "JustPae support replied to you",
     preheader: forAdmin ? trimmed : "You have a reply from our support team.",
     heading: forAdmin ? "New support message" : "We've replied",
     bodyParagraphs: forAdmin
@@ -311,7 +311,7 @@ export async function sendKycSubmittedEmail(params: {
 export async function sendKycApprovedEmail(params: { to: string }): Promise<boolean> {
   return sendEmail({
     to: params.to,
-    subject: "You're verified on justpae",
+    subject: "You're verified on JustPae",
     preheader: "Withdrawals are now open on your account.",
     heading: "You're verified",
     bodyParagraphs: [
@@ -604,7 +604,7 @@ export async function sendAdminPayToChinaAlertEmail(params: {
 // purpose is to get somebody into the queue.
 //
 // None of these names a bank-transfer rail operator or uses the word
-// "exchange": the customer transferred money to justpae's account, and that is
+// "exchange": the customer transferred money to JustPae's account, and that is
 // the whole of what happened.
 
 /** To the ops team, when a customer says they have made the transfer. */

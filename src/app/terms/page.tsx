@@ -31,7 +31,7 @@ export default function TermsPage() {
         operates justpae. By opening an account you accept them. If you do not, do not open one.
       </p>
 
-      <h2>What justpae does</h2>
+      <h2>What JustPae does</h2>
       <p>
         justpae lets you hold balances in several currencies, move money between them at the rate
         we quote you, withdraw to a bank account, mobile money number or crypto wallet, and pay
@@ -153,7 +153,7 @@ export default function TermsPage() {
       <h2>Changes</h2>
       <p>
         We may change these terms. If a change affects you we will email you before it takes effect.
-        Continuing to use justpae after that is acceptance; if you would rather not, close your
+        Continuing to use JustPae after that is acceptance; if you would rather not, close your
         account.
       </p>
 

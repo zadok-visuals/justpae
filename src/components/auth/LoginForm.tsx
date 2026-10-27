@@ -14,7 +14,7 @@ export function LoginForm({ notice }: { notice?: string }) {
     <div className="space-y-5">
       <div>
         <h1 className="font-display text-2xl font-semibold text-foreground">Welcome back</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Sign in to your justpae account.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Sign in to your JustPae account.</p>
       </div>
 
       {notice === "reset" && (

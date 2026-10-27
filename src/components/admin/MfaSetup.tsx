@@ -131,7 +131,7 @@ function Challenge() {
   return (
     <form action={formAction} className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Open your authenticator app and enter the current code for justpae.
+        Open your authenticator app and enter the current code for JustPae.
       </p>
       <OtpField name="code" label="Code from your app" value={code} onValueChange={setCode} autoFocus />
       <SubmitButton pendingLabel="Checking…">Continue</SubmitButton>

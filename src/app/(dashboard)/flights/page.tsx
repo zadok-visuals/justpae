@@ -54,7 +54,7 @@ export default async function FlightsPage() {
   return (
     <PageShell
       title="Flights"
-      subtitle="Search and book flights, paid from your justpae wallets."
+      subtitle="Search and book flights, paid from your JustPae wallets."
     >
       <div className="space-y-5">
         {!FLIGHTS_ENABLED && (

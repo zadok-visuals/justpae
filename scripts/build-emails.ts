@@ -24,9 +24,8 @@ const OUT_DIR = resolve(__dirname, "../supabase/email-templates");
 
 const CODE_PANEL = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="email-panel-bg" bgcolor="#f6f7f9" style="background-color:#f6f7f9;border:1px solid #eaecf0;border-radius:10px;">
   <tr>
-    <td align="center" style="padding:20px 0;display:flex;align-items:center;justify-content:center;gap:8px;">
-      <span class="email-panel-text" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:32px;font-weight:700;letter-spacing:6px;color:#0b0d10;">{{ .Token }}</span>
-      <span style="font-size:24px;" aria-label="Copy code" role="img">📋</span>
+    <td align="center" style="padding:24px 0;text-align:center;">
+      <span class="email-panel-text" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:36px;font-weight:700;letter-spacing:8px;color:#0b0d10;">{{ .Token }}</span>
     </td>
   </tr>
 </table>`;
@@ -48,14 +47,14 @@ ${body}`;
 }
 
 const confirmSignup = withHeader(
-  "Your justpae verification code",
+  "Your JustPae verification code",
   "Confirm signup",
   renderEmail({
-    subject: "Your justpae verification code",
+    subject: "Your JustPae verification code",
     preheader: "Your verification code is inside — it expires in about an hour.",
     heading: "Confirm your email",
     bodyParagraphs: [
-      "Use the code below to confirm your email and finish setting up your justpae account.",
+      "Use the code below to confirm your email and finish setting up your JustPae account.",
       "It expires in about an hour.",
     ],
     panelHtml: CODE_PANEL,
@@ -67,14 +66,14 @@ const confirmSignup = withHeader(
 );
 
 const resetPassword = withHeader(
-  "Reset your justpae password",
+  "Reset your JustPae password",
   "Reset password",
   renderEmail({
-    subject: "Reset your justpae password",
-    preheader: "Reset your justpae password — this link expires in about an hour.",
+    subject: "Reset your JustPae password",
+    preheader: "Reset your JustPae password — this link expires in about an hour.",
     heading: "Reset your password",
     bodyParagraphs: [
-      "Tap the button below to choose a new password for your justpae account.",
+      "Tap the button below to choose a new password for your JustPae account.",
       "This link works in any browser and expires in about an hour.",
     ],
     button: {

@@ -218,7 +218,7 @@ export function renderEmail(options: EmailOptions): string {
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
                 <td bgcolor="${LIGHT.headerBg}" style="background-color:${LIGHT.headerBg};padding:20px 28px;">
-                  <img src="https://justpae.com/email/justpae-logo@2x.png" width="122" height="40" alt="justpae" style="display:block;border:0;outline:none;">
+                  <img src="https://justpae.com/email/wordmark.png" width="120" height="36" alt="JustPae" style="display:block;border:0;outline:none;height:36px;width:auto;">
                 </td>
               </tr>
             </table>
@@ -272,7 +272,7 @@ export function renderEmail(options: EmailOptions): string {
               <tr>
                 <td style="padding:28px 28px 28px 28px;">
                   <p class="email-footer-text" style="margin:0;font-family:${FONT};font-size:12px;line-height:1.5;color:${LIGHT.footerText};">
-                    justpae &middot; Zadok Royal Limited${address ? `<br>${address}` : ""}<br>
+                    JustPae · Zadok Royal Limited${address ? `<br>${address}` : ""}<br>
                     <a href="https://justpae.com/support" class="email-footer-text" style="color:${LIGHT.footerText};">Support</a>
                     &nbsp;&middot;&nbsp;
                     <a href="https://justpae.com/terms" class="email-footer-text" style="color:${LIGHT.footerText};">Terms</a>
@@ -336,7 +336,7 @@ export function renderEmailText(options: EmailOptions): string {
   const address = companyAddress();
   lines.push(
     "—",
-    address ? `justpae · Zadok Royal Limited · ${address}` : "justpae · Zadok Royal Limited",
+    address ? `JustPae · Zadok Royal Limited · ${address}` : "JustPae · Zadok Royal Limited",
     "Support: https://justpae.com/support",
     "Terms: https://justpae.com/terms  ·  Privacy: https://justpae.com/privacy",
   );

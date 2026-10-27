@@ -415,7 +415,7 @@ export default function LandingPage() {
             <span className="text-sm text-muted-foreground">
               {/* Same entity line as the transactional emails, so the name a
                   customer sees in their inbox matches the one on the site. */}
-              justpae &middot; Zadok Royal Limited
+              JustPae · Zadok Royal Limited
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
