@@ -18,6 +18,24 @@ const nextConfig: NextConfig = {
     root: path.join(__dirname),
   },
   devIndicators: false,
+  images: {
+    /**
+     * AVIF first — browsers that support it get ~50 % smaller files than WebP
+     * for the same visual quality, which matters a lot for 3D illustrations
+     * with fine detail and alpha. WebP is the fallback for everything else.
+     * PNG/JPEG are never sent to the client.
+     */
+    formats: ["image/avif", "image/webp"],
+    /**
+     * Real phone widths + a desktop step. Fewer sizes → fewer cache variants →
+     * faster first-hit optimisation. The default list has 16 entries; this one
+     * has 6, which still covers every device in the product's target market.
+     */
+    deviceSizes: [390, 430, 768, 1024, 1280, 1920],
+    imageSizes: [48, 96, 160, 256, 480],
+    /** Sharper than the default 75 for 3D art; still well inside safe file size. */
+    quality: 85,
+  },
   experimental: {
     /**
      * A SAFETY NET, not a feature. Files no longer travel through server
