@@ -33,8 +33,6 @@ const nextConfig: NextConfig = {
      */
     deviceSizes: [390, 430, 768, 1024, 1280, 1920],
     imageSizes: [48, 96, 160, 256, 480],
-    /** Sharper than the default 75 for 3D art; still well inside safe file size. */
-    quality: 85,
   },
   experimental: {
     /**
