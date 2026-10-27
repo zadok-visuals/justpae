@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     "Hold dollars, naira, cedis, shillings and USDT in one place. Convert at live rates, withdraw to your bank or mobile money, and pay your bills.",
   applicationName: "JustPae",
   appleWebApp: { capable: true, title: "JustPae", statusBarStyle: "black-translucent" },
-  icons: { icon: "/icon.svg" },
+  icons: { icon: "/icon.png", apple: "/apple-icon.png" },
 };
 
 /**
