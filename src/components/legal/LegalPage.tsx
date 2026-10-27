@@ -25,7 +25,7 @@ export function LegalPage({
     <div className="min-h-screen-dvh bg-background">
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-5 py-4">
-          <Link href="/" aria-label="justpae home" className="inline-flex min-h-11 items-center gap-2">
+          <Link href="/" aria-label="JustPae Home" className="inline-flex min-h-11 items-center gap-2">
             <Mark className="size-7" />
             <span className="font-display text-lg font-semibold tracking-tight text-foreground">
               justpae

@@ -36,7 +36,7 @@ export const HOME_BANNERS: HomeBannerConfig[] = [
     title: "Pay suppliers in China",
     subtitle: "Fast payments to Chinese bank accounts and Alipay",
     href: "/pay-to-china",
-    illustration: "banner.png",
+    illustration: "Pay-to-china.png",
     alt: "",
     tone: "blue",
   },
@@ -44,7 +44,7 @@ export const HOME_BANNERS: HomeBannerConfig[] = [
     title: "Sell your USDT",
     subtitle: "Get naira in your bank at today's rate",
     href: "/sell",
-    illustration: "sell-usdt.png",
+    illustration: "Sell-your-USDT.png",
     alt: "",
     tone: "green",
   },
@@ -80,7 +80,7 @@ export const HOME_TILES: HomeTileConfig[] = [
     subtitle: "Add money to your wallet",
     href: "/deposit",
     tone: "green",
-    illustration: "deposit.png",
+    illustration: "Deposit.png",
     eager: true,
   },
   {
@@ -89,7 +89,7 @@ export const HOME_TILES: HomeTileConfig[] = [
     subtitle: "Swap between your wallets",
     href: "/convert",
     tone: "violet",
-    illustration: "convert.png",
+    illustration: "Convert.png",
     eager: true,
   },
   {
@@ -98,7 +98,7 @@ export const HOME_TILES: HomeTileConfig[] = [
     subtitle: "Pay any Chinese account",
     href: "/pay-to-china",
     tone: "coral",
-    illustration: "pay-to-china.png",
+    illustration: "Pay-to-China.png",
     eager: false,
   },
   {
@@ -107,7 +107,7 @@ export const HOME_TILES: HomeTileConfig[] = [
     subtitle: "Send to your bank",
     href: "/withdraw",
     tone: "sky",
-    illustration: "withdraw.png",
+    illustration: "Withdraw.png",
     eager: false,
   },
 ];

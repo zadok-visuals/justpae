@@ -205,7 +205,7 @@ export function TopBar({ userName }: { userName: string }) {
   return (
     <div className="hidden shrink-0 items-center border-b border-sidebar-border sm:flex">
       <div className="flex w-60 shrink-0 items-center self-stretch border-r border-sidebar-border bg-sidebar px-5 py-3">
-        <Link href="/home" aria-label="justpae home" className="inline-flex min-h-11 items-center">
+        <Link href="/home" aria-label="JustPae Home" className="inline-flex min-h-11 items-center">
           <Wordmark />
         </Link>
       </div>
@@ -421,7 +421,7 @@ export function MobileTopBar({
       ) : (
         <Link
           href="/home"
-          aria-label="justpae home"
+          aria-label="JustPae Home"
           className="inline-flex min-h-11 flex-1 items-center"
         >
           <Wordmark />

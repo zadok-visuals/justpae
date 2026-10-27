@@ -133,7 +133,7 @@ export default function LandingPage() {
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <Link href="/" aria-label="justpae home" className="inline-flex min-h-11 items-center">
+          <Link href="/" aria-label="JustPae Home" className="inline-flex min-h-11 items-center">
             <Wordmark />
           </Link>
           <SignInLinks compact />

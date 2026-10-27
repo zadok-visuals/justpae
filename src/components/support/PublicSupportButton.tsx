@@ -87,10 +87,10 @@ export function PublicSupportButton() {
           </p>
 
           <a
-            href="mailto:support@justpae.com"
+            href="mailto:admin@justpae.com"
             className="mt-3 flex min-h-11 items-center justify-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground"
           >
-            support@justpae.com
+            admin@justpae.com
           </a>
 
           <p className="mt-3 text-xs text-muted-foreground">
