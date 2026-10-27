@@ -23,29 +23,31 @@ export function Mark({ className = "size-8" }: { className?: string }) {
 
 /**
  * The full JustPae wordmark — now uses the brand-supplied PNG assets.
- * JP-Wordmark-black.png is shown in light mode; JP-Wordmark-white.png in dark.
- * Both are served from /public so they resolve to /JP-Wordmark-*.png.
+ * jp-wordmark-light shows the black PNG in light mode.
+ * jp-wordmark-dark shows the white PNG in dark mode.
+ * Both classes are defined in globals.css and follow the same
+ * data-theme / prefers-color-scheme contract as all other tokens.
  */
 export function Wordmark({ className = "" }: { className?: string }) {
   return (
     <span className={`inline-flex items-center ${className}`}>
-      {/* Light-mode wordmark */}
+      {/* Black wordmark — visible in light mode */}
       <Image
         src="/JP-Wordmark-black.png"
         alt="JustPae"
         width={120}
         height={36}
         priority
-        className="block dark:hidden h-8 w-auto"
+        className="jp-wordmark-light h-8 w-auto"
       />
-      {/* Dark-mode wordmark */}
+      {/* White wordmark — visible in dark mode */}
       <Image
         src="/JP-Wordmark-white.png"
         alt="JustPae"
         width={120}
         height={36}
         priority
-        className="hidden dark:block h-8 w-auto"
+        className="jp-wordmark-dark h-8 w-auto"
       />
     </span>
   );

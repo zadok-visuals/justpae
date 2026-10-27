@@ -713,4 +713,21 @@
       transform 200ms ease-out,
       opacity 200ms ease-out;
   }
+
+  /*
+   * Wordmark theme switching — uses data-theme and prefers-color-scheme to
+   * match the same dark-mode contract as the rest of the design tokens.
+   * .jp-wordmark-light = black PNG (shown in light mode)
+   * .jp-wordmark-dark  = white PNG (shown in dark mode)
+   */
+  .jp-wordmark-light { display: block; }
+  .jp-wordmark-dark  { display: none; }
+
+  :root[data-theme="dark"] .jp-wordmark-light { display: none; }
+  :root[data-theme="dark"] .jp-wordmark-dark  { display: block; }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .jp-wordmark-light { display: none; }
+    :root:not([data-theme="light"]) .jp-wordmark-dark  { display: block; }
+  }
 }

@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 
 /**
- * An illustration from public/illustrations, with a fallback that keeps the
+ * An illustration from public/, with a fallback that keeps the
  * layout intact when the file is not there.
  *
  * WHICH ONE TO DRAW IS DECIDED ON THE SERVER — see illustrationExists() in
@@ -58,7 +58,7 @@ export function TileArt({
 
   return (
     <Image
-      src={`/illustrations/${src}`}
+      src={`/${src}`}
       alt={alt}
       width={size}
       height={size}
