@@ -36,7 +36,7 @@ export const HOME_BANNERS: HomeBannerConfig[] = [
     title: "Pay suppliers in China",
     subtitle: "Fast payments to Chinese bank accounts and Alipay",
     href: "/pay-to-china",
-    illustration: "Pay-to-china.png",
+    illustration: "Pay-suppliers-in-china.png",
     alt: "",
     tone: "blue",
   },

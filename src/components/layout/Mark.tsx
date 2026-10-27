@@ -1,11 +1,9 @@
+import Image from "next/image";
+
 /**
- * The justpae mark and wordmark.
- *
- * Drawn here rather than loaded as an image so it scales without a second
- * asset at 2x. Its colours are pinned rather than themed: the chip behind it
- * is fixed dark, so the mark must read the same in both themes. The form is a
- * "j" descender crossing a horizontal rail — a currency-glyph gesture, not a
- * letterform borrowed from anywhere else.
+ * The justpae mark-only icon (used in small contexts like the legal page header).
+ * Still uses the inline SVG since it's a small square lockup — the PNG wordmark
+ * is rectangular and doesn't suit a square-icon slot.
  */
 export function Mark({ className = "size-8" }: { className?: string }) {
   return (
@@ -23,15 +21,33 @@ export function Mark({ className = "size-8" }: { className?: string }) {
   );
 }
 
+/**
+ * The full JustPae wordmark — now uses the brand-supplied PNG assets.
+ * JP-Wordmark-black.png is shown in light mode; JP-Wordmark-white.png in dark.
+ * Both are served from /public so they resolve to /JP-Wordmark-*.png.
+ */
 export function Wordmark({ className = "" }: { className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-2 ${className}`}>
-      <Mark />
-      {/* Lowercase, always — it is the brand's own spelling, not a style
-          choice to be normalised by a heading rule. */}
-      <span className="font-display text-xl font-semibold tracking-tight text-foreground">
-        justpae
-      </span>
+    <span className={`inline-flex items-center ${className}`}>
+      {/* Light-mode wordmark */}
+      <Image
+        src="/JP-Wordmark-black.png"
+        alt="JustPae"
+        width={120}
+        height={36}
+        priority
+        className="block dark:hidden h-8 w-auto"
+      />
+      {/* Dark-mode wordmark */}
+      <Image
+        src="/JP-Wordmark-white.png"
+        alt="JustPae"
+        width={120}
+        height={36}
+        priority
+        className="hidden dark:block h-8 w-auto"
+      />
     </span>
   );
 }
+
