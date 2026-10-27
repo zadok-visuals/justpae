@@ -57,36 +57,36 @@ export interface EmailOptions {
 }
 
 const LIGHT = {
-  outerBg: "hsl(var(--jp-background))",
-  cardBg: "hsl(var(--jp-card))",
-  cardBorder: "hsl(var(--jp-border))",
-  headerBg: "hsl(var(--jp-primary))",
-  heading: "hsl(var(--jp-foreground))",
-  body: "hsl(var(--jp-foreground))",
-  muted: "hsl(var(--jp-muted-foreground))",
-  panelBg: "hsl(var(--jp-secondary))",
-  panelBorder: "hsl(var(--jp-border))",
-  panelText: "hsl(var(--jp-foreground))",
-  footerText: "hsl(var(--jp-muted-foreground))",
+  outerBg: "#f4f5f7",
+  cardBg: "#ffffff",
+  cardBorder: "#e4e7ec",
+  headerBg: "#ffffff",
+  heading: "#0b0d10",
+  body: "#1a1d23",
+  muted: "#6b7280",
+  panelBg: "#f6f7f9",
+  panelBorder: "#e4e7ec",
+  panelText: "#0b0d10",
+  footerText: "#9ca3af",
 };
 
-// justpae's own dark theme, reused as the email's dark-mode palette — for the
-// clients that honour prefers-color-scheme (notably Apple/iOS Mail; most
-// webmail strips the <style> block below and simply stays on the light
-// design, which is why that one is the one built to stand on its own).
+// Used only in the @media (prefers-color-scheme: dark) block — clients that
+// honour it (Apple/iOS Mail) get these via the CSS class overrides below.
+// Gmail and most webmail strip the <style> block entirely and stay on LIGHT.
 const DARK = {
-  outerBg: "hsl(var(--jp-background))",
-  cardBg: "hsl(var(--jp-card))",
-  cardBorder: "hsl(var(--jp-border))",
-  headerBg: "hsl(var(--jp-primary))",
-  heading: "hsl(var(--jp-foreground))",
-  body: "hsl(var(--jp-foreground))",
-  muted: "hsl(var(--jp-muted-foreground))",
-  panelBg: "hsl(var(--jp-secondary))",
-  panelBorder: "hsl(var(--jp-border))",
-  panelText: "hsl(var(--jp-foreground))",
-  footerText: "hsl(var(--jp-muted-foreground))",
+  outerBg: "#0b0d10",
+  cardBg: "#141720",
+  cardBorder: "#2a2d36",
+  headerBg: "#141720",
+  heading: "#f0f1f3",
+  body: "#d1d4db",
+  muted: "#6b7280",
+  panelBg: "#1e2029",
+  panelBorder: "#2a2d36",
+  panelText: "#f0f1f3",
+  footerText: "#6b7280",
 };
+
 
 // Royal blue, with white on it: 5.85:1, and the same button a customer sees
 // in the app.
@@ -218,7 +218,7 @@ export function renderEmail(options: EmailOptions): string {
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
                 <td bgcolor="${LIGHT.headerBg}" style="background-color:${LIGHT.headerBg};padding:20px 28px;">
-                  <img src="https://justpae.com/email/wordmark.png" width="120" height="36" alt="JustPae" style="display:block;border:0;outline:none;height:36px;width:auto;">
+                  <img src="https://justpae.com/email/wordmark-dark.png" width="120" height="36" alt="JustPae" style="display:block;border:0;outline:none;height:36px;width:auto;">
                 </td>
               </tr>
             </table>
