@@ -705,3 +705,65 @@ export async function sendAdminSweepEmail(params: {
     button: { label: "Open the treasury", href: `${appUrl()}/admin/treasury` },
   });
 }
+
+// ── Flight booking confirmation ──────────────────────────────────────────────
+// Sent when a user's manual flight booking is processed and confirmed.
+// The booking reference is the single most important field — it is what the
+// airline recognises at check-in, and the email must say so clearly.
+
+export async function sendFlightBookingConfirmationEmail(params: {
+  to: string;
+  bookingReference: string;
+  passengerName: string;
+  departure: string;
+  arrival: string;
+  outboundDate: string;
+  returnDate?: string;
+  airline: string;
+  flightNumbers: string;
+  cabinClass: string;
+  totalAmount: string;
+}): Promise<boolean> {
+  const {
+    to,
+    bookingReference,
+    passengerName,
+    departure,
+    arrival,
+    outboundDate,
+    returnDate,
+    airline,
+    flightNumbers,
+    cabinClass,
+    totalAmount,
+  } = params;
+
+  const tripType = returnDate ? "Round trip" : "One way";
+  const route = returnDate
+    ? `${escapeHtml(departure)} → ${escapeHtml(arrival)} → ${escapeHtml(departure)}`
+    : `${escapeHtml(departure)} → ${escapeHtml(arrival)}`;
+
+  return sendEmail({
+    to,
+    subject: `Booking confirmed — ${bookingReference}`,
+    preheader: `${airline} ${flightNumbers} · ${departure} → ${arrival} · ${outboundDate}`,
+    heading: "Your flight is booked",
+    bodyParagraphs: [
+      `Your booking is confirmed. Save your reference — you'll need it at check-in.`,
+      `<strong>Booking reference: ${escapeHtml(bookingReference)}</strong>`,
+      `<strong>Passenger:</strong> ${escapeHtml(passengerName)}<br>` +
+        `<strong>Route:</strong> ${route}<br>` +
+        `<strong>Trip type:</strong> ${escapeHtml(tripType)}<br>` +
+        `<strong>Departing:</strong> ${escapeHtml(outboundDate)}${returnDate ? `<br><strong>Returning:</strong> ${escapeHtml(returnDate)}` : ""}<br>` +
+        `<strong>Airline:</strong> ${escapeHtml(airline)}<br>` +
+        `<strong>Flight(s):</strong> ${escapeHtml(flightNumbers)}<br>` +
+        `<strong>Cabin:</strong> ${escapeHtml(cabinClass)}<br>` +
+        `<strong>Total paid:</strong> ${escapeHtml(totalAmount)}`,
+    ],
+    closingParagraphs: [
+      "Check in online with the airline using your booking reference. Most airlines open online check-in 24–72 hours before departure.",
+      "If anything looks wrong, contact us straight away — changes are easier before the airline locks the booking.",
+    ],
+  });
+}
+

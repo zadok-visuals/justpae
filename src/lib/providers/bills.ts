@@ -115,8 +115,24 @@ export interface BillsProvider {
 
 export function resolveProvider(): BillsProvider | null {
   if (!BILLS_ENABLED) return null;
-  // No implementation exists yet. Add one next to this file, return it here,
-  // and set NEXT_PUBLIC_FEATURE_BILLS=true plus its server-side credentials.
+
+  /**
+   * VTpass — the confirmed bills provider for Nigeria.
+   *
+   * We use a dynamic require so that the vtpass module is only loaded (and its
+   * env-var checks run) when the flag is actually on. This keeps the bills
+   * interface free of import-time side-effects when the feature is off.
+   *
+   * To switch to a different provider:
+   *   1. Add a new file in src/lib/<provider>/billsProvider.ts implementing BillsProvider.
+   *   2. Import and return it here instead of (or in addition to) vtpassBillsProvider.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { vtpassBillsProvider, isVTpassReady } = require("@/lib/vtpass/billsProvider") as typeof import("@/lib/vtpass/billsProvider");
+  if (isVTpassReady()) return vtpassBillsProvider;
+
+  // No provider is ready — preserve the honest "coming soon" state rather than
+  // pretending payments work.
   return null;
 }
 
