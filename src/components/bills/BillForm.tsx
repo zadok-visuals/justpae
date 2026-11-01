@@ -126,6 +126,7 @@ function BillFormFields({
       : (billers[0]?.code ?? ""),
   );
   const [identifier, setIdentifier] = useState(initialIdentifier ?? "");
+  const [phone, setPhone] = useState("");
   const [amountText, setAmountText] = useState("");
   const [currency, setCurrency] = useState<Currency>(wallets[0]?.currency ?? "NGN");
   const [pin, setPin] = useState("");
@@ -173,8 +174,11 @@ function BillFormFields({
   // beside a newly edited number.
   const activeLookup = identifier.trim().length >= 6 ? lookup : null;
 
+  const needsPhone = biller?.category === "electricity" || biller?.category === "cable_tv" || biller?.category === "water";
+
   const blocked =
-    !available || !hasPin || !biller || !identifier.trim() || amount <= 0 || insufficient || pin.length < 4;
+    !available || !hasPin || !biller || !identifier.trim() || amount <= 0 || insufficient || pin.length < 4 ||
+    (needsPhone && phone.trim().length < 10);
 
   return (
     <>
@@ -202,6 +206,7 @@ function BillFormFields({
       <input type="hidden" name="billerCode" value={billerCode} />
       <input type="hidden" name="currency" value={currency} />
       <input type="hidden" name="customerName" value={activeLookup?.customerName ?? ""} />
+      <input type="hidden" name="phone" value={needsPhone ? phone.trim() : ""} />
       {saveBeneficiary && <input type="hidden" name="saveBeneficiary" value="on" />}
       {saveBeneficiary && (
         <input
@@ -278,6 +283,19 @@ function BillFormFields({
           <p className="text-xs text-muted-foreground">
             We can&apos;t confirm the name for this biller — check the number carefully.
           </p>
+        )}
+
+        {needsPhone && (
+          <TextField
+            name="_phone_display"
+            label="Your phone number"
+            hint="We'll send your token or receipt to this number"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="e.g. 08012345678"
+          />
         )}
       </Card>
 

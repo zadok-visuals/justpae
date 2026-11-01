@@ -110,6 +110,12 @@ export interface BillsProvider {
     currency: string;
     /** Our bill_payments row id, passed as the provider idempotency key. */
     reference: string;
+    /**
+     * Customer contact phone number. Required by VTpass for electricity and
+     * cable TV payments (for SMS token/receipt delivery). Not needed for
+     * airtime/data where customerIdentifier is already the phone number.
+     */
+    phone?: string;
   }): Promise<BillPaymentResult>;
 }
 

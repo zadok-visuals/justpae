@@ -92,6 +92,23 @@ export interface VTpassBalanceResponse {
   };
 }
 
+export interface VTpassVariation {
+  variation_code: string;
+  name: string;
+  variation_amount: string;
+  fixedPrice: "Yes" | "No";
+}
+
+export interface VTpassServiceVariationsResponse {
+  response_description: string;
+  content?: {
+    ServiceName?: string;
+    serviceID?: string;
+    convinience_fee?: string;
+    variations?: VTpassVariation[];
+  };
+}
+
 export interface VTpassVerifyResponse {
   code: string;
   response_description: string;
@@ -164,6 +181,8 @@ export async function vtpassPay(params: {
   billersCode?: string;
   variation_code?: string;
   amount: number;
+  /** Customer's Nigerian phone number for SMS notifications. For airtime/data
+   *  this doubles as the recipient; for metered services it is contact-only. */
   phone: string;
 }): Promise<VTpassPayResponse> {
   return postRequest<VTpassPayResponse>("/api/pay", {
@@ -174,6 +193,19 @@ export async function vtpassPay(params: {
     amount: params.amount,
     phone: params.phone,
   });
+}
+
+/**
+ * Fetches the available variation codes for a service (data bundles, cable TV
+ * plans, etc.). Required before calling vtpassPay for data and cable services,
+ * since VTpass mandates a `variation_code` for those categories.
+ */
+export async function vtpassServiceVariations(
+  serviceID: string,
+): Promise<VTpassServiceVariationsResponse> {
+  return getRequest<VTpassServiceVariationsResponse>(
+    `/api/service-variations?serviceID=${encodeURIComponent(serviceID)}`,
+  );
 }
 
 export async function vtpassRequery(requestId: string): Promise<VTpassPayResponse> {

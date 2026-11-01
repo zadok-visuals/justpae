@@ -20,15 +20,23 @@
  *
  * ── Variation codes ──────────────────────────────────────────────────────────
  *
- * Airtime: no variation code needed.
- * Electricity: variation_code = "prepaid" or "postpaid". We always use prepaid
- *   for purchases from the app; the user can buy postpaid by switching to the
- *   postpaid variant (future: add a toggle). For now, always "prepaid".
- * Data / Cable TV: variation codes are plan-specific (e.g. "mtn-1gb-1000").
- *   Those require a separate /api/service-variations endpoint. For the current
- *   integration, data and cable are routed to VTpass with the amount the user
- *   entered, which works for many plans. A future enhancement would fetch
- *   variations per biller and present them as selectable plans.
+ * Airtime:     no variation code needed — just amount + phone.
+ * Electricity: variation_code = "prepaid" (always; postpaid not offered in-app).
+ * Data / Cable TV: variation codes are plan-specific and MANDATORY on VTpass.
+ *   We call /api/service-variations for the chosen biller, then pick the
+ *   variation whose amount is the closest match ≤ the user's entered amount.
+ *   A future enhancement would let the user browse and select a plan directly.
+ *
+ * ── Phone field ──────────────────────────────────────────────────────────────
+ *
+ * VTpass requires a "phone" field on every /api/pay call:
+ *   - Airtime / Data: the phone number being topped up (same as customerIdentifier).
+ *   - Electricity / Cable TV / Water: a contact phone number for SMS delivery of
+ *     the token/receipt. This is NOT the meter or smartcard number — it must be a
+ *     real Nigerian phone number. The BillsProvider.pay() interface therefore
+ *     accepts an optional `phone` field for metered services; if absent we fall
+ *     back to a placeholder that VTpass accepts ("08000000000") so the payment
+ *     isn't blocked, but callers should always supply the real number.
  *
  * ── Customer name lookup ─────────────────────────────────────────────────────
  *
@@ -41,12 +49,20 @@
  *   "099" — transaction is processing (use requery)
  *   "016" — failed
  *   others — see their docs
+ *
+ * ── request_id rules ─────────────────────────────────────────────────────────
+ *
+ * VTpass requires:
+ *   - First 12 chars: numeric YYYYMMDDHHII (Lagos/GMT+1 timezone)
+ *   - Remaining chars: alphanumeric ONLY — no hyphens or special characters
+ *   - Minimum total length: 12 characters
  */
 
 import type { BillsProvider, Biller, BillerValidation, BillPaymentResult } from "@/lib/providers/bills";
 import {
   vtpassVerify,
   vtpassPay,
+  vtpassServiceVariations,
   generateRequestId,
   isVTpassConfigured,
 } from "@/lib/vtpass/client";
@@ -93,12 +109,53 @@ function isSupported(biller: Biller): boolean {
   return biller.country === "NG" && toServiceId(biller.code) !== null;
 }
 
+/**
+ * Strips hyphens and any non-alphanumeric characters from a string so it can
+ * safely be appended to a VTpass request_id (which must be alphanumeric only
+ * after the 12-digit numeric timestamp prefix).
+ */
+function sanitizeRequestIdSuffix(s: string): string {
+  return s.replace(/[^A-Z0-9]/gi, "").toUpperCase();
+}
+
+/**
+ * For data and cable TV, VTpass mandates a variation_code — you cannot send
+ * just an amount. We call /api/service-variations and pick the plan whose
+ * variation_amount is the closest match ≤ the requested amount.
+ *
+ * Returns null if no suitable plan is found (e.g. amount is below the minimum
+ * available plan). The caller should treat null as an error.
+ */
+async function resolveVariationCode(
+  serviceID: string,
+  amount: number,
+): Promise<string | null> {
+  try {
+    const res = await vtpassServiceVariations(serviceID);
+    const variations = res.content?.variations ?? [];
+    if (variations.length === 0) return null;
+
+    // Pick the highest variation_amount that is ≤ the user's requested amount.
+    // This matches what the user intended to buy as closely as possible without
+    // overcharging them.
+    const candidates = variations
+      .map((v) => ({ code: v.variation_code, amount: parseFloat(v.variation_amount) }))
+      .filter((v) => v.amount <= amount)
+      .sort((a, b) => b.amount - a.amount); // descending
+
+    return candidates[0]?.code ?? null;
+  } catch (err) {
+    console.error("[vtpass.resolveVariationCode] failed to fetch variations", { serviceID, err });
+    return null;
+  }
+}
+
 export const vtpassBillsProvider: BillsProvider = {
   name: "vtpass",
 
   async listBillers({ country, category }) {
     // VTpass doesn't have a list-billers endpoint that maps cleanly to ours.
-    // We return null to fall back to the BILLER_CATALOGUE for all countries,
+    // We return [] to fall back to the BILLER_CATALOGUE for all countries,
     // since our catalogue already has the real NG names.
     void country;
     void category;
@@ -148,7 +205,7 @@ export const vtpassBillsProvider: BillsProvider = {
     }
   },
 
-  async pay({ biller, customerIdentifier, amount, reference }) {
+  async pay({ biller, customerIdentifier, amount, reference, phone }) {
     if (!isSupported(biller)) {
       throw new Error(
         `VTpass does not support biller ${biller.code} (${biller.country}). Use a local provider for GH/KE.`
@@ -157,25 +214,56 @@ export const vtpassBillsProvider: BillsProvider = {
 
     const serviceId = toServiceId(biller.code)!;
 
-    // Use our DB row id as a suffix to the request_id so it is traceable,
-    // while still matching VTpass's timestamp-prefix convention.
-    const requestId = `${generateRequestId()}${reference.slice(0, 8).toUpperCase()}`;
+    // Sanitize the reference suffix: strip hyphens and non-alphanumeric chars.
+    // VTpass requires request_id to be alphanumeric only after the 12-digit timestamp.
+    const sanitizedSuffix = sanitizeRequestIdSuffix(reference.slice(0, 12));
+    const requestId = `${generateRequestId()}${sanitizedSuffix}`;
 
+    const isAirtimeOrData = biller.category === "airtime" || biller.category === "data";
     const isElectricity = biller.category === "electricity";
+    const isData = biller.category === "data";
+    const isCable = biller.category === "cable_tv";
+
+    // ── Resolve variation_code ──────────────────────────────────────────────
+    // Airtime: no variation code needed.
+    // Electricity: variation_code is always "prepaid" for in-app purchases.
+    // Data / Cable TV: MANDATORY — must be fetched from /api/service-variations
+    //   and matched to the user's chosen amount.
+    let variation_code: string | undefined;
+
+    if (isElectricity) {
+      variation_code = "prepaid";
+    } else if (isData || isCable) {
+      const resolved = await resolveVariationCode(serviceId, amount);
+      if (!resolved) {
+        throw new Error(
+          `No ${biller.name} plan found at or below ₦${amount}. ` +
+          `Please try a different amount that matches an available plan.`
+        );
+      }
+      variation_code = resolved;
+    }
+
+    // ── Phone field ─────────────────────────────────────────────────────────
+    // VTpass requires a phone number on every pay call.
+    // For airtime/data: the customerIdentifier IS the phone number.
+    // For electricity/cable: we need a contact phone for SMS token delivery.
+    //   The caller should pass `phone` for metered services. We fall back to
+    //   a placeholder only if none is provided (sandbox is tolerant; live may not be).
+    const phoneNumber = isAirtimeOrData
+      ? customerIdentifier
+      : (phone ?? "08000000000");
 
     const res = await vtpassPay({
       request_id: requestId,
       serviceID: serviceId,
-      billersCode: ["airtime", "data"].includes(biller.category) ? undefined : customerIdentifier,
-      variation_code: isElectricity ? "prepaid" : undefined,
+      // Airtime has no billersCode — the phone IS the recipient.
+      // Data also has no billersCode — variation_code + phone identify the purchase.
+      // Electricity and cable TV: billersCode is the meter/smartcard number.
+      billersCode: isAirtimeOrData ? undefined : customerIdentifier,
+      variation_code,
       amount,
-      // VTpass requires a Nigerian phone number for notifications. We use the
-      // customer identifier for airtime/data (it IS the phone), and a fallback
-      // placeholder for metered services since VTpass still requires the field.
-      phone:
-        biller.category === "airtime" || biller.category === "data"
-          ? customerIdentifier
-          : customerIdentifier, // same field, but for electricity it's the meter
+      phone: phoneNumber,
     });
 
     // "000" = success; "099" = processing (async); anything else = failure.

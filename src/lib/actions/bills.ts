@@ -103,6 +103,8 @@ export async function payBill(
   const pin = String(formData.get("pin") ?? "").trim();
   const saveBeneficiary = formData.get("saveBeneficiary") === "on";
   const beneficiaryLabel = String(formData.get("beneficiaryLabel") ?? "").trim();
+  // For electricity/cable: VTpass requires a real phone number for SMS token delivery.
+  const phone = String(formData.get("phone") ?? "").trim() || undefined;
 
   const biller = findBiller(billerCode);
   if (!biller) return { error: "Unknown biller." };
@@ -171,6 +173,7 @@ export async function payBill(
       // Our own row id doubles as the provider idempotency key, so a retried
       // call cannot pay twice.
       reference: billPaymentId,
+      phone,
     });
 
     await admin.rpc("complete_bill_payment", {
